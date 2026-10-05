@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Print the first API key from the local CLIProxyAPI config, so the fabstra / fabsol /
+# fable-mode skills and the codex shim never hard-code it.
+# Order: $MODEL_ROUTER_KEY if set, else the first entry under `api-keys:` in
+# $CLIPROXY_DIR/config.yaml (default ~/cli-proxy-api/config.yaml).
+if [ -n "${MODEL_ROUTER_KEY:-}" ]; then printf '%s\n' "$MODEL_ROUTER_KEY"; exit 0; fi
+cfg="${CLIPROXY_DIR:-$HOME/cli-proxy-api}/config.yaml"
+[ -f "$cfg" ] || { echo "proxy-key: $cfg not found - set CLIPROXY_DIR or MODEL_ROUTER_KEY" >&2; exit 1; }
+python - "$cfg" <<'EOF'
+import re, sys
+t = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'api-keys:\s*\n\s*-\s*"?([^"\n]+)"?', t)
+if not m:
+    sys.exit("proxy-key: no api-keys entry in " + sys.argv[1])
+print(m.group(1).strip())
+EOF

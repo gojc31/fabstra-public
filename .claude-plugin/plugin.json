@@ -1,0 +1,22 @@
+{
+  "name": "model-router",
+  "displayName": "Model Router",
+  "version": "1.9.15",
+  "description": "Run Claude Code sessions, workers, and subagents on any model your subscriptions cover - one local proxy, zero API keys. Ships two build flows: /fabsol (Fable 5.1 orchestrates only, Opus 5 / Sonnet 5 / GPT-5.6 Sol build, Sol at xhigh or a fresh Fable context reviews) and /fabstra (Fable 5.1 plans, GPT-6 Astra design-reviews the plan and reviews the build, Astra runs the Codex side spawning Sol / Terra / Luna). fabstra Lane B (1.6.1): \"astra solo\" - Astra designs and builds end to end from a Fable brief through the proxy, Sol xhigh and a fresh Fable both review, three must agree. 1.7.0: JC's fork - adds the fable-mode skill (the Fable Method for Opus 5 / Sonnet 5 / Haiku 4.5 sessions), ships the codex / codex-pro / proxy-key / proxy-pin shims in bin/, and replaces every machine-specific path with an env var (see SETUP.md). 1.8.0 (2026-09-07): the \"astra fast\" pin (codex-fast shim, Codex Fast mode on Pro-home launches only), the Pro-only spark agent (GPT-5.3-Codex-Spark mechanic on its own quota pool), headless Computer Use via codex/cua-headless.mjs, and a second-machine setup checklist in SETUP.md.",
+  "author": {
+    "name": "RoboNuggets (original), JC / gojc31 (fork)"
+  },
+  "repository": "https://github.com/gojc31/fabstra-public",
+  "license": "CC-BY-4.0",
+  "keywords": [
+    "astra",
+    "fable-method",
+    "fable-mode",
+    "fabsol",
+    "fabstra",
+    "models",
+    "orchestrator",
+    "proxy",
+    "routing"
+  ]
+}

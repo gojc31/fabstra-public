@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# codex-fast on|off|status  - toggle Codex Fast mode (service_tier = "fast") in the Pro home
+# $CODEX_PRO_HOME/config.toml (default ~/.codex-pro), for fabstra / fable-mode runs pinned with "astra fast".
+# Verified 2026-09-06: the tier rides the websocket handshake (x-codex-routing-hint tier=priority)
+# on the NATIVE Pro path only; children Astra spawns inherit it (spark has no fast tier). Through
+# the proxy or `claude -p` it is a no-op, so this switch is only meaningful before a Pro-home
+# Codex-transport launch. Every request on the Pro 7-day pool then costs 2.5x. Turn it off after
+# the run's last Pro-home job ends. The tier is read when a thread starts, so running jobs keep
+# whatever they started with.
+CFG="${CODEX_PRO_HOME:-$HOME/.codex-pro}/config.toml"
+[ -f "$CFG" ] || { echo "codex-fast: $CFG not found" >&2; exit 1; }
+cur=$(grep -E '^service_tier\s*=' "$CFG" | head -1)
+case "${1:-status}" in
+  on)
+    cp "$CFG" "$CFG.bak-codex-fast"
+    if [ -n "$cur" ]; then
+      sed -i -E 's/^service_tier\s*=.*/service_tier = "fast"/' "$CFG"
+    else
+      # top-level key: insert right after model_reasoning_effort, before any [table]
+      sed -i -E '0,/^model_reasoning_effort\s*=.*/s//&\nservice_tier = "fast"/' "$CFG"
+    fi ;;
+  off)
+    if [ -n "$cur" ]; then
+      cp "$CFG" "$CFG.bak-codex-fast"
+      sed -i -E '/^service_tier\s*=/d' "$CFG"
+    fi ;;
+  status) ;;
+  *) echo "usage: codex-fast on|off|status" >&2; exit 2 ;;
+esac
+now=$(grep -E '^service_tier\s*=' "$CFG" | head -1)
+if [ -n "$now" ]; then echo "codex-fast: ON  ($now) in $CFG - Pro-home launches run Fast, 2.5x usage"
+else echo "codex-fast: OFF (standard tier) in $CFG"; fi

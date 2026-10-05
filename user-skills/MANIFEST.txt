@@ -1,0 +1,25 @@
+user-skills export
+Exported: 2026-10-05
+Source: ~/.claude/skills and ~/.claude/agents on the author's machine. Those folders are not under version control, so there is no source commit; the commit in this repo that carries this export is its version.
+
+Skills (16):
+  brief  (1 files)
+  bro  (1 files)
+  careful  (3 files)
+  design-pass  (5 files)
+  doctor-plus  (1 files)
+  grilling  (2 files)
+  hallmark  (109 files)
+  handoff  (2 files)
+  impeccable  (149 files)
+  prompt-master  (5 files)
+  speed-pass  (6 files)
+  to-questionnaire  (2 files)
+  triage  (5 files)
+  wait-what  (1 files)
+  wizard  (3 files)
+  writing-for-agents  (4 files)
+
+Agents (2):
+  automation-governance-architect.md
+  engineering-frontend-developer.md

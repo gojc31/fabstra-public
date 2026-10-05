@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Shim: run the Codex CLI bundled with the OpenAI Codex desktop app (not on PATH by default).
+# Default: route model calls through the local model-router proxy (provider "router" in
+# ~/.codex/config.toml) so both ChatGPT accounts rotate. CODEX_DIRECT=1 bypasses that.
+# The -c override must follow the subcommand (codex exec -c ...), or `exec` ignores it.
+#
+# Guards (added 2026-09-05, after a shared login pool was emptied by router-routed Astra at max):
+#   1. Astra routing policy - a gpt-6-astra model on the command line runs NATIVE on the Pro
+#      home (CODEX_HOME=~/.codex-pro, no router), the same as the `codex-pro` shim. Override
+#      with CODEX_ALLOW_ROUTER_ASTRA=1 for the documented last-resort case (Pro spent).
+#   2. Effort ceiling - model_reasoning_effort=max or ultra is refused; xhigh is the ceiling.
+#      Override with CODEX_ALLOW_MAX=1 (the run is then your deliberate choice; log its cost).
+#   Both guards read argv only. The companion's app-server path picks the model over RPC, so
+#   it is governed by the CODEX_HOME the skill sets, not by this shim.
+# Binary lookup: $CODEX_BIN if set; else the Codex desktop app bundle on Windows; else any
+# other `codex` on PATH (npm install -g @openai/codex on Mac/Linux) that is not this shim.
+exe="${CODEX_BIN:-}"
+if [ -z "$exe" ] && [ -n "${LOCALAPPDATA:-}" ]; then
+  d="$(cygpath "$LOCALAPPDATA" 2>/dev/null)/OpenAI/Codex/bin"
+  exe="$(ls -t "$d"/*/codex.exe 2>/dev/null | head -1)"
+  [ -z "$exe" ] && [ -x "$d/codex.exe" ] && exe="$d/codex.exe"
+fi
+if [ -z "$exe" ]; then
+  self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+  for c in $(type -aP codex 2>/dev/null); do
+    [ "$(cd "$(dirname "$c")" && pwd -P)/$(basename "$c")" != "$self" ] && { exe="$c"; break; }
+  done
+fi
+[ -n "$exe" ] && [ -x "$exe" ] || { echo "codex shim: no Codex CLI found - set CODEX_BIN or install the Codex app / npm package" >&2; exit 1; }
+
+argstr=" $* "
+if [ -z "${CODEX_ALLOW_MAX:-}" ] && [[ "$argstr" =~ model_reasoning_effort=(\"?)(max|ultra) ]]; then
+  echo "codex shim: effort '${BASH_REMATCH[2]}' refused - xhigh is the ceiling (fabstra effort rubric)." >&2
+  echo "codex shim: set CODEX_ALLOW_MAX=1 to run it anyway, and log the token cost." >&2
+  exit 3
+fi
+if [ -z "${CODEX_ALLOW_ROUTER_ASTRA:-}" ] && [ -z "${CODEX_DIRECT:-}" ] && [[ "$argstr" =~ (-m|--model|model=)[[:space:]\"]*gpt-6-astra ]]; then
+  # Routing policy 2026-09-05 09:40: Astra runs native on the Pro login, never through the router.
+  export CODEX_HOME="${CODEX_PRO_HOME:-$HOME/.codex-pro}"
+  export CODEX_DIRECT=1
+  echo "codex shim: gpt-6-astra -> Pro home, native (CODEX_ALLOW_ROUTER_ASTRA=1 to override)" >&2
+fi
+
+[ -n "${CODEX_DIRECT:-}" ] && exec "$exe" "$@"
+[ -n "${MODEL_ROUTER_KEY:-}" ] || export MODEL_ROUTER_KEY="$("$(dirname "$0")/proxy-key" 2>/dev/null)"
+if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+  sub="$1"; shift
+  exec "$exe" "$sub" -c model_provider=router "$@"
+fi
+exec "$exe" -c model_provider=router "$@"

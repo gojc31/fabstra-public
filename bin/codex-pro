@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Shim: Codex CLI on the SECOND home (the Pro login, native, no router).
+# Same binary as `codex`; differs only in CODEX_HOME and bypassing the router.
+export CODEX_HOME="${CODEX_PRO_HOME:-$HOME/.codex-pro}"
+export CODEX_DIRECT=1
+exec "$(dirname "$0")/codex" "$@"

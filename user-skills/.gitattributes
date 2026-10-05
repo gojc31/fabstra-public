@@ -1,0 +1,3 @@
+# LF everywhere under user-skills/: the careful and triage tests and the
+# SKILL.md frontmatter checks expect LF, also after a Windows checkout.
+* text=auto eol=lf

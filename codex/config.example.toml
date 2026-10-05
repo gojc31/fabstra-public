@@ -1,0 +1,34 @@
+# Codex CLI config snippets for FabStra / FabSol / fable-mode.
+# Merge these into ~/.codex/config.toml (keep whatever else you already have there).
+# Codex reads the file on every launch; no restart of anything is needed.
+
+# Default model for a plain `codex` session. The skills always pass --model explicitly,
+# so this only affects interactive use. Set it to whatever your plan serves.
+model = "gpt-6-astra"
+model_reasoning_effort = "low"
+
+# The "router" provider = the local CLIProxyAPI proxy. The `codex` shim in bin/ adds
+# `-c model_provider=router` to every call so model traffic goes through the proxy and
+# rotates across every ChatGPT login you added to it. CODEX_DIRECT=1 bypasses this.
+# env_key names the environment variable holding the proxy API key; bin/proxy-key
+# prints it, and the shim exports it as MODEL_ROUTER_KEY before launching.
+[model_providers.router]
+name = "model-router proxy"
+base_url = "http://127.0.0.1:8317/v1"
+env_key = "MODEL_ROUTER_KEY"
+wire_api = "responses"
+requires_openai_auth = false
+request_max_retries = 4
+stream_max_retries = 10
+stream_idle_timeout_ms = 300000
+
+# The custom agents the parent Astra (or Sol) thread spawns live in
+# ~/.codex/agents/{sol,terra,luna}.toml - copy them from codex/agents/ in this repo.
+# spark.toml (GPT-5.3-Codex-Spark, its own quota pool) goes ONLY into the Pro home's
+# agents folder ($CODEX_PRO_HOME/agents/) - the proxy cannot serve that model.
+# Nothing here needs to reference them; Codex discovers those folders on their own.
+
+# Fast mode (optional). `bin/codex-fast on|off` writes/removes this top-level key in the
+# Pro home's config.toml only; the skills toggle it for runs pinned with "astra fast".
+# Do not set it here permanently - every Pro request then costs 2.5x.
+# service_tier = "fast"

@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# lanew - Lane W (non-gating ChatGPT-chat-pool second opinion) launch wrapper.
+# Usage: lanew <run> <name> [model] < spec.md
+#
+# HONEST SCOPE: this wrapper and its log (scripts/lanew_log.py) are a
+# diagnostic LOGGER with a fail-closed admission check, NOT a hard usage
+# budget. See skills/fabstra/references/lane-w.md, "What lanew measures
+# and what it cannot". It logs jobs, assistant-message markers (diagnostic
+# only) and Codex-side tokens; ChatGPT chat messages and remaining
+# allowance are not observable from here. The per-run job ceiling (8) is a
+# proxy for turns, which are not measurable, not a message budget.
+#
+# Steps (each one line to stderr): global lane lock -> check -> preflight
+# -> model validation -> record start + launch -> record end. A failed or
+# uncertain job latches the run: no retry until reconciled by hand.
+set -u
+
+RUN="${1:?usage: lanew <run> <name> [model] < spec.md}"
+NAME="${2:?usage: lanew <run> <name> [model] < spec.md}"
+MODEL="${3:-chatgpt-web/high}"
+
+MODEL_ROUTER_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[ -f "$MODEL_ROUTER_HOME/scripts/lanew_log.py" ] || MODEL_ROUTER_HOME="$HOME/model-router"
+LOG_PY="$MODEL_ROUTER_HOME/scripts/lanew_log.py"
+CLIPROXY_DIR="${CLIPROXY_DIR:-$HOME/.cli-proxy-api}"
+LOCK_FILE="$CLIPROXY_DIR/lanew.lock"
+OUT_DIR="${LANEW_OUT_DIR:-$CLIPROXY_DIR/lanew-out}"
+mkdir -p "$CLIPROXY_DIR" "$OUT_DIR"
+
+log() { echo "lanew: $*" >&2; }
+
+# --- step 1: global lane lock, held for the whole job -----------------------
+# Git Bash on Windows ships no `flock`; `mkdir` is atomic on every filesystem
+# here, so a lock DIRECTORY is the portable equivalent.
+LOCK_DIR="$LOCK_FILE.d"
+LOCK_WAITED=0
+until mkdir "$LOCK_DIR" 2>/dev/null; do
+  if [ "$LOCK_WAITED" -ge 30 ]; then
+    log "another lanew job holds the lane lock ($LOCK_DIR) after 30s - refusing."
+    exit 5
+  fi
+  sleep 1
+  LOCK_WAITED=$((LOCK_WAITED + 1))
+done
+trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT
+log "step 1/6: lane lock held ($LOCK_DIR)."
+
+# --- step 2: check --run R --------------------------------------------------
+CHECK_OUT="$(python "$LOG_PY" check --run "$RUN" 2>&1)"
+CHECK_RC=$?
+log "step 2/6: check --run $RUN -> $CHECK_OUT"
+if [ "$CHECK_RC" -ne 0 ]; then
+  log "check refused this run - launching nothing."
+  exit "$CHECK_RC"
+fi
+
+# --- step 3: preflight -------------------------------------------------------
+HTTP_CODE="$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:17841/healthz 2>/dev/null)"
+CURL_RC=$?
+VDIR="$(ls -d "$HOME"/.codex-chatgpt-web/versions/*/ 2>/dev/null | sort | tail -1)"
+DOCTOR_OK=0
+if [ -n "$VDIR" ]; then
+  BUN="$(ls "$VDIR"runtime/bun.exe 2>/dev/null | head -1)"
+  CLI="$(ls "$VDIR"app/cli.js 2>/dev/null | head -1)"
+  if [ -n "$BUN" ] && [ -n "$CLI" ]; then
+    if "$BUN" "$CLI" --help 2>&1 | grep -qi -- '--json'; then
+      DOCTOR_TXT="$("$BUN" "$CLI" --home "$HOME/.codex-chatgpt-web" doctor --json 2>&1)"
+      DOCTOR_RC=$?
+      if [ "$DOCTOR_RC" -eq 0 ] && printf '%s' "$DOCTOR_TXT" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+        DOCTOR_OK=1
+      fi
+    else
+      DOCTOR_TXT="$("$BUN" "$CLI" --home "$HOME/.codex-chatgpt-web" doctor 2>&1)"
+      DOCTOR_RC=$?
+      if [ "$DOCTOR_RC" -eq 0 ] && ! printf '%s' "$DOCTOR_TXT" | grep -qi '\berror\b'; then
+        DOCTOR_OK=1
+      fi
+    fi
+  fi
+fi
+log "step 3/6: preflight healthz=$HTTP_CODE(curl_rc=$CURL_RC) doctor_ok=$DOCTOR_OK (version dir: ${VDIR:-none})"
+if [ "$CURL_RC" -ne 0 ] || [ "$HTTP_CODE" != "200" ] || [ "$DOCTOR_OK" -ne 1 ]; then
+  log "preflight failed - launch definitely did not occur."
+  python "$LOG_PY" record preflight-failed --run "$RUN" --name "$NAME" --model "$MODEL" >&2
+  exit 2
+fi
+
+# --- step 4: model allowlist, explicit home binding -------------------------
+case "$MODEL" in
+  chatgpt-web/light|chatgpt-web/medium|chatgpt-web/high|chatgpt-web/extra-high) ;;
+  chatgpt-web/pro)
+    if [ "${LANEW_ALLOW_PRO:-0}" != "1" ]; then
+      log "model 'chatgpt-web/pro' requires LANEW_ALLOW_PRO=1 - refusing."
+      exit 4
+    fi
+    ;;
+  *)
+    log "model '$MODEL' is not on the allowlist (chatgpt-web/light|medium|high|extra-high[|pro]) - refusing."
+    exit 4
+    ;;
+esac
+unset CODEX_HOME
+export CODEX_DIRECT=1
+log "step 4/6: model=$MODEL CODEX_DIRECT=1 CODEX_HOME unset."
+
+# --- step 5: record start, launch --------------------------------------------
+SPEC_FILE="$(mktemp)"
+cat > "$SPEC_FILE"
+START_ERR="$(mktemp)"
+START_JSON="$(python "$LOG_PY" record start --run "$RUN" --name "$NAME" --model "$MODEL" \
+  --out "$OUT_DIR/pending-$NAME.out" --report "$OUT_DIR/pending-$NAME.report.md" 2>"$START_ERR")"
+START_RC=$?
+if [ "$START_RC" -ne 0 ]; then
+  cat "$START_ERR" >&2; rm -f "$START_ERR"
+  log "record start failed - usage unknown, refusing to launch."
+  rm -f "$SPEC_FILE"
+  exit 3
+fi
+rm -f "$START_ERR"
+JOB_ID="$(python -c "import json,sys; print(json.loads(sys.argv[1])['job_id'])" "$START_JSON")"
+TS_START="$(python -c "import json,sys; print(json.loads(sys.argv[1])['ts_start'])" "$START_JSON")"
+
+OUT="$OUT_DIR/$JOB_ID-$NAME.out"
+REPORT="$OUT_DIR/$JOB_ID-$NAME.report.md"
+( set -o noclobber; : > "$OUT" ) 2>/dev/null || { log "output path exists: $OUT - refusing."; rm -f "$SPEC_FILE"; exit 3; }
+( set -o noclobber; : > "$REPORT" ) 2>/dev/null || { log "report path exists: $REPORT - refusing."; rm -f "$SPEC_FILE"; exit 3; }
+log "step 5/6: job_id=$JOB_ID out=$OUT report=$REPORT"
+
+timeout 1500 codex exec --skip-git-repo-check -s read-only -m "$MODEL" \
+  --output-last-message "$REPORT" < "$SPEC_FILE" > "$OUT" 2>&1
+CODEX_EXIT=$?
+rm -f "$SPEC_FILE"
+
+# --- step 6: record end -------------------------------------------------------
+STATUS_LINE="$(python "$LOG_PY" record end --job-id "$JOB_ID" --run "$RUN" --name "$NAME" \
+  --model "$MODEL" --ts-start "$TS_START" --exit "$CODEX_EXIT" --out "$OUT" --report "$REPORT")"
+END_RC=$?
+log "step 6/6: codex_exit=$CODEX_EXIT $STATUS_LINE"
+echo "$STATUS_LINE"
+exit "$END_RC"

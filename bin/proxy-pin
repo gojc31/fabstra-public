@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# proxy-pin team|both|status  - pin the model-router proxy to the team login (Sol/Terra/Luna lane)
+# or restore both-account rotation. Routing policy of 2026-09-05: Astra native on Pro (codex-pro),
+# proxy = team only. Takes effect immediately, no proxy restart.
+MK=$(cat "${CLIPROXY_DIR:-$HOME/cli-proxy-api}/.management-key")
+U=http://127.0.0.1:8317/v0/management/auth-files
+PRO="${PROXY_PRO_AUTHFILE:?set PROXY_PRO_AUTHFILE to the Pro login auth-file name, e.g. codex-you@example.com-plus.json}"
+case "${1:-status}" in
+  team) curl -s -X PATCH -H "Authorization: Bearer $MK" -H "Content-Type: application/json" "$U/status" -d "{\"name\":\"$PRO\",\"disabled\":true}"; echo ;;
+  both) curl -s -X PATCH -H "Authorization: Bearer $MK" -H "Content-Type: application/json" "$U/status" -d "{\"name\":\"$PRO\",\"disabled\":false}"; echo ;;
+  status) ;;
+  *) echo "usage: proxy-pin team|both|status" >&2; exit 2 ;;
+esac
+curl -s -H "Authorization: Bearer $MK" "$U" | python -c "
+import json,sys
+d=json.load(sys.stdin); d=d.get('files',d) if isinstance(d,dict) else d
+for a in d:
+    if a.get('provider')!='codex': continue
+    print(('DISABLED ' if a['disabled'] else 'active   ')+a['email'])"

@@ -1,0 +1,13 @@
+{
+  "name": "gojc31",
+  "owner": {
+    "name": "JC (gojc31)"
+  },
+  "plugins": [
+    {
+      "name": "model-router",
+      "source": "./",
+      "description": "FabStra + FabSol build flows and the fable-mode skill on top of a local model-router proxy. Fork of RoboNuggets/model-router."
+    }
+  ]
+}

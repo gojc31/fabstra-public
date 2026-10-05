@@ -1,0 +1,17 @@
+# CLIProxyAPI config for model-router.
+# Copy this next to your cli-proxy-api binary as config.yaml, then set your own key below.
+
+# Bind to localhost only - keep the proxy private to this machine.
+host: "127.0.0.1"
+port: 8317
+
+# Where provider OAuth logins are stored after you run the login commands.
+auth-dir: "~/.cli-proxy-api"
+
+# Pick your own key and use the same value as MODEL_ROUTER_KEY.
+api-keys:
+  - "my-proxy-key"
+
+debug: false
+logging-to-file: false
+usage-statistics-enabled: false

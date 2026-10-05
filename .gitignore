@@ -1,0 +1,11 @@
+# local run state and personal data - never ship
+.in_use/
+.fabsol/
+.fabstra/
+bench/results/
+bench/*.csv
+__pycache__/
+*.pyc
+*.bak*
+*.log
+.DS_Store

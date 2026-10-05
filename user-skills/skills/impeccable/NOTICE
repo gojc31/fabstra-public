@@ -1,0 +1,44 @@
+impeccable (vendored, modified copy)
+Copyright 2025 Paul Bakaus
+Licensed under the Apache License, Version 2.0 - full text in LICENSE.
+Upstream: https://github.com/pbakaus/impeccable
+
+This copy is modified; VENDORED.md lists the local edits.
+
+---- upstream NOTICE.md, verbatim ----
+
+# Third-Party Notices
+
+This project includes content derived from third-party work, used under the terms of its original license.
+
+## Platform Design Skills
+
+The `skill/reference/ios.md` and `skill/reference/android.md` platform reference files are distilled from ehmo's `platform-design-skills` (Apple Human Interface Guidelines and Material Design 3 rules), rewritten in Impeccable's voice.
+
+**Original work:** https://github.com/ehmo/platform-design-skills
+**Original license:** MIT
+**Author:** ehmo
+
+---- ehmo/platform-design-skills licence (applies to the material in reference/ios.md and reference/android.md), verbatim ----
+
+MIT License
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

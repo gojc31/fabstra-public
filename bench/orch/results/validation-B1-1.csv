@@ -1,0 +1,2 @@
+timestamp,arm,n,lead_model,mode,hidden_pass,hidden_total,visible_pass,visible_total,exit_code,seconds,api_seconds,cost_usd,turns,opus_out_tokens,fable_out_tokens,plan_seat,plan_findings,plan_p1,plan_rejected,plan_seconds,review_seats,review_findings,review_p1,review_rounds,fix_rounds,in_session_edits,defaults_taken,unfinished,files_changed,files_outside_ledger,metrics_present,run_md_present
+2026-09-27T05:27:18+08:00,B1,1,claude-opus-5-5,lead,36,36,135,135,0,1159,1392.1,6.8435381,43,49496,29044,fable,6,0,0,175,fable,0,0,1,0,0,4,0,9,0,1,1

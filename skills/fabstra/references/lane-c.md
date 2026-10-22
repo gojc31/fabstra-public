@@ -1,6 +1,6 @@
 # FabStra Lane C - Budget crew
 
-Contents: Lane C - Budget crew (one section: seats; empty-200 retry; reviewer-alias overlap; commands; bench; rules; failure signatures; cost; logbook and report)
+Contents: Lane C - Budget crew (one section: seats; empty-200 retry; reviewer-alias overlap; commands; Claude on credits seat (pool); bench; rules; failure signatures; cost; logbook and report)
 
 Reached from: fabstra SKILL.md - an explicit budget-crew ask, or a session already routed to OpenRouter
 
@@ -12,24 +12,20 @@ Related:
 ## Lane C - Budget crew (OpenRouter, cheap models only)
 
 JC (2026-09-10) added an OpenRouter pay-per-use key to the local proxy so a
-build is never blocked when the Claude limit AND every ChatGPT login are
-spent. Trigger for the FULL crew, either of: (a) the user says `budget`,
+build is never blocked when the Claude limit and every ChatGPT login are
+spent. Trigger for the full crew, either of: (a) the user says `budget`,
 `cheap crew`, `openrouter`, or `deepseek` in the ask - pins the lane
 regardless of quota; (b) the session itself already runs on a routed
 OpenRouter model (`scripts/session.ps1 glm-5.3-flash` - the `budget` shim's
 default - or any other lane alias: `deepseek-v4-pro`
 for `pro`) - the Session check (phases.md) accepts that session model for this
 lane only, logged as such; that is what "the Claude limit is the problem"
-looks like. Astra AND Sol both cooling on a Fable session does NOT by
+looks like. Astra and Sol both cooling on a Fable session does not by
 itself pull in the full crew: the Claude builders keep building, and only
 the review seat and the Phase 1b design gate change to Lane C (Reviewer A
 and the design gate) - see the pairing rule (phases.md) and "Astra blocked,
-how to read it" (quota.md). Excluded categories (money, auth, PII or de-identification,
-permissions, data migration, concurrency, a client-facing release) never
-take a Lane C seat, not even for the review or the design gate: with Astra
-and Sol both cooling, that review goes to the fresh Fable (Reviewer C)
-instead, logged as "same-family review, GPT seats cooling, Lane C
-excluded", so nothing sensitive leaves the Claude login. `pro` anywhere in
+how to read it" (quota.md). Excluded categories (SKILL.md, Excluded categories) never take a Lane C seat, not even for the
+review or the design gate: transport.md, "Reviewer fallback", routes that review to the fresh Fable (Reviewer C), so nothing sensitive leaves the Claude login. `pro` anywhere in
 the ask moves the orchestrator to `deepseek-v4-pro`. Reviewer A stays
 `glm-5.3-flash` (cross-family to the DeepSeek builder either way, and on a
 `pro` run it is no longer the orchestrator's alias, so both reviewer
@@ -37,9 +33,7 @@ properties hold); Reviewer B moves off `deepseek-v4-pro` to
 `deepseek-v4-flash` so no reviewer sits on the orchestrator's own alias; and
 the design gate moves to `glm-5.3-flash`, since `deepseek-v4-flash` would
 otherwise be checking a DeepSeek-led plan. A full-lane
-request (trigger (a) or (b)) on excluded work: money, auth, PII or
-de-identification, permissions, data migration, concurrency, a
-client-facing release - refuse with one line ("budget lane excluded for
+request (trigger (a) or (b)) on excluded work (SKILL.md, Excluded categories): refuse with one line ("budget lane excluded for
 this kind of work; wait for the Claude or ChatGPT window") and stop.
 Gate it with `jev excluded "<prompt>"` (exit 3 = excluded, including the
 0.4-0.6 conservative fallback) before any prompt leaves for OpenRouter; the
@@ -51,7 +45,7 @@ through it refuses excluded prompts on its own.
 
 | Seat | Model | Why |
 |---|---|---|
-| ORCHESTRATOR | `glm-5.3-flash` (`deepseek-v4-pro` for `pro`) | the `budget` shim's default; a session is token-heavy and this is the cheapest per turn. NEVER `deepseek-v4.1-flash`, which hangs as a lead (0/5, see Lane D) |
+| ORCHESTRATOR | `glm-5.3-flash` (`deepseek-v4-pro` for `pro`) | the `budget` shim's default; a session is token-heavy and this is the cheapest per turn. Never `deepseek-v4.1-flash`, which hangs as a lead (0/5, see Lane D) |
 | DESIGN GATE (multi-file only) | `deepseek-v4-flash` (`glm-5.3-flash` on a `pro` run) | cross-family check on a GLM-orchestrated plan |
 | BUILDER / WORKER - all coding | `deepseek-v4.1-flash` | JC (2026-09-12): the build seat is v4.1. Benched best of the four - fastest (23-122 s), 5/5 recall x3, 0 FP, contract ok twice. It costs ~3x `glm-5.3-flash` and fails ~1 call in 5 as an empty HTTP 200, so the retry rule below is mandatory, not optional |
 | BUILDER fallback | `glm-5.3-flash` | after three empty-200s on one task, or when the user asks for the cheapest build; log the fallback |
@@ -89,7 +83,7 @@ that size, one seat call per slice, and make every Lane C review spec say
 a slice still returns no report, send that slice to Reviewer C and log it;
 do not relaunch the same seat on it.
 
-**Empty-200 retry - MANDATORY on every builder call (JC, 2026-09-12).**
+**Empty-200 retry - mandatory on every builder call (JC, 2026-09-12).**
 `deepseek-v4.1-flash` holds the build seat because it benches best, but its
 OpenRouter providers (Io Net, Novita, Parasail, measured 2026-09-11) sit on a
 contended shared pool and about 1 call in 5 comes back as an empty HTTP 200 -
@@ -99,7 +93,7 @@ is non-empty. After every builder or fixer call:
 
 1. Read the `.out` file. If `result` is empty, whitespace, or absent, that is
    the empty-200 signature - not a build with nothing to say.
-2. Re-run the IDENTICAL command. Up to two retries, three attempts total.
+2. Re-run the identical command. Up to two retries, three attempts total.
 3. Three empty attempts: rerun that task on `glm-5.3-flash` with the same spec
    and log `builder fallback: v4.1 empty-200 x3 -> glm-5.3-flash`.
 
@@ -121,27 +115,37 @@ run, or a Lane D run led by `gpt-6-astra`, clears the overlap entirely.
 **Commands.** Every call is a proxy `claude -p` inside its own
 `run_in_background` Bash call, the Astra/Sol shape (`--output-format json`
 with the spec fed on stdin), key pulled the same way:
-`KEY=$(python -c "import re;t=open(r'${CLIPROXY_DIR:-~/cli-proxy-api}/config.yaml').read();print(re.search(r'api-keys:\s*\n\s*-\s*\"?([^\"\n]+)\"?',t).group(1).strip())")`.
+`KEY=$(proxy-key) || exit 1`.
 Builder (mechanic swaps model/effort/turns):
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:8317 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model deepseek-v4.1-flash --effort high --bare --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/budget-build-<name>.md > <scratch>/budget-build-<name>.md.out 2>&1
+ANTHROPIC_BASE_URL=http://127.0.0.1:8317 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model deepseek-v4.1-flash --effort high --bare --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/budget-build-<name>.md > <scratch>/budget-build-<name>.md.out 2>&1 # excluded: no - <reason>
 ```
 
 Mechanic swaps in `--model deepseek-v4-flash --effort medium --max-turns 30`,
-same `acceptEdits` shape. Reviewer A (Lane C) (Reviewer B (Lane C) swaps
+same `acceptEdits` shape and the same trailing `# excluded: no - <reason>` comment. Reviewer A (Lane C) (Reviewer B (Lane C) swaps
 `--model deepseek-v4-pro`, or `--model deepseek-v4-flash` on the one run
 where the orchestrator is itself `deepseek-v4-pro`):
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:8317 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model glm-5.3-flash --effort high --bare --max-turns 30 --permission-mode default --allowedTools "Read,Grep,Glob,Bash" --output-format json < <scratch>/budget-review-<name>.md > <scratch>/budget-review-<name>.md.out 2>&1
+ANTHROPIC_BASE_URL=http://127.0.0.1:8317 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model glm-5.3-flash --effort high --bare --max-turns 30 --permission-mode default --allowedTools "Read,Grep,Glob,Bash" --output-format json < <scratch>/budget-review-<name>.md > <scratch>/budget-review-<name>.md.out 2>&1 # excluded: no - <reason>
 ```
 
 Design gate (multi-file only, before any builder launch) reuses the
-reviewer command's read-only shape with `--model deepseek-v4-flash`
+reviewer command's read-only shape, `# excluded: no - <reason>` comment included, with `--model deepseek-v4-flash`
 (`glm-5.3-flash` on a `pro` run), spec file `budget-design-<name>.md`. No `Agent` tool, no delegation, no Codex
 transport, no `ANTHROPIC_DEFAULT_*_MODEL` variable - this lane spawns
 nothing.
+
+**The excluded marker.** Every `claude -p --model glm-*/deepseek-*` command ends with a shell comment `# excluded: no - <reason>`, and every spec or Agent prompt aimed at an OpenRouter seat (`deepseek41-routed`, `builder-budget`, `reviewer-glm`, `reviewer-routed`) carries `excluded: no - <reason>` as a line of its own. State the reason for this task, never a copy of the template. A PreToolUse hook denies the launch or the Agent call without it, so excluded work (SKILL.md, Excluded categories) cannot reach OpenRouter by accident. `--bare` children load no ~/.claude hooks: the excluded-work check runs on the parent's launch command, and the auth-JSON guard does not reach inside the child.
+
+**Claude on credits seat (pool).** JC (2026-10-09): the Max/Team plans grant monthly Claude API credits into a linked Console org, and the pool proxy serves Claude models from those orgs' API keys - `pool/claude-sonnet-5-5`, `pool/claude-haiku-5-5`, `pool/claude-opus-5-5` for JC's own and cross-client work; `client-<slug>/claude-...` only for that client's own work. This seat is headless only: credits cover the API, Batches, Managed Agents and Agent SDK / `claude -p` run yourself with a linked org's key, and do NOT cover interactive Claude Code (terminal, IDE, desktop, web) or runs started by the GitHub Action, an IDE extension or the desktop app - so this seat is `claude -p` and never an interactive session. Order inside Lane C: while `python scripts/credits-pool.py status` shows the `pool` pool with an eligible account (it applies the keys, skips and the health probe that `credits.py --json` does not), the builder seat runs `pool/claude-sonnet-5-5` and the mechanic `pool/claude-haiku-5-5`; reviewers and the design gate stay as written (OpenRouter, cross-family); when the pool is dry, the OpenRouter crew as written. The seat is usable only when `status` exits 0 AND prints a line `pool: usable <account>` (for a client's work, `client-<slug>: usable <account>`); a non-zero exit (pool proxy down or not ours, unreadable skip list) or a `dry (...)` line means a dry pool - fall back to the OpenRouter crew. Excluded work MAY run on `pool/` and `client-<slug>/` seats (JC 2026-10-09: this is Anthropic's own API with JC's own key). The PreToolUse hook no longer requires the `# excluded: no - <reason>` marker on those launches. OpenRouter seats and the full-lane refusal for the OpenRouter crew stand. The pool has its own proxy instance on 127.0.0.1:8318, started by `credits-pool.py sync` (the main proxy on 8317 is untouched), so this seat's command points at 8318. The haiku mapping rides `--settings` because user-settings env beats a shell variable (lane-b.md, Agent-tool delegation note):
+
+```bash
+KEY=$(proxy-key) || exit 1; ANTHROPIC_BASE_URL=http://127.0.0.1:8318 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model pool/claude-sonnet-5-5 --settings '{"env":{"ANTHROPIC_DEFAULT_HAIKU_MODEL":"pool/claude-haiku-5-5"}}' --effort high --bare --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/budget-build-<name>.md > <scratch>/budget-build-<name>.md.out 2>&1 # excluded: no - <reason>
+```
+
+Credits do not cover runs started from an IDE extension, the desktop app or the GitHub Action, even with `claude -p` (https://support.claude.com/en/articles/17154008; verified live 2026-10-09: a `claude -p` child launched from a VS Code session got upstream 400 "Credit balance is too low", $0 spent, while direct Messages API calls through the same pool returned 200). So this seat works only when the session that launches it is a plain terminal or a scheduled task. From VS Code or the desktop app it is dry, and the OpenRouter crew runs as written. `scripts/credits-run.py` refuses (exit 3) in that case. Never strip or fake the entrypoint. Setup requirement: every linked org is credits-only (no purchased credits, auto-reload off, no invoicing), because the org stops at zero only then. The tracker estimates left = grant - cost-report spend; cost data lags and the pool sync runs every 15 min, so spend can overshoot the $5 floor - on a credits-only org the overshoot just fails requests. Setup: accounts in `~/.claude-credits/accounts.json` (example: `scripts/credits-accounts.example.json`; an account may give only its API key - untracked: the pool checks credit with a tiny Haiku call; balances on the Console dashboard), keys in `~/.claude-credits/secrets.env`, `python scripts/credits-pool.py sync` (every 15 min and at logon via `scripts/register-credits-pool.ps1`; it starts the pool proxy if down, `credits-pool.py stop` stops it; `credits-pool.py skip <id>` after a credit-balance 400 (tracked accounts only; untracked accounts are re-probed every sync)), balances in `bcost`.
 
 **Bench** (5-bug fixture, `bench/run.sh proxy <alias> high 3`, 2026-09-11;
 re-read `bench/results/results.csv` before quoting a number - more runs land
@@ -176,14 +180,14 @@ Fix rounds in this lane are a new BUILDER `claude -p` launch on
 carrying the finding(s) verbatim plus the affected file list - never the
 mechanic alias, and never the reviewer's; the re-review goes to Reviewer A
 (Lane C, `glm-5.3-flash` as usual), which stays cross-family to the DeepSeek
-fixer. Two rounds, then
+fixer. Fix and re-review specs follow phases.md "Phase 4" (bug-class sweep, `<prior_findings>`, review rounds, PRE-EXISTING routing). Two rounds, then
 ESCALATED to the user, unchanged.
 
 Ship gate: the ledger is all FIXED (confirmed by re-review), WITHDRAWN by the lead with a logged reason, or ESCALATED; reviewers advise, the lead rules. Privacy: prompts leave the machine to
 OpenRouter, which picks a host per call from the providers this account's
 privacy filter allows - `budget cost` names the one it routed to just now;
 Airlock rules are unchanged, and never edit OpenRouter's privacy settings
-from a run. A privacy 404/503 on an alias means that model's CURRENT
+from a run. A privacy 404/503 on an alias means that model's current
 endpoints are non-compliant, not that the model is banned forever - re-probe
 before quoting an exclusion, because provider coverage changes (as it did
 for `deepseek-v4.1-flash` between 2026-09-10 and 2026-09-11) - and never

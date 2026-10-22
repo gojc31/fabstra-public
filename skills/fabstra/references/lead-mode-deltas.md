@@ -38,7 +38,7 @@ differs.
 - Resolve the companion before the first Codex launch instead of trusting
   the pinned version segment:
   `C=$(ls -d ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs | sort -V | tail -1)`.
-- The launch's `--model` is the model holding the gate seat on THIS build:
+- The launch's `--model` is the model holding the gate seat on this build:
   `gpt-6-astra` when Astra holds it, `gpt-6.1-sol` when Sol does or Astra's
   quota is spent - never copy the Astra id into a Sol-seat run. Spec files
   are `<scratch>/fabstra-codex-<name>.md` and `<scratch>/fabstra-fix-<name>.md`;
@@ -65,6 +65,12 @@ differs.
   extras are follow-ups. At xhigh or max do not start your own review rounds
   or reviewer subagents - the plan gate and review gate are the reviews. The
   hardest long-horizon work suits an Opus model better.
-- **Haiku 4.5** - you are the mechanical tier. Send a hard task to the plan
+- **Haiku 5.5** - you are the mechanical tier. Send a hard task to the plan
   gate at once; a short draft plan is fine, Astra's plan does the design. Do the mechanical parts exactly as specified and hand
-  judgment calls to the senior seat or the user.
+  judgment calls to the senior seat or the user. With this long a prompt at
+  low effort you may stop early or call a change done unchecked: keep going
+  until the acceptance criteria pass, run a real check that exercises each
+  change before reporting it, and build only what the plan names. Search
+  before stating anything that can have changed since your training
+  (versions, prices, "latest"). At xhigh a turn can end with the whole answer
+  in thinking: always end on visible text.

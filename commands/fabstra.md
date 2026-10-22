@@ -1,5 +1,5 @@
 ---
-description: Run the FabStra flow - Fable 5.1 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 4.5 lead and build or delegate by tier. GPT-6 Astra gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, C, D as the skill says
+description: Run the FabStra flow - Fable 5.1 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 5.5 lead and build or delegate by tier. GPT-6 Astra gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, C, D as the skill says
 argument-hint: "<brief> [xhigh|high|medium] [fast]"
 ---
 
@@ -10,7 +10,7 @@ end to end with the brief above. FabStra: the session model is the lead. In
 Orchestrate mode (Fable 5.1 always; Opus 5.5 at 2+ tasks or an excluded
 category) you plan, write the blueprints, route, and arbitrate, and never
 write code; in Lead mode (Opus 5.5 below that threshold, Sonnet 5.5, Haiku
-4.5) you plan, build or delegate by tier, and arbitrate. GPT-6
+5.5) you plan, build or delegate by tier, and arbitrate. GPT-6
 Astra critiques the plan and blueprints before any builder launches (Phase
 1b), owns the Codex side as the parent thread that spawns Sol / Terra / Luna
 for routed tasks, and adversarially reviews Claude-built work; a fresh Fable
@@ -25,7 +25,7 @@ the skill's routing rubric); Astra and Sol effort still follows the rubric
 unless an effort word pins it. A `fast` word beside Astra is the
 skill's fast pin: Codex Fast mode on the `.codex-pro` native launches only
 (`codex-fast on` / `off`), 2.5x usage, no effect on reviews or Lane B.
-Every Claude session model runs: Fable 5.1 takes Orchestrate mode; Opus 5.5 takes Orchestrate mode at 2+ tasks or an excluded category, else Lead mode; Sonnet 5.5 and Haiku 4.5 take Lead mode (references/lead-mode.md); a newer or other Claude model takes its family's row in the skill's session switch. Never stop a Claude session or ask it to switch model.
+Every Claude session model runs: Fable 5.1 takes Orchestrate mode; Opus 5.5 takes Orchestrate mode at 2+ tasks or an excluded category, else Lead mode; Sonnet 5.5 and Haiku 5.5 take Lead mode (references/lead-mode.md); a newer or other Claude model takes its family's row in the skill's session switch. Never stop a Claude session or ask it to switch model.
 A routed proxy session is accepted as the skill's Session check allows
 (references/phases.md): Lane C for a session already routed to an OpenRouter
 lane alias via `scripts\session.ps1` (`glm-5.3-flash`, the `budget` shim's

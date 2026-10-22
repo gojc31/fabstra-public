@@ -1,6 +1,6 @@
 # FabStra browser and desktop surfaces
 
-Contents: Browser and desktop surfaces (Codex transport on the Pro home only); jev-ultrafast - allowlisted read-only browser goals
+Contents: Browser and desktop surfaces (Codex transport on the Pro home only); jev-ultrafast - read-only browser goals on any non-blocked host; Codex surface rules (Pro home)
 
 Reached from: fabstra SKILL.md - browser QA, "use computer use", or a concept render
 
@@ -18,17 +18,17 @@ after an update re-sync the `node_repl` / `cua_repl` paths in
 `.codex-pro/config.toml` by hand - runtime hash under `runtimes\cua_node\`,
 `CODEX_CLI_PATH` hash under `Codex\bin\`, `ChatGPT.exe` version):
 
-- **Browser plugin, Chrome backend: WORKS headless.** Astra drives its own
+- **Browser plugin, Chrome backend: works headless.** Astra drives its own
   Chrome - data dir `%USERPROFILE%\ChromeAstra`, desktop shortcut "Astra
   Chrome", Codex extension instance `bcb4ef71-2587-45b8-a174-4655537d3a66`.
   The Pro home's node_repl env pins that instance and sets
   `BROWSER_USE_SECURITY_MODE=disabled-for-local-testing`, which skips the
   site-safety check and the per-action consent prompt (a shell launch has
   nobody to answer them). Your main Chrome may also carry the extension; the pin
-  is honoured ONLY by URL-based selection, so the spec must force it.
-- **In-app browser: does NOT work headless** ("Browser is not available:
+  is honoured only by URL-based selection, so the spec must force it.
+- **In-app browser: does not work headless** ("Browser is not available:
   iab" - it lives only inside a thread the app window hosts).
-- **Computer Use: WORKS headless through
+- **Computer Use: works headless through
   `"${CODEX_PRO_HOME:-$HOME/.codex-pro}/cua-headless.mjs"`** (verified 2026-09-06:
   Notepad launched, state read, text typed and read back, no desktop app).
   The stock `@oai/sky` import needs the desktop app - every app action
@@ -45,7 +45,7 @@ after an update re-sync the `node_repl` / `cua_repl` paths in
 - Neither surface exists on the `claude -p` transport - there browser work
   is browser-harness (global CLAUDE.md). No conflict: browser-harness for
   Claude-harness runs, the Browser plugin for Codex runs.
-- **Image generation (GPT Image 2): WORKS on the Pro home.** Codex's
+- **Image generation (GPT Image 2): works on the Pro home.** Codex's
   built-in `image_gen` tool (`codex-pro features list` -> `image_generation
   stable true`, verified 2026-09-06) with the system skill
   `.codex-pro/skills/.system/imagegen/`. Runs on the ChatGPT login, no
@@ -53,15 +53,16 @@ after an update re-sync the `node_repl` / `cua_repl` paths in
   Not on the `claude -p` transport - Phase 1b and Lane B Astra sessions
   cannot render, so a render is always its own Codex-transport step.
 
-## jev-ultrafast - allowlisted read-only browser goals (first choice, Claude-harness only)
+## jev-ultrafast - read-only browser goals on any non-blocked host (first choice, Claude-harness only)
 
 This section covers CLAUDE-HARNESS browser tasks only. It does not change the
-Codex Browser-plugin exception above ("Web page work" and the global
+Codex Browser-plugin exception below ("Codex surface rules (Pro home)", "Web page work", and the global
 CLAUDE.md's "Codex-side exception" paragraph) - Astra's own Chrome is
 untouched by this rule.
 
 On a Claude session, a read-only navigate/click/read goal whose start URL is
-on a host already in `$JEV_ULTRAFAST_HOME/jc/allowed-hosts.txt`
+on any host except those in `$JEV_ULTRAFAST_HOME/jc/blocked-hosts.txt`
+and private addresses (both refused with exit 4)
 goes to `jevgo --url <url> --goal "<goal naming the path>"` first. It prints
 one JSON line with the run's status, the final URL, the page title, the
 target/tab and session ids, action and decision counts, cost, and an error
@@ -74,7 +75,7 @@ not allowed. `--close` closes the tab the run opened; leave it off to inspect
 the tab yourself first. Name the path in the goal - Jev gives up when the
 target is below the fold.
 
-Verify page CONTENT independently, never from the JSON line alone: with
+Verify page content independently, never from the JSON line alone: with
 browser-harness, `switch_tab(<target_id from the JSON line>)` on the tab the
 run left open, then read its body text with the harness's `js(...)` call
 (for example `js("document.body.innerText")`) and check that text for the
@@ -87,12 +88,13 @@ the right place, and do the body-text read above whenever the goal needs real
 content verified. On exit 1-4, or a failed content check, fall back to
 browser-harness for the same goal.
 
-Never: client apps, logged-in pages, forms that submit, typing credentials,
-any host not already in the file - adding one is JC's call. Site suites:
-`sitecheck [suite]` runs the whole allowlisted set the same way (a navigation
+Never: JC's personal accounts, banking, social/DMs or Slack, forms that
+submit, typing credentials, a blocked host or a private address - JC owns the
+blocklist. Client sites, dashboards and platforms are allowed (JC, 2026-10-11). Site suites:
+`sitecheck [suite]` runs the suite's whole site set the same way (a navigation
 check across the set, per above, not a content check).
 
-Rules:
+## Codex surface rules (Pro home)
 
 - **Web page work** (dashboard QA, latency, bug hunting, forms) -> Codex
   side on the Pro home. Before launch, confirm Astra's Chrome is running
@@ -110,8 +112,8 @@ Rules:
   prompt is off on this path, every outward-facing step (submit, send,
   pay, delete, account change) is written into the spec as a hand-off to
   the user, never left to the run.
-- **Concept renders** - ONLY when the task is design, dashboard, or UI/UX
-  work (a screen, a component set, a landing page, a visual direction) AND
+- **Concept renders** - only when the task is design, dashboard, or UI/UX
+  work (a screen, a component set, a landing page, a visual direction) and
   either the layout is undecided in Phase 1 or the user asks for a mockup,
   hero, or illustration. Any other task, or any UI task whose direction is
   already fixed by a design system or an existing screen: no render. The
@@ -134,8 +136,7 @@ Rules:
   takes the mouse and keyboard and to stay off both until the report lands,
   and name the apps the run may touch. Spec lines, verbatim: `Surface:
   Computer Use, headless. Initialize with exactly:
-  globalThis.CUA_HEADLESS_ALLOWED_APPS = "<app ids, comma-separated, or
-  empty for any>"; if (!globalThis.sky) { const { sky } = await
+  globalThis.CUA_HEADLESS_ALLOWED_APPS = "<app ids, comma-separated - never empty; ask the user if unknown>"; if (!globalThis.sky) { const { sky } = await
   import("<CODEX_PRO_HOME as an absolute forward-slash path>/cua-headless.mjs");
   globalThis.sky = sky; } - never import "@oai/sky" directly, never use the cua_repl server.
   Then follow the computer-use plugin's docs/guidance.md and docs/api.md.

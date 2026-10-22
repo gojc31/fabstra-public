@@ -37,16 +37,42 @@ the job never launched). A `started` line with no terminal line means
 usage for that job is UNKNOWN - `check` refuses further launches in the
 run until that is reconciled by hand; it never assumes zero usage.
 
+In-flight rule (added 2026-10-17 for bin/astrapro, which runs up to 3
+jobs of one run in parallel): a `started` record may carry `owner_pid`,
+the Windows pid of the wrapper process that owns the job (`record start
+--pid` / `admit --pid`). A started-without-terminal job whose owner_pid
+is present AND still alive is IN FLIGHT, not unknown: it counts toward
+the run's job ceiling but does not refuse. A started-without-terminal
+job with no owner_pid, or a dead one, stays "usage unknown -> refuse",
+exactly as before. So does one whose ts_start is older than
+IN_FLIGHT_MAX_AGE_S (2,700 s) or unreadable, even with a live
+owner_pid: no astrapro job can outlive slot wait + state lock + launch +
+its 1,500 s cap, so a live pid that old is a reused pid, not the owner.
+A started record may also carry `owner_created` (`--pid-created`, added
+2026-10-17 for astrapro T4): the owner process's creation time
+(pid_created - Windows FILETIME ticks, POSIX /proc start ticks). When it
+is recorded, the job is in flight only if the live owner_pid's creation
+time EQUALS it; a mismatch is a reused pid -> usage unknown -> refuse.
+Records without owner_pid (every bin/lanew record), and records without
+owner_created, behave exactly as they always did. Latch and ceiling rules are
+unchanged. `admit` closes the admission race between parallel wrappers:
+it runs the `check` logic and appends the started record inside ONE
+critical section under the log's lock file, so two callers at
+ceiling-1 can never both be admitted.
+
 Record fields: job_id (uuid4 hex, immutable per job), run, name, model,
-ts_start, ts_end, codex_exit (raw, nullable until terminal), duration_s,
+owner_pid (int; started records only, and only when given), owner_created
+(int; likewise), ts_start, ts_end, codex_exit (raw, nullable until terminal), duration_s,
 assistant_message_markers, tokens_used (nullable int), web_messages
 (always null), usage_complete (bool), status, out_path, report_path,
 stop_latch (bool - true on any non-ok terminal status; a latched run
 refuses every further `check` until reconciled by hand, honoring the
 docs' no-retry-in-the-run rule).
 
-CLI: `record start|end|preflight-failed`, `check --run R`,
-`report [--days N] [--run R]`. See each function's docstring for the
+CLI: `record start|end|preflight-failed` (`record start` takes optional
+`--pid` and `--pid-created`), `check --run R`, `admit --run R ... [--pid P]
+[--pid-created C]` (atomic check +
+record start), `report [--days N] [--run R]`. See each function's docstring for the
 Python API; the CLI is a thin wrapper over it for bin/lanew.
 """
 import argparse
@@ -71,6 +97,8 @@ except ImportError:  # pragma: no cover - Windows
 DEFAULT_LOG = os.path.join(os.path.expanduser("~"), ".cli-proxy-api", "lanew-usage.jsonl")
 LOG_PATH = os.environ.get("LANEW_LOG") or DEFAULT_LOG
 RUN_JOB_CEILING = int(os.environ.get("LANEW_RUN_JOB_CEILING", "8"))
+
+IN_FLIGHT_MAX_AGE_S = 2700  # longest possible astrapro job; see the in-flight rule
 
 LOCK_TRIES = 500
 LOCK_SLEEP = 0.02  # ~10 s worst case, generous for two local processes
@@ -109,6 +137,80 @@ def _duration(ts_start, ts_end):
     if a is None or b is None:
         return None
     return round((b - a).total_seconds(), 3)
+
+
+def pid_alive(pid) -> bool:
+    """True when pid names a live process. Never raises.
+
+    Windows: OpenProcess + GetExitCodeProcess == STILL_ACTIVE (259), the
+    skills/fabstra/scripts/logbooks.py pattern - never os.kill(pid, 0)
+    there, because signal 0 on Windows is CTRL_C_EVENT.
+    """
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            k = ctypes.windll.kernel32
+            h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                return False
+            try:
+                code = ctypes.c_ulong()
+                ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+            finally:
+                k.CloseHandle(h)
+            return bool(ok) and code.value == 259  # STILL_ACTIVE
+        except Exception:  # pragma: no cover - ctypes unavailable
+            return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def pid_created(pid):
+    """The creation time of live process pid as an int, or None. Never raises.
+
+    Windows: OpenProcess + GetProcessTimes creation FILETIME (100 ns ticks
+    since 1601). POSIX: /proc/<pid>/stat field 22 (start time in clock
+    ticks since boot). Used with pid_alive so a reused pid never passes for
+    the original process (module docstring, owner_created).
+    """
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return None
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+            k = ctypes.WinDLL("kernel32", use_last_error=True)
+            k.OpenProcess.restype = wintypes.HANDLE
+            k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            k.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(ctypes.c_uint64)] * 4
+            k.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+            k.CloseHandle.argtypes = [wintypes.HANDLE]
+            h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            if not h:
+                return None
+            try:
+                times = [ctypes.c_uint64() for _ in range(4)]
+                ok = k.GetProcessTimes(h, *[ctypes.byref(t) for t in times])
+                code = wintypes.DWORD()
+                k.GetExitCodeProcess(h, ctypes.byref(code))
+            finally:
+                k.CloseHandle(h)
+            if not ok or code.value != 259 or not times[0].value:  # STILL_ACTIVE
+                return None
+            return int(times[0].value)
+        except Exception:  # pragma: no cover - ctypes unavailable
+            return None
+    try:
+        with open("/proc/%d/stat" % pid, "r", encoding="ascii", errors="replace") as f:
+            stat = f.read()
+        return int(stat.rsplit(")", 1)[1].split()[19])
+    except (OSError, ValueError, IndexError):
+        return None
 
 
 def _read_text(path) -> str:
@@ -178,6 +280,19 @@ def append_line_verified(path: str, line: str) -> bool:
     bytes just written. Never raises - a False return is the caller's
     signal to treat usage as unknown and fail closed.
     """
+    locked, ok = _with_log_lock(path, lambda: _append_unlocked(path, line))
+    return bool(locked and ok)
+
+
+def _with_log_lock(path: str, fn):
+    """Run fn() while holding path's lock file. Returns (locked, fn_result).
+
+    The lock is `path + ".lock"`, never the log file itself, so a
+    concurrent reader is never blocked by a writer's own open. locked is
+    False (and fn never runs) when the lock file cannot be opened or the
+    lock cannot be taken within LOCK_TRIES. fn must not take the lock
+    again (msvcrt locks are per handle, so a nested take would time out).
+    """
     parent = os.path.dirname(path)
     binary = getattr(os, "O_BINARY", 0)
     try:
@@ -185,30 +300,38 @@ def append_line_verified(path: str, line: str) -> bool:
             os.makedirs(parent, exist_ok=True)
         lock_fd = os.open(path + ".lock", os.O_RDWR | os.O_CREAT | binary, 0o600)
     except OSError:
-        return False
+        return False, None
     try:
         if not _lock(lock_fd):
-            return False
+            return False, None
         try:
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | binary, 0o600)
-            try:
-                os.write(fd, line.encode("utf-8"))
-            finally:
-                os.close(fd)
-        except OSError:
-            return False
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-        except OSError:
-            return False
-        return content.endswith(line)
+            return True, fn()
+        finally:
+            _unlock(lock_fd)
     finally:
-        _unlock(lock_fd)
         try:
             os.close(lock_fd)
         except OSError:
             pass
+
+
+def _append_unlocked(path: str, line: str) -> bool:
+    """Append + verify one line; the CALLER holds the lock. Never raises."""
+    binary = getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | binary, 0o600)
+        try:
+            os.write(fd, line.encode("utf-8"))
+        finally:
+            os.close(fd)
+    except OSError:
+        return False
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return False
+    return content.endswith(line)
 
 
 def _read_log(path: str) -> "list[dict]":
@@ -355,19 +478,32 @@ def _base_entry(job_id, run, name, model, out_path, report_path):
     }
 
 
-def record_start(run, name, model, out_path, report_path, log_path=None) -> dict:
+def _started_entry(run, name, model, out_path, report_path, owner_pid=None,
+                   owner_created=None) -> dict:
+    entry = _base_entry(uuid.uuid4().hex, run, name, model, out_path, report_path)
+    entry["ts_start"] = _now_iso()
+    entry["status"] = "started"
+    if owner_pid is not None:
+        entry["owner_pid"] = int(owner_pid)
+    if owner_created is not None:
+        entry["owner_created"] = int(owner_created)
+    return entry
+
+
+def record_start(run, name, model, out_path, report_path, log_path=None,
+                 owner_pid=None, owner_created=None) -> dict:
     """Write the `started` reservation line BEFORE launch. Returns the entry.
 
     entry["_append_ok"] is False when the append could not be verified -
     the caller (the CLI, then bin/lanew) must treat that as "usage
     unknown, do not launch" and exit nonzero rather than proceed.
+    owner_pid (optional int) is stored as `owner_pid`, owner_created
+    (optional int, see pid_created) as `owner_created`; omitted, the record
+    is exactly what it always was (module docstring, in-flight rule).
     """
     if log_path is None:
         log_path = LOG_PATH
-    job_id = uuid.uuid4().hex
-    entry = _base_entry(job_id, run, name, model, out_path, report_path)
-    entry["ts_start"] = _now_iso()
-    entry["status"] = "started"
+    entry = _started_entry(run, name, model, out_path, report_path, owner_pid, owner_created)
     ok = append_line_verified(log_path, json.dumps(entry, sort_keys=True) + "\n")
     entry["_append_ok"] = ok
     return entry
@@ -449,7 +585,11 @@ def check(run, log_path=None, ceiling=None):
 
     Fails closed: log unreadable, any job with a started-but-no-terminal
     record (unknown usage), any latched terminal record, or the run's
-    counted-job total at/over the ceiling, all refuse. A log file that
+    counted-job total at/over the ceiling, all refuse. A started-but-no-
+    terminal job whose `owner_pid` is present and alive is IN FLIGHT
+    (module docstring): counted toward the ceiling, never a refusal by
+    itself - unless its recorded owner_created differs from that live
+    pid's creation time (a reused pid: refuse). A log file that
     does not exist at all, with therefore no prior record of ANY run
     including this one, is the first-run bootstrap case and passes -
     that is the one place "missing" is not treated as a failure.
@@ -473,9 +613,17 @@ def check(run, log_path=None, ceiling=None):
         jid = e.get("job_id")
         if not jid:
             continue
-        state = jobs.setdefault(jid, {"started": False, "terminal": False})
+        state = jobs.setdefault(jid, {"started": False, "terminal": False, "owner_pid": None,
+                                      "owner_created": None, "ts_start": None})
         if e.get("status") == "started":
             state["started"] = True
+            state["ts_start"] = e.get("ts_start")
+            pid = e.get("owner_pid")
+            if isinstance(pid, int) and not isinstance(pid, bool):
+                state["owner_pid"] = pid
+            created = e.get("owner_created")
+            if isinstance(created, int) and not isinstance(created, bool):
+                state["owner_created"] = created
         else:
             state["terminal"] = True
         if e.get("stop_latch"):
@@ -484,7 +632,22 @@ def check(run, log_path=None, ceiling=None):
     if not jobs:
         return True, "no prior record of run %r - first-run case" % run
 
-    unknown = [jid for jid, s in jobs.items() if s["started"] and not s["terminal"]]
+    open_jobs = [s for s in jobs.values() if s["started"] and not s["terminal"]]
+    now = datetime.now(timezone.utc)
+
+    def _young(s):
+        started = _parse_iso(s["ts_start"])
+        return started is not None and (now - started).total_seconds() <= IN_FLIGHT_MAX_AGE_S
+
+    def _owner_live(s):
+        if not pid_alive(s["owner_pid"]):
+            return False
+        # owner_created recorded: the live pid must be that very process, not a reuse
+        return s["owner_created"] is None or pid_created(s["owner_pid"]) == s["owner_created"]
+
+    in_flight = [s for s in open_jobs
+                 if s["owner_pid"] is not None and _young(s) and _owner_live(s)]
+    unknown = [s for s in open_jobs if s not in in_flight]
     if unknown:
         return False, ("%d job(s) in run %r have a started record with no terminal "
                         "record - usage unknown, refusing" % (len(unknown), run))
@@ -492,11 +655,46 @@ def check(run, log_path=None, ceiling=None):
         return False, "run %r is latched (a prior job was not ok) - no further launches" % run
 
     counted = len(jobs)
+    flying = (" (%d in flight)" % len(in_flight)) if in_flight else ""
     if counted >= ceiling:
-        return False, ("run %r has %d counted job(s), at or over the ceiling (%d jobs - a "
+        return False, ("run %r has %d counted job(s)%s, at or over the ceiling (%d jobs - a "
                         "proxy, since turns are not measurable from here)"
-                        % (run, counted, ceiling))
-    return True, "run %r has %d counted job(s), under the ceiling (%d)" % (run, counted, ceiling)
+                        % (run, counted, flying, ceiling))
+    return True, ("run %r has %d counted job(s)%s, under the ceiling (%d)"
+                  % (run, counted, flying, ceiling))
+
+
+def admit(run, name, model, out_path, report_path, owner_pid=None, log_path=None,
+          ceiling=None, owner_created=None):
+    """Atomic `check` + `record start`. Returns (status, reason, entry).
+
+    Under the log's lock file, in ONE critical section: run the check()
+    logic and, only if it passes, append the started record (with
+    owner_pid / owner_created when given). Two parallel callers at ceiling-1 therefore
+    can never both be admitted. status is "admitted" (entry is the
+    started record), "refused" (check said no; NOTHING appended; entry
+    None) or "log_error" (lock not taken, or the append could not be
+    verified - usage unknown, the caller must not launch).
+    """
+    if log_path is None:
+        log_path = LOG_PATH
+
+    def critical():
+        ok, reason = check(run, log_path=log_path, ceiling=ceiling)
+        if not ok:
+            return "refused", reason, None
+        entry = _started_entry(run, name, model, out_path, report_path, owner_pid,
+                               owner_created)
+        appended = _append_unlocked(log_path, json.dumps(entry, sort_keys=True) + "\n")
+        entry["_append_ok"] = appended
+        if not appended:
+            return "log_error", "failed to write the started reservation", entry
+        return "admitted", reason, entry
+
+    locked, result = _with_log_lock(log_path, critical)
+    if not locked:
+        return "log_error", "could not take the log lock %s.lock" % log_path, None
+    return result
 
 
 def report(days=None, run=None, log_path=None) -> str:
@@ -556,8 +754,11 @@ def _cli_record(argv) -> int:
         p.add_argument("--model", required=True)
         p.add_argument("--out", required=True)
         p.add_argument("--report", required=True)
+        p.add_argument("--pid", type=int, default=None, dest="owner_pid")
+        p.add_argument("--pid-created", type=int, default=None, dest="owner_created")
         args = p.parse_args(rest)
-        entry = record_start(args.run, args.name, args.model, args.out, args.report)
+        entry = record_start(args.run, args.name, args.model, args.out, args.report,
+                             owner_pid=args.owner_pid, owner_created=args.owner_created)
         if not entry.get("_append_ok"):
             print("lanew_log: failed to write the started reservation - usage unknown, "
                   "refusing to launch", file=sys.stderr)
@@ -607,6 +808,28 @@ def _cli_check(argv) -> int:
     return 0 if ok else 1
 
 
+def _cli_admit(argv) -> int:
+    p = argparse.ArgumentParser(prog="lanew_log admit")
+    p.add_argument("--run", required=True)
+    p.add_argument("--name", required=True)
+    p.add_argument("--model", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--report", required=True)
+    p.add_argument("--pid", type=int, default=None, dest="owner_pid")
+    p.add_argument("--pid-created", type=int, default=None, dest="owner_created")
+    args = p.parse_args(argv)
+    status, reason, entry = admit(args.run, args.name, args.model, args.out, args.report,
+                                  owner_pid=args.owner_pid, owner_created=args.owner_created)
+    if status == "admitted":
+        print(json.dumps({"job_id": entry["job_id"], "ts_start": entry["ts_start"]}))
+        return 0
+    if status == "refused":
+        print(reason, file=sys.stderr)
+        return 1
+    print("lanew_log admit: %s - usage unknown, refusing to launch" % reason, file=sys.stderr)
+    return 3
+
+
 def _cli_report(argv) -> int:
     p = argparse.ArgumentParser(prog="lanew_log report")
     p.add_argument("--days", type=float, default=None)
@@ -620,13 +843,15 @@ def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
         print("usage: lanew_log.py {record start|record end|record preflight-failed"
-              "|check --run R|report [--days N] [--run R]}", file=sys.stderr)
+              "|check --run R|admit --run R ...|report [--days N] [--run R]}", file=sys.stderr)
         return 2
     cmd, rest = argv[0], argv[1:]
     if cmd == "record":
         return _cli_record(rest)
     if cmd == "check":
         return _cli_check(rest)
+    if cmd == "admit":
+        return _cli_admit(rest)
     if cmd == "report":
         return _cli_report(rest)
     print("lanew_log: unknown command %r" % cmd, file=sys.stderr)

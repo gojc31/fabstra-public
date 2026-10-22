@@ -2,7 +2,9 @@
 
 Reached from: fabstra SKILL.md - Effort
 
-Opus 5.5 builder effort trial, 2026-09-24 to 2026-10-08. Eligible: Opus-tier tasks outside the excluded categories (money, auth, PII, permissions, migration, concurrency, client-facing release). Eligible tasks alternate arms in launch order across runs in the same project folder: read the last `arm=` of an eligible task in `.fabstra/RUN*.md` and take the other arm; a folder with no history starts on `builder`. Arms: `subagent_type: "model-router:builder"` (Opus 5.5 xhigh) and `"model-router:builder-medium"` (Opus 5.5 medium). Excluded tasks always take `builder` and are logged `eligible=no`. Log `arm=` and `eligible=` beside every Opus-tier task and tag every review finding with its task. Readout on 2026-10-08 compares elapsed (launch to accepted), first-pass acceptance, and reproduced findings per arm; until then neither arm is the default.
+Opus 5.5 builder effort trial, 2026-09-24 to 2026-10-08. Eligible: Opus-tier tasks outside the excluded categories (SKILL.md, Excluded categories). Eligible tasks alternate arms in launch order across runs in the same project folder: read the last `arm=` of an eligible task in `.fabstra/RUN*.md` and take the other arm; a folder with no history starts on `builder`. Arms: `subagent_type: "model-router:builder"` (Opus 5.5 xhigh) and `"model-router:builder-medium"` (Opus 5.5 medium). Excluded tasks always take `builder` and are logged `eligible=no`. Log `arm=` and `eligible=` beside every Opus-tier task and tag every review finding with its task. Readout on 2026-10-08 compares elapsed (launch to accepted), first-pass acceptance, and reproduced findings per arm; until then neither arm is the default.
+
+**After 2026-10-08** every Opus-tier task takes `subagent_type: "model-router:builder"` (Opus 5.5 xhigh), excluded categories included; log `arm=builder eligible=post-trial`. The alternation above applies only through the trial. `model-router:builder-low` (`arm=builder-low eligible=no`) is unchanged.
 
 ## Readout inputs (added 2026-09-29)
 

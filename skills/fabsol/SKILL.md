@@ -1,5 +1,6 @@
 ---
 name: fabsol
+disable-model-invocation: true
 description: Retired alias (2026-09-24). Sol-led runs now go through model-router:fabstra - name Sol in the brief (sol, gpt-6.1 sol, sol xhigh) and the skill pins Sol for the Astra seats.
 ---
 

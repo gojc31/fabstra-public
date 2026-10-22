@@ -1,6 +1,6 @@
 # FabStra spec templates - design review, builder blueprint, adversarial review
 
-Contents: Design-review spec template (Phase 1b); Builder spec contract (Phase 2); Phase 2 - BUILD; Review spec (Phase 3)
+Contents: Design-review spec template (Phase 1b); Builder spec contract (Phase 2); Review spec (Phase 3)
 
 Reached from: fabstra SKILL.md - before writing any blueprint or review spec
 
@@ -65,14 +65,14 @@ with this report.
 
 ## Builder spec contract (Phase 2)
 
-## Phase 2 - BUILD (Claude subagents via the Agent tool; Codex side via Astra)
+Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via Astra.
 
 One Agent tool call per task. Opus tier: the arm the effort trial picks
 (SKILL.md, Effort) - `subagent_type: "model-router:builder"` (Opus 5.5 xhigh)
 or `"model-router:builder-medium"` (Opus 5.5 medium); a mechanical task
 spanning 2+ files: `"model-router:builder-low"` (Opus 5.5 low, outside the
 trial). All three pin their own model and effort. Sonnet and Haiku tiers:
-`subagent_type: "general-purpose"`, `model: "sonnet"` / `"haiku"` per the rubric (REQUIRED - an
+`subagent_type: "general-purpose"`, `model: "sonnet"` / `"haiku"` per the rubric (required - an
 omitted model inherits the Fable session; the guard denies it), prompt = a
 self-contained spec. Under a Sonnet max pin the Sonnet tier takes
 `subagent_type: "model-router:sonnet-max"` instead, no `model:` field
@@ -94,7 +94,7 @@ The spec fixes, in this order:
   and the ones not to reach for.
   - UI surface in the task (page, screen, component, dashboard, landing
     section, form, empty/error state): get its "## Design (from design-pass)"
-    block from ONE Agent call, `subagent_type: "model-router:designer"` (Opus
+    block from one Agent call, `subagent_type: "model-router:designer"` (Opus
     5.5 xhigh, read-only; for client-E client work run `airlock` first and pass
     the washed brief with `Pass: CLIENT`, other client work the brief as
     given with `Pass: CLIENT`, else `Pass: INTERNAL`), and paste the
@@ -112,6 +112,40 @@ its report. Escalate (NEEDS_CONTEXT) only when the spec contradicts the
 repository, an action is unsafe, or business meaning is ambiguous.
 Scale it to the tier: a Haiku mechanical spec is exact text, file paths, what not to touch, and its acceptance checks.
 
+Haiku tier = Claude Haiku 5.5: `~/.claude/settings.json` env
+`ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-5-5` maps the `haiku` alias to
+it (since CLI 2.1.296 the bare alias also resolves to Haiku 5.5 on its own - verified 2026-10-10 - so the pin is a safeguard). A Haiku
+subagent inherits the session's effort (`effortLevel` is `high` here, which
+the guide recommends for strict instruction following); leave the Agent
+`effort` unset and never pass `low`, which skips searches and checks. Per
+Anthropic's Haiku 5.5 prompting guide, a Haiku spec also carries, verbatim:
+
+- Every Haiku spec: "Keep working until everything this spec asks for is
+  done, and only stop to ask when you can't go on without the lead or before
+  a risky step. When the work is done and checked, stop and report. Don't
+  add new features, docs, or refactors that weren't asked for. If you think
+  one would help, mention it at the end instead of doing it."
+- A spec that changes runnable code: "When you change code that can be run,
+  built, or type-checked, run a real check that exercises the change before
+  reporting it done: the project's tests, type-checker, or build, or the
+  changed command itself. A syntax-only check, or a check command that failed
+  to start, does not count; if all that is missing is the project's declared
+  dependencies, install them with its own package manager and lockfile (e.g.
+  npm install, pip install -r requirements.txt), never via sudo or the system
+  package manager, unless told not to. Only if no real check can run here,
+  say which one you did not run and why instead of reporting the change as
+  done."
+- A lookup that may search the web: "The current date is <YYYY-MM-DD>. Your
+  training data ends well before today's date. Records, office holders,
+  prices, versions, rules and anything "latest" may have changed since then,
+  so search for those before you answer, even when you feel sure. Facts that
+  can't change need no search. When the answer depends on where the user is,
+  put the user's country or region in the search query."
+
+Haiku 5.5 runs safety classifiers (`stop_reason: "refusal"`; the `cyber`
+category can fire on benign security work) and a resend usually refuses
+again: send a refused Haiku task to Sonnet with the same spec.
+
 Every spec also carries these lines, verbatim:
 
 - "Hold the outcome, invariants, scope, shared interfaces, and file
@@ -126,7 +160,7 @@ Every spec also carries these lines, verbatim:
 - "Respect the project's CLAUDE.md in your context. If the task seems to
   need a tool outside its stack, return NEEDS_CONTEXT - do not improvise a
   substitute."
-- "Where the task produces testable behavior: write the test FIRST, run it
+- "Where the task produces testable behavior: write the test first, run it
   to see it fail, then implement until it passes. Include at least one
   negative test - an input that must fail, confirmed failing. A rename,
   config, copy, or other reversible change whose test would only mirror the
@@ -135,7 +169,9 @@ Every spec also carries these lines, verbatim:
 - "Running the project's test suite and build is pre-approved only where this spec states they are local and isolated and says how that was checked; otherwise stop and report before running anything that reaches outside this repository."
 - "Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better."
 - Multi-app specs only (n8n, GHL, Drive, mail, CRM automations): "Before taking any action, explore broadly with tool calls: list and open the emails, documents, spreadsheet tabs and records across the available apps that could be relevant to this task, including ones the task does not explicitly mention, and use what you find."
+- Automation specs (n8n, Make, GHL, VAPI) carry verbatim: "A source that fails to read is reported as unreadable and its cursor does not move; a write is recorded only after the destination confirms it."
 - Sonnet-tier specs only: "Keep working until everything this spec asks for is done; stop only when you cannot go on without the user or before a risky step."
+- "Before your report, stop every background command you started (dev servers, watchers, tails): a headless run waits for them and can hit its timeout."
 - "Keep the report short, ending with exactly one status: DONE /
   DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED - plus changed paths, each
   implementation decision you made inside the spec, the verification
@@ -207,7 +243,7 @@ fresh context is the review.
 ## Review spec (Phase 3)
 
 **Before writing the spec, produce the diff.** Run `git diff <base>` (the
-commit the build started from, plus the working tree) AND
+commit the build started from, plus the working tree) and
 `git ls-files --others --exclude-standard` for the files the build created,
 which `git diff` does not show; inline each new file's full contents after
 the diff (do not stage them - the index is the user's). List the changed
@@ -215,6 +251,16 @@ files with a one-line note each and whatever callers or entry points you
 already know. That is what goes in the `<context>` block: the reviewer then
 spends its turns verifying instead of discovering, and keeps full freedom to
 follow the change outward.
+
+**REVIEW.md:** when the reviewed project has a `REVIEW.md` at its root,
+paste it verbatim into the template's "Project review rules" line, beside
+"Project stack and hard rules" - review seats launch `--bare` and never load
+it themselves. Follow it with this precedence line, verbatim: "These project
+rules decide what to look for and what to skip; the
+`<structured_output_contract>` below decides the returned format, the
+severity scale and the per-id verification. Read their tags as: Important
+-> P1 or P2 by impact, Nit -> P3 (the project's nit cap still applies),
+Pre-existing -> PRE-EXISTING under the contract's base-proof rule."
 
 **When to include the `<context>`, `<review_scope>` and `<turn_budget>`
 blocks:** when the build spans more than about two files, or the reviewer
@@ -224,6 +270,9 @@ review with no callers, drop all three and send the plain spec - measured
 1-6 extra tool calls and 114-205 s with nothing to discover, because
 `review_scope` sends the reviewer looking for callers that do not exist.
 The blocks pay for themselves only when there is discovery to skip.
+A re-review keeps its round facts even as a plain spec: beside
+`<prior_findings>` it still carries the `Build-start base:` line, that
+round's diff, and from round 3 the round-3 `<review_scope>` text.
 
 **Review spec template** (GPT models hold contracts best as XML blocks):
 
@@ -233,10 +282,23 @@ Adversarially review this build. You are the red team - find what is WRONG.
 Brief: <the user's brief>
 Acceptance criteria: <from the plan, verbatim>
 Project stack and hard rules: <from the project's CLAUDE.md, verbatim>
+Project review rules: <the project's root REVIEW.md, verbatim, then the
+precedence line above; drop this line when there is none>
 </task>
+<prior_findings>
+(Re-reviews only: every round after the build's first review, in every lane
+and on every seat, plain single-file specs included; drop it on round 1.)
+Review round: <N>
+Ledger rows for this build, from the logbook, one per finding:
+<id | file:line | one-line defect | status: FIXED (verified), WITHDRAWN
+(rejected by the lead or withdrawn by a reviewer), or OPEN - an OPEN row
+whose fix landed since the last review reads "OPEN - fix claimed" | for
+WITHDRAWN, the logged reason>
+</prior_findings>
 <context>
 Files changed: <paths, one per line, each with a one-line note of what the
 change does>
+Build-start base: <the commit the diff is taken against, or "non-git: none">
 Entry points and callers you already know: <what calls, renders, or imports
 the changed code - pages, routes, workflows, templates - or "unknown">
 Test command: <how to run the project's tests, or "none">
@@ -245,13 +307,18 @@ Diff:
 followed by the full contents of every untracked file the build created,
 or for a non-git project the full text of each changed file. Over ~1500
 lines: inline the hunks for the files under review and say which files to
-read whole>
+read whole. Round 3 on (phases.md "Phase 4"): only the diff since the last
+reviewed state>
 </context>
 <review_scope>
+<rounds 1-2:>
 Start from the diff: verify it first, then follow every edge it touches -
 callers, templates, configs, sibling pages, the other side of any contract
 it changes. The diff is where you start, not where you stop; a change that
 is correct in isolation and breaks a caller is still a P1.
+<round 3 on (phases.md "Phase 4"), in place of the paragraph above:>
+Verify the fixes and the changed lines in this diff. Follow callers of the
+changed lines only; do not re-read unchanged code for new findings.
 </review_scope>
 <turn_budget>
 You have 30 tool calls in total. Spend them on verification, not discovery:
@@ -288,11 +355,30 @@ probe files only under <scratch dir>.
 </action_safety>
 <structured_output_contract>
 Return exactly: (1) per acceptance criterion: PASS or FAIL with evidence;
-(2) findings ranked by severity - P1 breaks the brief, P2 should fix, P3
+(2) re-reviews only - prior-finding verification, one line per OPEN row of
+<prior_findings>: `VERIFIED FIXED: <id>` or `STILL OPEN: <id>`, plus
+`REOPENED: <id>` for a FIXED row the current changes reintroduce, each with
+file:line evidence; an incomplete fix is STILL OPEN and a reintroduced one
+REOPENED here, never a new finding;
+(3) new findings ranked by severity - P1 breaks the brief, P2 should fix, P3
 minor - each with file:line, what breaks, how you proved it, and your
 confidence 0-100. Report only findings you are 80+ confident in and would
 personally act on: precision over recall - a noisy review gets ignored.
-(3) nothing else. Finding nothing wrong is a legitimate result - do not
+Name each finding's bug class (the defect pattern, e.g. "unquoted path in a
+shell command") and list every instance of that class in the reviewed
+scope, found with one grep pass, not only the first. A new finding is never
+an id listed in <prior_findings>; a WITHDRAWN id comes back only when new
+evidence contradicts its logged reason, and you name that evidence. A new
+instance of a listed bug class is a new finding. PRE-EXISTING is a tag
+beside the severity, judged against the build-start base, not by location:
+use it only for a defect that existed before the build, independent of it,
+that you show reproduces on the base (`git show <base>:<path>`, probes
+under <scratch dir>); without that proof it is an ordinary finding. A
+regression the build causes in code it did not touch - a changed API or
+shape breaking an untouched caller - did not exist on the base, so it is
+never PRE-EXISTING: it stays an ordinary finding, and a change that breaks
+a caller is still a P1 (review_scope).
+(4) nothing else. Finding nothing wrong is a legitimate result - do not
 manufacture findings to look thorough. Before finishing, overwrite
 <scratch dir>/fabstra-review-findings.md via Bash with this final report.
 </structured_output_contract>

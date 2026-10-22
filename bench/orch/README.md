@@ -3,6 +3,9 @@
 One fixed real build (brief.md: the "ledger" CSV summary CLI, four tasks T1-T4) run headlessly through three arms, scored on held-out tests plus process metrics.
 
 Arms (case-sensitive): `A` = Fable 5.1, Orchestrate mode, Astra review; `B1` = Opus 5.5, Lead mode, fresh-Fable review (model-router:reviewer); `B2` = Opus 5.5 forced into Orchestrate mode, fresh-Fable review. Astra gates the plan in all three.
+- `B0` = Opus 5.5 no-skill baseline: model-router plugin off for the run, prompt keeps only the generic headless rules plus a per-run exemption from the CLAUDE.md fabstra mandate, no Astra probe, METRICS `"mode":"none"`.
+- `B1L` = `B1` with fabstra loaded from `variants/model-router-lean` via `--plugin-dir`; only the preamble's file-access line differs (names the variant path only).
+- Mechanism (B0, B1L): run.sh writes `.scratch/settings.json` = `{"enabledPlugins":{"model-router@robonuggets":false}}` and passes `--settings .scratch/settings.json` (per run; user config untouched). Verified 2026-10-07 from the stream-json init message: B0 lists no model-router plugin, agents or fabstra; B1L lists one `model-router@inline` plugin at the variant path.
 
 Run: `bash run.sh <ARM> <N> [--dry]` from Git Bash. It recreates `results/work-<ARM>-<N>` via `fixture.py`, probes Astra (exit 3 `ASTRA_COOLING`, exit 4 proxy down), writes `.scratch/prompt.md`, runs `claude -p` (7200 s cap) with it on stdin, then `score.py`. `--dry` stops after printing the command.
 Re-score any work dir: `python score.py <work> <ARM> <N>` (appends to `results/results.csv`, writes the header if absent, prints key=value).

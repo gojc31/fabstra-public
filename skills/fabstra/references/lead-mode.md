@@ -2,13 +2,13 @@
 
 Contents: Who does what; Seat rubric; The five gates; Standing habits
 
-Reached from: fabstra SKILL.md - Lead mode (session model Sonnet 5.5, Haiku 4.5, or Opus 5.5 below the Orchestrate threshold - a plan with 2+ tasks or an excluded category; at or above it Opus 5.5 runs Orchestrate mode, phases.md)
+Reached from: fabstra SKILL.md - Lead mode (session model Sonnet 5.5, Haiku 5.5, or Opus 5.5 below the Orchestrate threshold - a plan with 2+ tasks or an excluded category; at or above it Opus 5.5 runs Orchestrate mode, phases.md)
 
 You are the lead: you draft the plan, send it through the plan gate, build
 what the authoritative plan says (yourself or by tier), run the smoke gate,
 arbitrate every finding, talk to the user, and write the report. Astra and
 every reviewer advise; the user is the only party above you. The logbook is
-`.fabstra/RUN.md` with the fields in phases.md, "The run logbook"; usage-log
+`.fabstra/RUN.md` with the fields and rename rule in phases.md, "The run logbook"; usage-log
 rows use `flow` = `fabstra`.
 
 Paths: plugin-root variables are not substituted on an Opus / Sonnet / Haiku
@@ -21,9 +21,9 @@ you reach the gate or lane it covers, not before.
 | Seat | Model | What it owns |
 |---|---|---|
 | USER | you, the person running the session | the brief, the go signal, the final word over the lead |
-| LEAD | you (Opus 5.5 / Sonnet 5.5 / Haiku 4.5) | the plan, BUILDER tasks, the Codex launches, the smoke gate, every verdict, the user, the report |
+| LEAD | you (Opus 5.5 / Sonnet 5.5 / Haiku 5.5) | the plan, BUILDER tasks, the Codex launches, the smoke gate, every verdict, the user, the report |
 | GATE SEAT | GPT-6 Astra (or GPT-6.1 Sol, per the rubric) | the plan gate; parents the Codex side (`sol` / `terra` / `luna` / `spark`); reviews BUILDER-side work; advises, never decides |
-| SUPPORT / MECHANIC | Claude Sonnet 5.5 / Haiku 4.5; Opus 5.5 low | Agent tool, `model: "sonnet"` / `"haiku"` (lookups, commands, one-file mechanical edits); `model-router:builder-low` for mechanical edits across 2+ files |
+| SUPPORT / MECHANIC | Claude Sonnet 5.5 / Haiku 5.5; Opus 5.5 low | Agent tool, `model: "sonnet"` / `"haiku"` (lookups, commands, one-file mechanical edits); `model-router:builder-low` for mechanical edits across 2+ files |
 | INDEPENDENT REVIEWER | fresh Fable 5.1 (`subagent_type: "model-router:reviewer"`) | reviews what the gate seat's own thread built or fixed; the fallback seat per transport.md |
 
 Codex builders, homes and depth limits: transport.md, "The crew in full".
@@ -34,21 +34,21 @@ Astra holds the Astra-row gates by the user's choice (2026-09-05, Sol row added 
 
 | Build looks like | Gate seat | Plan gate? | Review? |
 |---|---|---|---|
-| The user named Astra as the builder ("astra solo", "astra build it") or gave a count ("astra x3" = fan-out) | **Lane B** (lane-b.md plus its delta in lead-mode-deltas.md; Sol xhigh solo when Astra is spent) | no - Astra's design file is the plan | Sol xhigh AND a fresh Fable, in parallel |
-| Design and UI/UX: a new or changed user-facing surface, visual direction | **Opus 5.5** owns the design (see Build); the code plan takes the Astra or Sol row below | yes, for the CODE plan: the gate takes the Design block as given and objects only to what will not work | the seat that gated the code plan |
-| An excluded category (money, auth, PII, permissions, migration, concurrency, client-facing release); an architecture or data-model decision; a plan whose check you cannot state | **Astra** | yes | Astra; on an xhigh row plus a fresh Fable in parallel |
+| The user named Astra as the builder ("astra solo", "astra build it") or gave a count ("astra x3" = fan-out) | **Lane B** (lane-b.md plus its delta in lead-mode-deltas.md; Sol xhigh solo when Astra is spent) | no - Astra's design file is the plan | Sol xhigh and a fresh Fable, in parallel |
+| Design and UI/UX: a new or changed user-facing surface, visual direction | **Opus 5.5** owns the design (see Build); the code plan takes the Astra or Sol row below | yes, for the code plan: the gate takes the Design block as given and objects only to what will not work | the seat that gated the code plan |
+| An excluded category (SKILL.md, Excluded categories); an architecture or data-model decision; a plan whose check you cannot state | **Astra** | yes | Astra; on an xhigh row plus a fresh Fable in parallel |
 | Standard feature with tests (multi-file included), integration surface, refactor with a clear before/after, contained bug fix in known code that fails any contained-change criterion, 3+ steps of a known shape | **Sol** (same protocol, `--model gpt-6.1-sol`, rubric effort: high; xhigh re-review after a P1) | yes | Sol; on an xhigh row plus a fresh Fable in parallel |
-| Contained change: ALL of - at most 3 files; an existing repo pattern cited file:line; an existing test or named check proves it; no excluded category; no architecture or data-model decision; no user-facing surface. Doubt -> a higher row. You build it, smoke gate, one review (phases.md, Phase 1) | **Sol high** | no | Sol high (Codex-built: fresh Fable) |
+| Contained change: all of - at most 3 files; an existing repo pattern cited file:line; an existing test or named check proves it; no excluded category; no architecture or data-model decision; no user-facing surface. Doubt -> a higher row. You build it, smoke gate, one review (phases.md, Phase 1) | **Sol high** | no | Sol high (Codex-built: fresh Fable) |
 | Small change: trivial single-file, low-stakes - the user called it so, or nothing a user or client runs depends on it | none - you make the change | no | no - say so in the report |
-| `budget`, `cheap crew`, `openrouter`, `deepseek`; or Claude AND every ChatGPT login spent | **Lane C** (lane-c.md plus its delta in lead-mode-deltas.md) | multi-file only | Lane C seats |
+| `budget`, `cheap crew`, `openrouter`, `deepseek`; or Claude and every ChatGPT login spent | **Lane C** (lane-c.md plus its delta in lead-mode-deltas.md) | multi-file only | Lane C seats |
 
 Taste findings against Design block: reject with one line. The lead picks
 the row from the brief; an excluded category forces the Astra row; mixed or
 unsure takes the higher row; user pins a seat by naming it ("astra", "sol");
 Astra spent drops the top row to Sol (report so). Never move down mid-task;
 move up after empty review on doubt.
-Astra's effort follows rubric (SKILL.md, phases.md); Sol runs xhigh (Contained-change
-row: high) unless pinned ("sol high"/"quick review" = high). Astra and Sol share pools (quota.md);
+Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a
+re-review after a P1, unless pinned ("sol high"/"quick review" = high). Astra and Sol share pools (quota.md);
 Sol row is time/fit not budget: spend Astra on hard plans (fast pin: quota.md).
 
 ## The five gates
@@ -64,6 +64,16 @@ of them, stop and go back to that gate.
 - Define done in one or two sentences: what artifact exists at the end, what
   must be true of it, and how you will check that it is true. If you cannot
   write the check, you do not understand the task yet.
+- Written report, analysis, audit, strategy or decision brief, a fix of a
+  recurring problem, scoping a new feature or a goal-only brief (the four
+  lines shape your one question), or "go deeper": run the depth pass (phases.md, Phase 1,
+  "Depth pass"); its outside check is your done check, and its options ride
+  in the OPEN FOR THE USER bundle. Small, quick, or "keep it simple" work
+  skips it (same section).
+- A new or materially changed client automation (n8n, Make, GHL, VAPI),
+  however small or well-specified: get the governance verdict (phases.md,
+  Phase 1, "Governance verdict") before the plan is final. It holds even when
+  the depth pass is skipped.
 - Check standing rules first (CLAUDE.md, skills, memory). Do not invent an
   approach the project already has a rule for.
 - Separate known from assumed. Name the one to three load-bearing unknowns.
@@ -76,11 +86,6 @@ of them, stop and go back to that gate.
 
 ### Gate 2 - Evidence before reasoning
 
-- Files and live tool output are sources. Training memory is only a
-  hypothesis generator. Open the real file, API response, or dataset.
-- Attack the load-bearing unknowns first, with the cheapest probe. Prefer a
-  thin end-to-end pass over a complete first stage; keep a live plan for
-  anything with 3+ steps, sliced by dependency.
 - On Opus 5.5 the mode is settled when the draft plan exists: 2+ tasks or
   an excluded category -> switch to Orchestrate mode now (phases.md, from
   Phase 1, with this draft as the plan); fewer -> stay here. Log `mode=` in
@@ -102,7 +107,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 - **Spec:** the design-review template in specs.md, with the draft plan
   verbatim (owners and DEPENDS ON lines included) as `<blueprints>`, and three
-  additions. (a) The project's CLAUDE.md verbatim PLUS two paragraphs of the
+  additions. (a) The project's CLAUDE.md verbatim plus two paragraphs of the
   global CLAUDE.md pasted verbatim - the browser-automation section and the
   "Always:" line - because `--bare` drops them and an abbreviated list is not
   the rule. (b) A `<review_scope>` item (7): "ownership - is each task's
@@ -111,19 +116,20 @@ runs, do not build; prepare test names and the review-spec skeleton.
   context), and does every DEPENDS ON line hold". (c) An OPEN FOR THE USER
   section in the output contract, for questions no evidence in the
   repository can settle, each naming the task numbers it blocks.
-- **Command:** transport.md "Phase 1b launch" (Sol seat: `--model gpt-6.1-sol
-  --effort xhigh`), with that section's fallbacks.
+- **Command:** transport.md "Phase 1b launch" (Sol seat: `--model gpt-6.1-sol`,
+  `--effort` per the rubric), with that section's fallbacks.
 - **After the gate:** arbitrate every finding into RUN.md - accepted by
   revising the plan, rejected with one logged line. OPEN FOR THE USER items
-  go to the user now, bundled, and block only the tasks they name; write each
+  go to the user now, bundled (a decision page or one chat line, per the
+  fork in decision-page.md), and block only the tasks they name; write each
   answer into the plan under its task as "user decision <date>". The revised
   plan is the AUTHORITATIVE PLAN: save it as
   `<scratch>/fabstra-plan-<name>-authoritative.md` and build from it. Then
-  hand the user ONE line to paste: `/goal <the plan's acceptance criteria as
+  hand the user one line to paste: `/goal <the plan's acceptance criteria as
   one measurable end state, the check that proves it (build and test
-  commands exit 0, a smoke-gate PASS line in .fabstra/RUN.md, .fabstra/REPORT.md
-  written), and "or stop after N turns">`; in a headless run skip the hand-off (the launch prompt already carries the goal). To hear
-  the seat before you rule, send ONE second call with the same spec plus a
+  commands exit 0, a smoke-gate PASS line in .fabstra/RUN.md, this run's report file
+  (its resolved path, decision-page.md "Report file") written), and "or stop after N turns">`; in a headless run skip the hand-off (the launch prompt already carries the goal). To hear
+  the seat before you rule, send one second call with the same spec plus a
   `<builder_objection>` block (the task, your evidence, your proposed
   alternative); its answer is advice, and you rule and log why.
 - **Log:** seat, effort, wall time, findings accepted and rejected,
@@ -133,18 +139,6 @@ runs, do not build; prepare test names and the review-spec skeleton.
   reason or a user decision.
 
 ### Gate 3 - Reason adversarially
-
-- Attack your own emerging answer as a hostile reviewer; actually test the
-  case, do not imagine it. Then steelman what survives, and steelman the
-  existing thing before changing it.
-- Self-critique here is yours to do. The fresh-context passes a real build
-  gets are the plan gate and the review gate; extra verifier subagents beyond
-  them are waste, on Opus 5.5 especially.
-- Finding nothing wrong is a legitimate result. Never manufacture findings.
-- Re-decide after every result. Momentum is the failure mode. Two failed
-  attempts at the same fix means the diagnosis is wrong.
-- Smells: you are on attempt three of the same fix; your last three actions
-  came from the plan with no check against results.
 
 ### Build - executing the authoritative plan
 
@@ -162,7 +156,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   `Pass: INTERNAL`, or `Pass: CLIENT` with the brief - airlock-washed for
   client-E work (no marker = BLOCKED). It goes into the builder spec; its Gates and Verify
   sub-blocks go into the review spec.
-- **CODEX tasks** go out as ONE job for the gate seat's thread:
+- **CODEX tasks** go out as one job for the gate seat's thread:
   `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, the stack
   rules, and the parent-thread clause from specs.md "Astra delegates by
   tier"; launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
@@ -176,7 +170,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   verify with targeted slices - DONE is a claim until you have seen the
   output; NEEDS_CONTEXT gets a REVISED spec as a fresh job.
 - **Smoke gate:** when every task has landed, run the project's real build
-  and test suite ONCE (one Bash call) where the plan states they are local
+  and test suite once (one Bash call) where the plan states they are local
   and isolated; otherwise run only the read-only checks and say so. A change
   a user or client sees also runs the project's recorded run recipe
   (`.claude/skills/run-<name>/SKILL.md`, invoked by its own name or through the bundled `run` skill) against
@@ -187,17 +181,6 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 ### Gate 4 - Verify before declaring done
 
-- Verify at the layer of the claim: look at the output, the page, the diff.
-  Exit code 0 only proves the layer below the claim.
-- Use evidence you did not generate. Sample the tails. Treat good news as
-  suspect until you can explain why it is real.
-- Re-check against the original request, the authoritative plan, and the
-  standing rules. Zero-context test for anything user-facing.
-- Gate 4 is your own check. For a real build it is the entry ticket to the
-  review gate, not a substitute for it.
-- Smells: you just said or thought "should work" about anything you can test
-  now; a result came back surprisingly clean and you moved on.
-
 ### The review gate - the build gets broken on purpose
 
 - **Seat by what was built:** BUILDER-side work -> the gate seat (Astra, or
@@ -205,10 +188,10 @@ runs, do not build; prepare test names and the review-spec skeleton.
   (`subagent_type: "model-router:reviewer"`), because the gate seat's own
   thread built it. On an xhigh row (an excluded category, multi-file
   architecture, re-review after a P1) the BUILDER-side review runs twice in
-  parallel: the gate seat AND a fresh Fable, each with the full BUILDER
+  parallel: the gate seat and a fresh Fable, each with the full BUILDER
   scope; you rule on both ledgers, and a finding raised by one seat only is
   still a finding. A build with both sides gets both reviews in the same
-  message, partitioned: the gate seat's `<review_scope>` opens "Review ONLY
+  message, partitioned: the gate seat's `<review_scope>` opens "Review only
   the BUILDER tasks <numbers, files>; the CODEX tasks were built by your own
   thread - do not grade them", the fresh Fable's "Review the CODEX tasks
   <numbers, files> and every seam with the BUILDER tasks"; each acceptance
@@ -227,13 +210,14 @@ runs, do not build; prepare test names and the review-spec skeleton.
 ### After the review - you arbitrate, fixes go out by tier
 
 - **Every finding gets a verdict in RUN.md:** accepted -> a fix delegation
-  (finding verbatim, a failing repro written first, paths and what not to
-  touch); rejected -> one logged line naming the evidence you checked, a
-  reason you would defend to the user. To hear the seat first, send ONE
+  (finding verbatim with its bug class, a failing repro written first, paths
+  and what not to touch); rejected -> one logged line naming the evidence you checked, a
+  reason you would defend to the user. To hear the seat first, send one
   rebuttal call - the review spec plus a `<builder_rebuttal>` block (the
   finding, the command you ran, its output, your reading); its answer is
   advice, and you rule. The report lists every finding as FIXED, WITHDRAWN (by you
   with the logged reason, or by the reviewer), or ESCALATED to the user.
+  Fix-every-instance sweep, PRE-EXISTING routing, and review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line): phases.md "Phase 4".
 - **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by
   default, the Claude column when Codex is blocked or the fix needs the
   Claude harness; a mechanical multi-file fix goes to `model-router:builder-low`; any other multi-file Claude-column fix goes to a fresh Opus subagent (`model-router:builder` or `builder-medium`, the arm the effort-trial rule gives it) even on an Opus session. A Codex-column fix
@@ -256,9 +240,11 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 ### Gate 5 - Report calibrated
 
-- Open with what needs the user: open decisions, approvals, commands only
-  the user can run (commits, pushes, uploads); then what shipped and how it
-  was verified.
+- The chat report is the short report in decision-page.md (at most 6 lines,
+  needs-you first: open decisions, approvals, commands only the user can run
+  such as commits, pushes, uploads), with a decision page when its fork says
+  so. Everything below goes into the run's report file (decision-page.md,
+  "Report file").
 - Separate verified from assumed, out loud; mark any research or audit claim
   you could not confirm and say where you looked. Cite file paths, line numbers,
   commands, the numbers you saw. Report what you observed, not what you
@@ -274,9 +260,6 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 ## Standing habits (beyond the five in the global CLAUDE.md)
 
-- Pick the next action by information per unit cost.
-- Unblock yourself before escalating; escalate only decisions the user owns,
-  bundled.
 - Waves launch whole: every task of a wave goes out as delegations in one
   message (fanout.md, "Build waves"); three tool calls' worth stays
   in-session. You set ownership after the plan gate.
@@ -294,4 +277,4 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 Lane B, Lane C, and transport deltas for Lead mode: lead-mode-deltas.md (read the section when you reach that lane or launch).
 
-Model notes (Fable / Opus 5.5 / Sonnet 5.5 / Haiku 4.5 behaviors): lead-mode-deltas.md, "Model notes" - read yours before Gate 1.
+Model notes (Fable / Opus 5.5 / Sonnet 5.5 / Haiku 5.5 behaviors): lead-mode-deltas.md, "Model notes" - read yours before Gate 1.

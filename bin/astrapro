@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# astrapro - send ONE brief to GPT-6 Astra Pro through the local, browser-only
+# codex-chatgpt-web bridge. Thin shim: the wrapper is scripts/astrapro.py
+# (usage, exit codes, env and design are in its docstring).
+# Usage: astrapro <run> <name> [--keep-open] < brief.md
+# Resolves the script like bin/lanew resolves lanew_log.py: first next to this
+# file (the shareable repo has bin/ and scripts/ side by side), then
+# $HOME/model-router/scripts.
+script="$(dirname "$0")/../scripts/astrapro.py"
+[ -f "$script" ] || script="$HOME/model-router/scripts/astrapro.py"
+exec python "$script" "$@"

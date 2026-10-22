@@ -12,7 +12,7 @@ Plans one user-facing surface and emits a blueprint block a builder subagent can
 
 **Precedence.** When frontend-design, impeccable, or hallmark would also fire on a new-UI request, this skill runs first and loads them as reference; they are invoked directly only through step 1's table.
 
-**Who runs it.** Claude Opus 5.5 is the senior seat for design and UI/UX, by the user's standing decision. On an Opus 5.5 session run this skill in-session. On a Fable 5.1, Sonnet 5.5 or Haiku 4.5 session the orchestrator delegates it to `model-router:designer` (Opus 5.5 at xhigh, read-only), which returns the `## Design (from design-pass)` block, and pastes that block into the builder spec. The block's direction stands at every later gate; reviewers report only what will not work.
+**Who runs it.** Claude Opus 5.5 is the senior seat for design and UI/UX, by the user's standing decision. On an Opus 5.5 session run this skill in-session. On a Fable, Sonnet or Haiku session the orchestrator delegates it to `model-router:designer` (Opus 5.5 at xhigh, read-only), which returns the `## Design (from design-pass)` block, and pastes that block into the builder spec. The block's direction stands at every later gate; reviewers report only what will not work.
 
 What each source is, which sections this skill reads, and its exact path: [references/sources.md](references/sources.md).
 

@@ -22,7 +22,7 @@ One seat over a whole site or dashboard is the slow path: on 2026-10-03 a single
 
 ### When to fan out
 
-Every audit, review, browser QA, or research job is sized here before its first seat launches, including a Phase 3/4 review whose diff is large. The pairing rule (phases.md) still decides WHICH seat reviews; this file decides HOW MANY copies of it run and over which slice each.
+Every audit, review, browser QA, or research job is sized here before its first seat launches, including a Phase 3/4 review whose diff is large. The pairing rule (phases.md) still decides which seat reviews; this file decides how many copies of it run and over which slice each.
 
 ### 1 - Count units
 
@@ -49,7 +49,7 @@ N = ceil(units / capacity), plus one cross-cutting seat when step 3 calls for it
 
 ### 3 - Partition
 
-Slice by surface, never by dimension: each seat owns a disjoint set of units (a page group, a directory, a question set) and applies the WHOLE rubric to it. A dimension split (one seat for a11y, one for copy, one for perf) makes every seat read the whole surface, so it costs N full reads and saves no time.
+Slice by surface, never by dimension: each seat owns a disjoint set of units (a page group, a directory, a question set) and applies the whole rubric to it. A dimension split (one seat for a11y, one for copy, one for perf) makes every seat read the whole surface, so it costs N full reads and saves no time.
 
 Group units that share a template or data source into one slice, so one seat sees each pattern once and reports it once.
 

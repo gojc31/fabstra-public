@@ -10,6 +10,7 @@ hooks:
           command: python
           args:
             - '{{SKILLS_DIR}}\careful\guard.py'
+          onFailure: block
 ---
 
 # careful

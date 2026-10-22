@@ -24,7 +24,7 @@ and rotates on. $CODEX_PRO_LOGIN (Pro) also has separate GPT-5.3-Codex-Spark
 windows that only `spark` draws on (verified 2026-09-06: Astra native on Pro
 spawned `spark` and the child rollout ran on `gpt-5.3-codex-spark`). With
 `proxy-pin both` (standing) every login rotates; `proxy-pin team` disables
-only the Pro file. "Out of credits" is NOT a 429: a seat that runs dry keeps
+only the Pro file. "Out of credits" is not a 429: a seat that runs dry keeps
 being round-robined until the credit check disables it. The proxy
 remembers a credential's last error per model, so a login that once answered
 "not supported" for a model is not retried until the proxy restarts. Never
@@ -33,25 +33,34 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
 
 ## The fast pin (last bullet of the effort rubric)
 
-- **Standing fast window, on since 2026-09-28, no end date - JC 2026-10-03:
+- **Standing fast window (builds only since 2026-10-17), on since 2026-09-28, no end date - JC 2026-10-03:
   stays on until JC says stop (opened by JC 2026-09-28 to spend weekly
   quota before the reset).** `.codex-pro` (gojc31 Pro) and
   `.codex-biz` ($CODEX_BIZ_LOGIN) both hold `service_tier = "fast"` for
-  the whole window: no `fast` word needed, and runs do NOT end with
+  the whole window: no `fast` word needed, and runs do not end with
   `codex-fast off`. Every Codex-transport launch (Codex-side builds,
   Codex-column fixes, the Codex review fallback) goes native, round-robin
-  over the two homes: `H=$(codex-fast-home); CODEX_HOME="$H" CODEX_DIRECT=1
-  node "$C" task ...` (`~/bin/codex-fast-home` alternates .codex-pro /
-  .codex-biz and prints the home; `codex-fast-home peek` shows the next one
-  without advancing). A usage-limit error on one home -> `echo pro >
-  ~/.codex-fast-skip` (or `biz`) so the picker skips it for the rest of the
-  window, and relaunch; both spent -> the router launch with no prefix
-  (standard tier, rotating the other logins), logged. Log `fast
-  (standing window, <home>)` beside the effort in RUN.md. **Reviews move
-  too (JC, 2026-09-28):** the design review and Reviewer A/B run on this
-  fast native path instead of the proxy `claude -p` - recipe under
-  "Standing fast window: reviews" in transport.md. Only Lane B stays on
-  `claude -p` (standard tier), because Astra builds inside that session. The scheduled task
+  over the two homes, builds (`--write`) included: `H=$(codex-fast-home) || H=`,
+  then `CODEX_HOME="$H" CODEX_DIRECT=1 node "$C" task ...` only when `H` is
+  non-empty (an empty `H` first runs `unset CODEX_HOME CODEX_DIRECT`, so an
+  inherited native selection cannot survive; `~/bin/codex-fast-home` alternates .codex-pro / .codex-biz and
+  prints the home; `codex-fast-home peek` shows the next one without
+  advancing). A usage-limit error on one home -> append it to the skip file,
+  `echo pro >> ~/.codex-fast-skip` (or `biz`; the file holds one name per
+  line and the picker skips every listed home for the rest of the window),
+  and relaunch. When every home is skipped the picker prints "codex-fast-home:
+  all fast homes skipped (<list>) - use the router launch (quota.md)" to
+  stderr and exits 3, so `H` is empty: run the router launch with no prefix
+  (standard tier, rotating the other logins) for builds, or the proxy
+  `claude -p` command for reviews, and log it. Log `fast
+  (standing window, <home>)` beside the effort in RUN.md. **Reviews moved
+  back to the proxy (JC, 2026-10-17):** the design review and Reviewer A/B
+  run on the proxy `claude -p` commands in transport.md (standard tier,
+  rotating every login), not on this fast path. Native fast reviews had all
+  landed on gojc31 Pro at 2.5x and drained it. The window now covers
+  Codex-transport builds and Codex-column fixes only; the read-only Codex
+  transport stays the review fallback and then also uses the picker. Lane B
+  stays on `claude -p`. The scheduled task
   `CodexFastOff-2026-10-04` is disabled (2026-10-03); turning the window off
   is a manual `codex-fast off pro` + `off biz` when JC says so - then this
   bullet is void: run `codex-fast status pro` / `status biz`, turn off
@@ -70,16 +79,16 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   the `CODEX_HOME="${CODEX_PRO_HOME:-$HOME/.codex-pro}" CODEX_DIRECT=1` prefix (or uses
   the `codex-pro` shim) - the config switch alone does nothing if the job
   runs through the router. Fast is a service tier, not an effort: Astra
-  streams about 2x faster, Sol / Terra / Luna 1.5x (GPT-6 Sol; `gpt-6.1-sol` does not advertise the priority tier as of 2026-09-30 and runs at standard speed), every request on that
+  streams about 2x faster, `gpt-6.1-sol` about 2x (advertised and verified 2026-10-13; it ran at standard speed before), GPT-6 Sol / Terra / Luna 1.5x, every request on that
   login's pool costs 2.5x, and children Astra spawns inherit it (`spark`
   has no fast tier and stays standard, and is Pro-home only - a fast run
-  on `.codex-pro` can use `spark` directly). It reaches ONLY a
+  on `.codex-pro` can use `spark` directly). It reaches only a
   native home - verified 2026-09-06 on Pro and 2026-09-10 on `.codex-biz`
   (`x-codex-routing-hint: model=gpt-6-astra;tier=priority` on the websocket
   handshake): the `claude -p` transport (design review, Reviewer A/B, Lane
   B) and anything through the proxy ignore it - so a fast run still has
   standard-speed reviews, and the report says so. A `-c service_tier=fast`
-  flag on the command line is NOT enough (verified 2026-09-10: the turn
+  flag on the command line is not enough (verified 2026-09-10: the turn
   showed `service_tier: None` and no handshake hint); the config switch is
   the only door. Without the word, standard tier; a slow run is never a
   reason to turn it on yourself. The fast pin and the Pro-home surfaces
@@ -108,7 +117,7 @@ relaunch the same spec once (`--fresh` on the Codex transport; the proxy command
 it has no such flag). Sol's
 quota errors read the same with `gpt-6.1-sol` and cover every login.
 
-Lane W (ChatGPT-web second opinion) was retired 2026-09-27; there is no non-gating fallback seat.
+Lane W stays retired (2026-09-27). The non-gating Pro consult seat (pro-consult.md) exists since 2026-10-17; it never replaces a gate or review seat.
 Codex-only breakages: "Codex CLI is not installed" means the PATH shims are
 missing; an auth error on the router path is the proxy key or a proxy
 credential (`MODEL_ROUTER_KEY` vs config.yaml, then `expired`/`disabled` in
@@ -118,7 +127,8 @@ is dead while its record still says running is most often a mid-turn
 message that killed a foreground launch - read the job log's last lines
 first (a crash or timeout looks different), then relaunch it through the
 background call. These are diagnoses to check, not verdicts. Always say
-which reviewer and transport ran and why.
+which reviewer and transport ran and why. What replaces a blocked or
+cooling seat is the table in transport.md, "Reviewer fallback".
 
 Your own pass over the build is never the only review; never silently skip
 review. Effort comes from the effort rubric; never drop below its floor to

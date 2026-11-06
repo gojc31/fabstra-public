@@ -123,7 +123,9 @@ A consult never blocks a run.
 
 ## Setup facts and cost
 
-For a fresh machine or a reinstall: launcher 6.1.9 from
+For a fresh machine or a reinstall: launcher 6.1.17 (2026-11-03; 6.1.16+ is required since ChatGPT's
+model-control change around 2026-10-30, which older launchers misreport as
+"Selected model is at capacity") from
 github.com/miuuyy/codex-chatgpt-web (verify sha256 against `checksums.txt`),
 under `%LOCALAPPDATA%\Programs\Codex Web GPT`. Run setup in browser-only mode
 with `CODEX_HOME=~/.codex-web` and `--browser-host-descriptor`, pick "With
@@ -131,6 +133,12 @@ Automation", JC signs in. The main `~/.codex/config.toml` is never touched.
 Gotchas: `env -u ELECTRON_RUN_AS_NODE` when starting the launcher from Claude
 Code; the Windows CLI `setup` and `service` refuse ("requires macOS"), so the
 launcher owns the runtime.
+After an upgrade, quit the launcher the installer opens (it starts without
+`CODEX_HOME=~/.codex-web`, so its runtime upgrade refuses with "integration
+journal belongs to ~/.codex-web" and the bridge never answers healthz) and let
+`astrapro` start it. When consults fail, read
+`~/.codex-chatgpt-web/diagnostics/browser-turns/<latest>/*turn-failed.json` for
+the real error.
 
 Cost: each consult spends Pro chat messages. The count is not observable from
 here; the job cap is a proxy for it.

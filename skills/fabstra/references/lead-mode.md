@@ -2,7 +2,9 @@
 
 Contents: Who does what; Seat rubric; The five gates; Standing habits
 
-Reached from: fabstra SKILL.md - Lead mode (session model Sonnet 5.5, Haiku 5.5, or Opus 5.5 below the Orchestrate threshold - a plan with 2+ tasks or an excluded category; at or above it Opus 5.5 runs Orchestrate mode, phases.md)
+Reached from: fabstra SKILL.md - Lead mode (session model Sonnet 5.5, Haiku 5.5, or Opus 5.5 below the Orchestrate threshold - a plan with 2+ independent tasks or an excluded category; at or above it Opus 5.5 runs Orchestrate mode, phases.md)
+
+What the Orchestrate threshold counts: Independent tasks edit disjoint files and neither needs the other's result before its spec can be written. Tasks that edit the same files, or a chain where a step cannot be specced until the previous step lands, count as one task toward the threshold. A run-time dependency alone does not merge tasks - a contract task and the tasks that build against its stated interface, or an API and the client that calls it, stay separate and run in later waves (fanout.md). In doubt, count them as separate.
 
 You are the lead: you draft the plan, send it through the plan gate, build
 what the authoritative plan says (yourself or by tier), run the smoke gate,
@@ -86,8 +88,8 @@ of them, stop and go back to that gate.
 
 ### Gate 2 - Evidence before reasoning
 
-- On Opus 5.5 the mode is settled when the draft plan exists: 2+ tasks or
-  an excluded category -> switch to Orchestrate mode now (phases.md, from
+- On Opus 5.5 the mode is settled when the draft plan exists: 2+ independent
+  tasks (defined at the top of this file) or an excluded category -> switch to Orchestrate mode now (phases.md, from
   Phase 1, with this draft as the plan); fewer -> stay here. Log `mode=` in
   RUN.md; never switch after a builder has launched.
 - Real build: write the draft plan to `<scratch>/fabstra-plan-<name>.md`
@@ -120,8 +122,8 @@ runs, do not build; prepare test names and the review-spec skeleton.
   `--effort` per the rubric), with that section's fallbacks.
 - **After the gate:** arbitrate every finding into RUN.md - accepted by
   revising the plan, rejected with one logged line. OPEN FOR THE USER items
-  go to the user now, bundled (a decision page or one chat line, per the
-  fork in decision-page.md), and block only the tasks they name; write each
+  go to the user now, bundled into one AskUserQuestion call (max 4
+  questions; decision-page.md), and block only the tasks they name; write each
   answer into the plan under its task as "user decision <date>". The revised
   plan is the AUTHORITATIVE PLAN: save it as
   `<scratch>/fabstra-plan-<name>-authoritative.md` and build from it. Then
@@ -146,15 +148,15 @@ runs, do not build; prepare test names and the review-spec skeleton.
   self-contained one to Sonnet (a "sonnet max" pin: `model-router:sonnet-max`,
   phases.md), a one-file mechanical one to Haiku (Agent
   tool, `model: "sonnet"` / `"haiku"`), a mechanical one across 2+ files to
-  `model-router:builder-low` (`arm=builder-low eligible=no`), or an Opus-tier one to the arm the effort
-  trial picks (SKILL.md, Effort: `model-router:builder` or
-  `model-router:builder-medium`). Every delegation carries a spec per specs.md
+  `model-router:builder-low` (`arm=builder-low eligible=no`), or an Opus-tier one to
+  `model-router:builder` (Opus 5.5 xhigh; `arm=builder eligible=post-trial`,
+  SKILL.md, Effort). Every delegation carries a spec per specs.md
   "Builder spec contract".
 - **Design block:** a UI surface gets its `## Design (from design-pass)`
   block first - on an Opus 5.5 session you run the `design-pass` skill; a
   Sonnet or Haiku session makes one `model-router:designer` call stating
-  `Pass: INTERNAL`, or `Pass: CLIENT` with the brief - airlock-washed for
-  client-E work (no marker = BLOCKED). It goes into the builder spec; its Gates and Verify
+  `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E
+  included (JC 2026-10-31; no marker = BLOCKED). It goes into the builder spec; its Gates and Verify
   sub-blocks go into the review spec.
 - **CODEX tasks** go out as one job for the gate seat's thread:
   `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, the stack
@@ -220,7 +222,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   Fix-every-instance sweep, PRE-EXISTING routing, and review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line): phases.md "Phase 4".
 - **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by
   default, the Claude column when Codex is blocked or the fix needs the
-  Claude harness; a mechanical multi-file fix goes to `model-router:builder-low`; any other multi-file Claude-column fix goes to a fresh Opus subagent (`model-router:builder` or `builder-medium`, the arm the effort-trial rule gives it) even on an Opus session. A Codex-column fix
+  Claude harness; a mechanical multi-file fix goes to `model-router:builder-low`; any other multi-file Claude-column fix goes to a fresh Opus subagent (`model-router:builder`) even on an Opus session. A Codex-column fix
   is its own launch (lead-mode-deltas.md, "Lead mode delta - transports"). The `claude -p` transport
   never carries fixes outside Lanes B and C. Independent fixes launch in
   parallel. In-session only: a one-line P3 you can see whole; a P1 or P2
@@ -242,8 +244,8 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 - The chat report is the short report in decision-page.md (at most 6 lines,
   needs-you first: open decisions, approvals, commands only the user can run
-  such as commits, pushes, uploads), with a decision page when its fork says
-  so. Everything below goes into the run's report file (decision-page.md,
+  such as commits, pushes, uploads), with the questions asked via AskUserQuestion
+  (decision-page.md). Everything below goes into the run's report file (decision-page.md,
   "Report file").
 - Separate verified from assumed, out loud; mark any research or audit claim
   you could not confirm and say where you looked. Cite file paths, line numbers,

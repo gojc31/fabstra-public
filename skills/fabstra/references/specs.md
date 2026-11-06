@@ -18,7 +18,8 @@ plan WILL NOT WORK before it is built. You may read anything in the
 repository and run read-only commands; you change nothing.
 Brief: <the user's brief>
 Plan: <numbered tasks with tiers and acceptance criteria, verbatim>
-Project stack and hard rules: <from the project's CLAUDE.md, verbatim>
+Project stack and hard rules: <from the project's CLAUDE.md, plus any feedback
+memories that apply to this task, all verbatim>
 </task>
 <blueprints>
 <every builder spec, verbatim, in task order - outcome, invariants, scope,
@@ -67,11 +68,10 @@ with this report.
 
 Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via Astra.
 
-One Agent tool call per task. Opus tier: the arm the effort trial picks
-(SKILL.md, Effort) - `subagent_type: "model-router:builder"` (Opus 5.5 xhigh)
-or `"model-router:builder-medium"` (Opus 5.5 medium); a mechanical task
-spanning 2+ files: `"model-router:builder-low"` (Opus 5.5 low, outside the
-trial). All three pin their own model and effort. Sonnet and Haiku tiers:
+One Agent tool call per task. Opus tier: `subagent_type: "model-router:builder"`
+(Opus 5.5 xhigh; log `arm=builder eligible=post-trial`); a mechanical task
+spanning 2+ files: `"model-router:builder-low"` (Opus 5.5 low; log
+`arm=builder-low eligible=no`). Both pin their own model and effort. Sonnet and Haiku tiers:
 `subagent_type: "general-purpose"`, `model: "sonnet"` / `"haiku"` per the rubric (required - an
 omitted model inherits the Fable session; the guard denies it), prompt = a
 self-contained spec. Under a Sonnet max pin the Sonnet tier takes
@@ -95,9 +95,9 @@ The spec fixes, in this order:
   - UI surface in the task (page, screen, component, dashboard, landing
     section, form, empty/error state): get its "## Design (from design-pass)"
     block from one Agent call, `subagent_type: "model-router:designer"` (Opus
-    5.5 xhigh, read-only; for client-E client work run `airlock` first and pass
-    the washed brief with `Pass: CLIENT`, other client work the brief as
-    given with `Pass: CLIENT`, else `Pass: INTERNAL`), and paste the
+    5.5 xhigh, read-only; client work, client-E included, passes the brief as
+    given with `Pass: CLIENT` (JC 2026-10-31: no airlock wash before the
+    designer), else `Pass: INTERNAL`), and paste the
     block into the builder spec's Conventions; the review spec gets its Gates
     and Verify sub-blocks. Builders never load skills, so a blueprint without
     this block ships the on-distribution defaults.
@@ -209,7 +209,7 @@ followed by Claude-only rules.
 **Astra delegates by tier.** Codex's `multi_agent` feature gives the parent
 thread `spawn_agent`; three custom agents exist for it in `~/.codex/agents`:
 `sol` (GPT-6.1 Sol at xhigh, workspace-write, the Opus-tier role), `terra`
-(GPT-5.6 Terra at high, the Sonnet-tier role), and `luna` (GPT-6 Luna at
+(GPT-6.1 Terra at high, the Sonnet-tier role), and `luna` (GPT-6 Luna at
 medium, the Haiku-tier role), plus `spark` (GPT-5.3-Codex-Spark at medium,
 the same Haiku-tier role at 1000+ tok/s; defined only in `~/.codex-pro/agents`
 because it is Pro-only and the proxy cannot serve it; it meters on its own
@@ -274,6 +274,15 @@ A re-review keeps its round facts even as a plain spec: beside
 `<prior_findings>` it still carries the `Build-start base:` line, that
 round's diff, and from round 3 the round-3 `<review_scope>` text.
 
+**Reviewer C (the fresh Fable 5.1 Agent seat, `model-router:reviewer`):**
+drop the `<turn_budget>` block from the spec it receives. The 30-call
+ceiling is the proxy `claude -p` seats' `--max-turns 30` (transport.md); the
+Agent seat has no cap and carries about 2.5x the scope (fanout.md, seat
+capacity), so the count only cuts its verification short. Keep the save
+instructions - it can write. Same for the design-review template on the
+rows where the fresh Fable holds the design gate (transport.md, Reviewer
+fallback). GPT seats keep the block.
+
 **Review spec template** (GPT models hold contracts best as XML blocks):
 
 ```xml
@@ -281,7 +290,8 @@ round's diff, and from round 3 the round-3 `<review_scope>` text.
 Adversarially review this build. You are the red team - find what is WRONG.
 Brief: <the user's brief>
 Acceptance criteria: <from the plan, verbatim>
-Project stack and hard rules: <from the project's CLAUDE.md, verbatim>
+Project stack and hard rules: <from the project's CLAUDE.md, plus any feedback
+memories that apply to this task, all verbatim>
 Project review rules: <the project's root REVIEW.md, verbatim, then the
 precedence line above; drop this line when there is none>
 </task>

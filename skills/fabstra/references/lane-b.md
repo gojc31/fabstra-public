@@ -72,8 +72,8 @@ verification commands you ran this session, and the tail of their output,
 and one line reading exactly `delegation: none` or `delegation: <N> Agent
 calls succeeded`."
 A user-facing surface in the task: get the `## Design (from design-pass)`
-block from `model-router:designer` first (run `airlock` before it for client-E
-client work only) and paste the block into the brief.
+block from `model-router:designer` first (client briefs as given, client-E
+included - JC 2026-10-31) and paste the block into the brief.
 Optional delegation clause, add it only when the task has genuinely disjoint
 slices: "The Agent tool is available; on this session `model: "opus"`,
 `"sonnet"` and `"haiku"` all resolve to GPT-6.1 Sol. Delegate only

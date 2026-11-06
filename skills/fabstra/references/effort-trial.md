@@ -16,3 +16,5 @@ The 2026-10-08 readout weighs each of these:
 - builder-low vs Haiku: compare first-pass acceptance of multi-file mechanical edits on `model-router:builder-low` against earlier Haiku runs.
 - Designer effort: the designer agent (`agents/designer.md`) runs Opus 5.5 at xhigh, carried over and unmeasured; the official Opus 5.5 prompting guide (fetched 2026-10-01) says reserve xhigh/max for measured gains, so decide designer effort at this readout.
 - Sonnet 5.5 effort: its levels are recalibrated (official Sonnet 5.5 guide, fetched 2026-10-01: medium for well-specified agentic work, high for harder or longer work); `general-purpose` Sonnet subagents inherit the session effort, so weigh that when setting the session effort.
+
+Readout done 2026-10-18 (`~/.fabstra/audit-2026-10-18/effort-trial-readout.md`): JC kept `model-router:builder` (xhigh) as the Opus-tier build seat.

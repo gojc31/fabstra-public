@@ -35,8 +35,8 @@ from a routed session is headless delegation on the user's own Claude login -
 Claude Code calling Claude Code, which is not a third-party tool - by stripping
 the proxy env from the child (VERIFIED 2026-09-11: from a proxied env,
 `env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY claude -p
---model haiku ...` answered on `claude-haiku-4-5` with no auth warning; since 2026-10-08 the
-`haiku` alias resolves to `claude-haiku-5-5` through the settings env pin, and natively since CLI 2.1.296). Strip all
+--model haiku ...` answered on the Claude login with no auth warning; `haiku`
+resolves to `claude-haiku-5-5` - the settings env pin and the CLI agree, specs.md). Strip all
 three: leaving `ANTHROPIC_API_KEY` in place bills the API key, not the
 subscription. Shape, one background Bash call per task, cwd = the project:
 
@@ -62,7 +62,7 @@ window is the problem, say so instead of burning it.
 |---|---|---|
 | ORCHESTRATOR | the session itself | `gpt-6-astra` (default) or `glm-5.3-flash`; never `deepseek-v4.1-flash` |
 | BUILDER - complex implementation | `model-router:worker` | `gpt-6.1-sol` |
-| SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-5.6-terra` |
+| SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-6.1-terra` |
 | MECHANIC - trivial, fully specified | `model-router:mechanic-routed` | `gpt-6-luna` |
 | BUILDER (OpenRouter default) - all coding on the cheap lane; empty-200 retry, see Lane C | `model-router:deepseek41-routed` | `deepseek-v4.1-flash` |
 | BUILDER (cheapest fallback) - three empty-200s on one task, or cost is the constraint | `model-router:builder-budget` | `glm-5.3-flash` |

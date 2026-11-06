@@ -33,7 +33,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
 
 ## The fast pin (last bullet of the effort rubric)
 
-- **Standing fast window (builds only since 2026-10-17), on since 2026-09-28, no end date - JC 2026-10-03:
+- **Standing fast window (builds AND reviews, always on - JC 2026-11-01), on since 2026-09-28, no end date - JC 2026-10-03:
   stays on until JC says stop (opened by JC 2026-09-28 to spend weekly
   quota before the reset).** `.codex-pro` (gojc31 Pro) and
   `.codex-biz` ($CODEX_BIZ_LOGIN) both hold `service_tier = "fast"` for
@@ -53,13 +53,12 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   stderr and exits 3, so `H` is empty: run the router launch with no prefix
   (standard tier, rotating the other logins) for builds, or the proxy
   `claude -p` command for reviews, and log it. Log `fast
-  (standing window, <home>)` beside the effort in RUN.md. **Reviews moved
-  back to the proxy (JC, 2026-10-17):** the design review and Reviewer A/B
-  run on the proxy `claude -p` commands in transport.md (standard tier,
-  rotating every login), not on this fast path. Native fast reviews had all
-  landed on gojc31 Pro at 2.5x and drained it. The window now covers
-  Codex-transport builds and Codex-column fixes only; the read-only Codex
-  transport stays the review fallback and then also uses the picker. Lane B
+  (standing window, <home>)` beside the effort in RUN.md. **Reviews fast again (JC, 2026-11-01, "always"):**
+  the design review and Reviewer A/B run read-only on this fast path
+  (transport.md "Standing fast window: reviews"), not on the proxy
+  `claude -p` commands, which stay the fallback when every home is skipped
+  or the Codex CLI fails. JC accepted the 2.5x drain on gojc31 Pro that
+  caused the 2026-10-17 retirement. Lane B
   stays on `claude -p`. The scheduled task
   `CodexFastOff-2026-10-04` is disabled (2026-10-03); turning the window off
   is a manual `codex-fast off pro` + `off biz` when JC says so - then this
@@ -85,9 +84,10 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   on `.codex-pro` can use `spark` directly). It reaches only a
   native home - verified 2026-09-06 on Pro and 2026-09-10 on `.codex-biz`
   (`x-codex-routing-hint: model=gpt-6-astra;tier=priority` on the websocket
-  handshake): the `claude -p` transport (design review, Reviewer A/B, Lane
-  B) and anything through the proxy ignore it - so a fast run still has
-  standard-speed reviews, and the report says so. A `-c service_tier=fast`
+  handshake): the `claude -p` transport and anything through the proxy
+  ignore it - Lane B always; the design review and Reviewer A/B only when
+  they fall back to the proxy command (every fast home skipped, or the Codex
+  CLI failing) - and the report names the transport each review ran on. A `-c service_tier=fast`
   flag on the command line is not enough (verified 2026-09-10: the turn
   showed `service_tier: None` and no handshake hint); the config switch is
   the only door. Without the word, standard tier; a slow run is never a

@@ -22,8 +22,9 @@ Responses provider; nothing is translated, and the Codex runtime, sandbox,
 and `spawn_agent` stay native. Proxy history: Old patterns, at the end.
 
 **Session check:** the orchestrator is Fable 5.1, or Opus 5.5 above the
-Orchestrate threshold (a plan with 2+ tasks, or an excluded category) -
+Orchestrate threshold (a plan with 2+ independent tasks, or an excluded category) -
 Orchestrate mode, this file; the orchestrator never writes code in-session.
+**What the threshold counts:** Independent tasks edit disjoint files and neither needs the other's result before its spec can be written. Tasks that edit the same files, or a chain where a step cannot be specced until the previous step lands, count as one task toward the threshold. A run-time dependency alone does not merge tasks - a contract task and the tasks that build against its stated interface, or an API and the client that calls it, stay separate and run in later waves (fanout.md). In doubt, count them as separate.
 On Opus 5.5 the mode is settled when the draft plan exists: at or above the
 threshold -> continue here from Phase 1 with that draft as the plan; below
 it -> Lead mode. Log `mode=` in RUN.md; never switch after a builder has
@@ -121,10 +122,9 @@ like any other.
   `## Design (from design-pass)` block from one Agent call,
   `subagent_type: "model-router:designer"` (Claude Opus 5.5 at xhigh,
   read-only; it pins its own model and effort), before its Opus or Sonnet
-  blueprint is written. For client-confidential work run your
-  redaction gate (`airlock` if installed) first and hand the designer the washed brief
-  with `Pass: CLIENT`; other client work skips airlock and passes the brief
-  as given with `Pass: CLIENT`; otherwise state `Pass: INTERNAL`. The block goes into the builder spec's Conventions and
+  blueprint is written. Client work, client-E included (JC 2026-10-31: no
+  airlock wash before the designer), passes the brief as given with
+  `Pass: CLIENT`; otherwise state `Pass: INTERNAL`. The block goes into the builder spec's Conventions and
   its Gates / Verify sub-blocks into the review spec (specs.md). Opus 5.5
   owns visual direction; Astra and every other reviewer
   report only what will not work, never taste. Lane C and Lane D sessions
@@ -185,7 +185,7 @@ Rules:
   is for changes whose worst failure is cosmetic.
 - Log the chosen effort and the one-line reason (rubric row, or "user said
   xhigh") in `RUN.md` beside the task.
-- Opus-tier builder arm: effort-trial.md (time-boxed trial) - read it before any Opus-tier delegation; its rule picks `model-router:builder` or `model-router:builder-medium` and what to log.
+- Opus-tier builder: `model-router:builder` (Opus 5.5 xhigh) for every Opus-tier delegation, excluded categories included; log `arm=builder eligible=post-trial`. The 2026-09-24..10-08 trial that alternated it with `builder-medium` is history (effort-trial.md); its readout was done 2026-10-18 and JC kept xhigh.
 - The effort row comes from this rubric alone, picked per task and logged
   beside the pick. The floor still applies: never below high for anything a
   user or client runs.
@@ -242,10 +242,10 @@ file:line -> fixed/rejected + one-line reason), and what is still open. You are 
 builders and reviewers never touch it. (In a git repo, add `.fabstra/` to
 `.gitignore` unless the user wants the record committed.)
 
-Each task line carries `tier`, `arm` (`builder` or `builder-medium` for an
-Opus-tier delegation, `builder-low` for a multi-file mechanical one, logged
-`eligible=no`, else `n/a`), `eligible` (yes/no, Opus-tier tasks, per
-the effort trial), `effort`, `elapsed` (minutes from launch to accepted), and
+Each task line carries `tier`, `arm` (`builder` for an Opus-tier
+delegation, `builder-low` for a multi-file mechanical one, else `n/a`),
+`eligible` (`post-trial` beside `builder`, `no` beside `builder-low`, else
+`n/a`), `effort`, `elapsed` (minutes from launch to accepted), and
 `first_pass` (yes/no - accepted with no fix round). Each review finding
 carries its task number and `repro: yes|no|na` (a failing reproduction
 existed before the fix).
@@ -287,7 +287,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   design and build", "astra build it", or the brief says Astra owns the
   design. A count - "spawn 3 astra subagents", "a few astras on this",
   "astra x3" - is Lane B fan-out (lane-b.md, "Fan-out"): N solo Astras on N
-  disjoint slices, never N children of one Astra parent.
+  disjoint slices, never N children of one Astra parent. "build ... use astra" on a NEW build is Lane B; "astra fast" or "using astra" on fixes or a list of changes is not (JC 2026-10-24).
   Lane B replaces Phases 1b-4 with lane-b.md: you write a brief, not
   blueprints; Astra designs
   and builds in one session; Sol and a fresh Fable both review and the
@@ -337,7 +337,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   task, not a bigger one - the same deliverables, built from rawer material
   with expert methods and an outside check. Each line that would add a
   deliverable goes in the plan as an option for JC's go (Lead mode: in the
-  OPEN FOR THE USER bundle; 2+ options go on a decision page,
+  OPEN FOR THE USER bundle; each is asked via AskUserQuestion,
   decision-page.md). A recurring-problem fix also names its durable
   version - what keeps it fixed (a monitor, a check, a scheduled replay) -
   as one such option. Skip it - straight to the plan - for a small or
@@ -355,6 +355,10 @@ keeps every run's record; the orchestrator never deletes a logbook.
   each with acceptance criteria - the reviewers will grade against these.
 - Group a real build's tasks into waves of 3-4 parallel builders, with any
   contract task alone in wave 0 (fanout.md, "Build waves").
+- **JC's readings (2026-10-24), applied before the class and the gate seat:**
+  - Excluded categories read strictly: auth includes signup and login input validation; money includes read-only views that compute or show money totals; a client-facing release includes any edit to a client's document, email, or live workflow, however small ("quick" does not lower it).
+  - Scoping or planning a client automation, even with no code yet, is a real build with the Astra gate - never a research run.
+  - Lane B (Astra solo) only when the request is to BUILD something new and names Astra for it ("build ... use astra", "astra build it"). "go all astra fast", "using astra" or "astra" on fixes, a numbered list of changes, or other work on existing code keeps Lane A with Astra pinned as the gate seat.
 - Decide now which of three build classes this run is: a **real build**
   (multi-file, anything a user or client will run, anything whose failure
   costs more than a review), a **contained change**, or a **small change**.
@@ -467,7 +471,7 @@ discovering what a build command finds for free. Log the result.
   |---|---|---|
   | Mechanical: rename, config, doc, one obvious line | Haiku (`model: "haiku"`) in one file; across 2+ files Opus 5.5 low (`subagent_type: "model-router:builder-low"`) | Astra delegating to `spark` (native on Pro) or `luna` (proxy) |
   | Contained, with a written contract: one function, one test, one component | Sonnet (`model: "sonnet"`; `model-router:sonnet-max` under a Sonnet max pin, routing rubric) | Astra delegating to `terra` |
-  | Multi-file, design-level, or the reviewer disagreed with the approach | Opus 5.5 (`subagent_type: "model-router:builder"` or `"model-router:builder-medium"` - the arm the effort-trial rule gives this task; excluded work always `builder`) | the gate seat delegating by tier (Astra to `sol`; Sol does it itself) (agent-file xhigh), or Astra itself at the pinned effort (else xhigh) |
+  | Multi-file, design-level, or the reviewer disagreed with the approach | Opus 5.5 (`subagent_type: "model-router:builder"`, xhigh) | the gate seat delegating by tier (Astra to `sol`; Sol does it itself) (agent-file xhigh), or Astra itself at the pinned effort (else xhigh) |
 
 - After each fix round, recount open findings in the logbook. Count did not
   go down? The approach is wrong - stop immediately and escalate to Opus
@@ -499,7 +503,7 @@ discovering what a build command finds for free. Log the result.
 - Report briefly, for a reader who did not watch the run: in chat the short
   report in decision-page.md (at most 6 lines, needs-you first: decisions
   left open, approvals, commands only the user can run such as commits,
-  pushes, uploads), with a decision page when its fork says so. The full
+  pushes, uploads), with the questions asked via AskUserQuestion (decision-page.md). The full
   report goes into the run's report file (decision-page.md, "Report
   file"): what shipped, how
   it was verified (cite paths, lines, commands, numbers seen; report what you

@@ -42,7 +42,7 @@ EXPLORE_LINE = ("Before taking any action, explore broadly with tool calls: list
                 "documents, spreadsheet tabs and records across the available apps that could be relevant "
                 "to this task, including ones the task does not explicitly mention, and use what you find.")
 TRIAL_FIRST = "Opus 5.5 builder effort trial, 2026-09-24 to 2026-10-08."
-TRIAL_POINTER = "Opus-tier builder arm: effort-trial.md"  # phases.md points at the trial rule (2026-10-03)
+TRIAL_POINTER = "Opus-tier builder: `model-router:builder`"  # phases.md names the post-trial seat (2026-11-01)
 NOTHING_WRONG = "Finding nothing wrong is a legitimate result"
 SEPARATE = "Separate verified from assumed"
 ARCHIVE = "RUN-<YYYY-MM-DD-HHMMSS>"

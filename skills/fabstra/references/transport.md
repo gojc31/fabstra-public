@@ -1,6 +1,6 @@
 # FabStra transport - the crew, the routing policy, and every launch command
 
-Contents: The crew in full (crew table, routing policy); Sol pin; Standing fast window: reviews (retired 2026-10-17); Codex transport; Codex write probe; Reviewer fallback; Phase 1b launch - DESIGN REVIEW; Phase 3 launch - ADVERSARIAL REVIEW
+Contents: The crew in full (crew table, routing policy); Sol pin; Standing fast window: reviews (always on since 2026-11-01); Codex transport; Codex write probe; Reviewer fallback; Phase 1b launch - DESIGN REVIEW; Phase 3 launch - ADVERSARIAL REVIEW
 
 Reached from: fabstra SKILL.md - before the first proxy or Codex launch of a run
 
@@ -15,12 +15,12 @@ Related:
 | ORCHESTRATOR - align, plan, blueprint, route, arbitrate, report | Claude Fable 5.1, or Claude Opus 5.5 at or above the Orchestrate threshold (SKILL.md) (session model) | this session; never builds, never edits code; owns every decision |
 | LEAD (Lead mode) - plan, build or delegate by tier, arbitrate, report | Claude Opus 5.5 / Sonnet 5.5 / Haiku 5.5 (session model) | this session; builds the authoritative plan and owns every decision - lead-mode.md |
 | DESIGN REVIEWER - critiques the plan and blueprints before build | GPT-6 Astra on the Astra row, GPT-6.1 Sol on the Sol row (gate seat rubric, SKILL.md), effort per the effort rubric | `claude -p` through the local proxy, read-only tools, background Bash call (Phase 1b); Codex transport read-only is its fallback |
-| BUILDER - complex implementation | Claude Opus 5.5 at xhigh | Agent tool subagent, `subagent_type: "model-router:builder"` (it pins its own model and effort); `model-router:builder-medium` on alternate tasks during the effort trial (SKILL.md, Effort) |
+| BUILDER - complex implementation | Claude Opus 5.5 at xhigh | Agent tool subagent, `subagent_type: "model-router:builder"` (it pins its own model and effort); log `arm=builder eligible=post-trial` (SKILL.md, Effort) |
 | SUPPORT - well-specified medium tasks | Claude Sonnet 5.5 | Agent tool subagent, `model: "sonnet"` |
 | SONNET MAX - Sonnet-tier tasks, only when the user pins it | Claude Sonnet 5.5 at max | Agent tool subagent, `subagent_type: "model-router:sonnet-max"` (pins its own model and effort); rule: phases.md routing rubric, Sonnet max pin |
 | MECHANIC - lookups, commands, single-file mechanical edits | Claude Haiku 5.5 | Agent tool subagent, `model: "haiku"` |
 | MECHANIC (multi-file) - mechanical edits spanning 2+ files | Claude Opus 5.5 at low | Agent tool subagent, `subagent_type: "model-router:builder-low"` (it pins its own model and effort); outside the effort trial, logged `arm=builder-low eligible=no` |
-| BUILDER (routed) - the Codex side, keep Claude usage down | the gate seat (Astra on the Astra row, Sol on the Sol row) as the parent thread, effort per the rubric | headless on the Codex CLI through the Codex transport below (`task --background --write --model gpt-6-astra`); Astra spawns the `sol` (GPT-6.1 Sol xhigh, Opus-tier), `terra` (GPT-5.6 Terra high, Sonnet-tier), `luna` (GPT-6 Luna medium, mechanic), and `spark` (GPT-5.3-Codex-Spark medium, fast mechanic; Pro home only, its own quota pool so it never draws on the general Codex window) custom agents from `~/.codex/agents` (`spark` only in `~/.codex-pro/agents`) |
+| BUILDER (routed) - the Codex side, keep Claude usage down | the gate seat (Astra on the Astra row, Sol on the Sol row) as the parent thread, effort per the rubric | headless on the Codex CLI through the Codex transport below (`task --background --write --model gpt-6-astra`); Astra spawns the `sol` (GPT-6.1 Sol xhigh, Opus-tier), `terra` (GPT-6.1 Terra high, Sonnet-tier), `luna` (GPT-6 Luna medium, mechanic), and `spark` (GPT-5.3-Codex-Spark medium, fast mechanic; Pro home only, its own quota pool so it never draws on the general Codex window) custom agents from `~/.codex/agents` (`spark` only in `~/.codex-pro/agents`) |
 | SOLO BUILDER (Lane B) - designs and builds a task end to end from a brief | GPT-6 Astra, xhigh (Sol xhigh when Astra's quota is spent) | `claude -p` through the local proxy, acceptEdits, no `--bare` so CLAUDE.md and skills load; see lane-b.md |
 | REVIEWER A - adversarial review of Claude-built work | GPT-6 Astra on the Astra row, GPT-6.1 Sol on the Sol row (gate seat rubric, SKILL.md), effort per the rubric | `claude -p` through the local proxy, read-only tools, background Bash call (Phase 3); Codex transport read-only is its fallback |
 | REVIEWER B - Astra's quota fallback for Claude-built work | GPT-6.1 Sol, at the same effort the Astra call would have used | same `claude -p` command with `--model gpt-6.1-sol`; Codex transport read-only is its fallback; never reviews Codex-built work (same family) |
@@ -82,14 +82,34 @@ in the run, build and review.
   `.fabsol/RUN.md`: resume such a run from there; new runs write
   `.fabstra/RUN.md`.
 
-## Standing fast window: reviews (retired 2026-10-17)
+## Standing fast window: reviews (always on - JC 2026-11-01; quota.md)
 
-From 2026-10-17 (JC) the design review and Reviewer A/B use the proxy
-`claude -p` commands in "Phase 1b launch" and "Phase 3 launch" below as
-primary, rotating every login at standard speed. The fast window covers
-builds only (quota.md). The read-only Codex transport fallback for a review
-keeps the `codex-fast-home` prefix of the Codex transport section. The old
-recipe is in the 2026-10-17 backup of this file.
+JC 2026-11-01 restored this after the 2026-10-17 retirement: gates and
+reviews always run fast on the native homes, accepting the 2.5x drain on
+gojc31 Pro. A skipped home (`~/.codex-fast-skip`) stays out of the
+round-robin, so with `biz` skipped every review lands on `.codex-pro`.
+
+While the window is open, the design review (Phase 1b) and Reviewer A/B
+(Phase 3) do not use the proxy `claude -p` commands below as primary. They
+run on the Codex transport (next section) read-only - no `--write` - on a
+fast native home picked round-robin: the launch line becomes
+```bash
+H=$(codex-fast-home) || { unset CODEX_HOME CODEX_DIRECT; echo "codex-fast-home: no fast home - use the proxy claude -p command below"; exit 1; }; echo "home=$H"
+CODEX_HOME="$H" CODEX_DIRECT=1 node "$C" task --background --fresh --model gpt-6-astra --effort <effort> --prompt-file <spec> | tee <scratch>/astra-job-<name>.txt
+```
+When the picker exits non-zero (every fast home skipped, quota.md) the call stops before any launch: run the proxy `claude -p` command of this review instead, as written, and log it; never launch with an empty `CODEX_HOME`.
+Sol row / Reviewer B: `--model gpt-6.1-sol`, effort as the proxy command
+would use. Same spec files, same review contract. The read-only sandbox
+cannot write, so the spec's save line is harmless and the orchestrator
+saves the findings: `node "$C" result <job-id> > <scratch>/fabstra-review-<name>-findings.md`
+(design review: `fabstra-design-<name>-findings.md`). Log `fast (standing
+window, <home>)` in RUN.md. Fallbacks, in order: a usage-limit error on
+one home -> skip file (`echo pro >> ~/.codex-fast-skip`, quota.md) and relaunch on the other; both homes
+spent (the picker exits 3), or the Codex CLI failing for a non-quota reason -> the proxy
+`claude -p` command below, as written (standard tier, rotates the other
+logins). A dead 8317 does not block this path (native homes skip the
+proxy), so the "nothing on 8317" rules below apply only to the fallback.
+After the window closes this section is void.
 
 ## Codex transport (the gate seat as parent for routed builds and Codex-column fixes; read-only fallback for both reviews) - launch and wait inside one background Bash call
 
@@ -202,7 +222,7 @@ Mandatory for real builds. The cheapest bug is one caught on paper: the gate sea
 reads the plan, every blueprint, and the repository, and reports where the
 design will fail before Opus spends twenty minutes building it.
 
-**Transport (primary):** write the design-review spec to
+**Transport (fallback - the primary is the fast path in "Standing fast window: reviews" above):** write the design-review spec to
 `<scratch>/fabstra-design-<name>.md`, then one Bash call,
 `run_in_background: true`, timeout 1600000 (above the child's `timeout 1500`: Claude Code 2.1.285+ stops a background command when its Bash timeout runs out, and 2.1.288 lifts that only for interactive sessions, so a `-p` parent still enforces it), cwd = the project directory:
 
@@ -234,7 +254,7 @@ Mandatory for real builds; skip only for a small change as Phase 1 defines
 it, and say so in the report. Pick the reviewer by the pairing rule: Claude built -> Reviewer A (the gate seat: Astra on the Astra row, Sol on the Sol row); Codex side built -> Reviewer C (fresh Fable); a contained change (phases.md Phase 1): Claude built -> Sol at `--effort high`, Codex built -> Reviewer C, no second seat; a mixed build -> Reviewer A on the BUILDER tasks and Reviewer C on the CODEX tasks plus every seam, partitioned (pairing rule, phases.md); an xhigh row adds Reviewer C in parallel with Reviewer A on the BUILDER tasks; Astra blocked after a Claude build -> Reviewer B (Sol, same effort). The review spec template below is the contract for every reviewer
 and every transport.
 
-**Reviewer A through the proxy (primary; Astra row shown, Sol row swaps the model):** write the review spec to
+**Reviewer A through the proxy (fallback - the primary is the fast path in "Standing fast window: reviews" above; Astra row shown, Sol row swaps the model):** write the review spec to
 `<scratch>/fabstra-review-<name>.md`, then one Bash call, `run_in_background: true`, timeout 1600000 (above the child's `timeout 1500`, same reason as the design call), cwd = the project directory:
 
 ```bash

@@ -25,15 +25,16 @@ A standard top bar whose triggers open a **full-width multi-column panel** — i
 .mega-panel { position: absolute; top: 100%; left: 0; right: 0; opacity: 0; visibility: hidden; transform: translateY(-10px);
   background: color-mix(in oklch, var(--color-paper) 96%, transparent); backdrop-filter: blur(20px) saturate(160%);
   border-bottom: 1px solid var(--color-rule); box-shadow: 0 30px 60px -28px oklch(0% 0 0 / 0.35);
-  transition: opacity 240ms, transform 280ms var(--ease-spring), visibility 240ms; }
+  transition: opacity 240ms, transform 280ms var(--ease-out), visibility 240ms; }
 .mega-panel.is-open { opacity: 1; visibility: visible; transform: none; }
 .mega-panel__inner { max-width: var(--page-max); margin: 0 auto; padding: 2rem var(--page-gutter);
   display: grid; grid-template-columns: repeat(3, 1fr) 1.1fr; gap: 2rem; }
 .nav-scrim { position: fixed; inset: 0; z-index: 400; background: oklch(18% 0.01 250 / 0.28); backdrop-filter: blur(2px);
   opacity: 0; visibility: hidden; transition: opacity 260ms, visibility 260ms; }
 .nav-scrim.is-active { opacity: 1; visibility: visible; }
+.mega-panel.is-instant, .nav-scrim.is-instant { transition: none; }
 ```
-*JS:* hover opens (with a ~140ms close-grace timer so the pointer can travel into the panel), click toggles, Esc closes, only one panel open at a time, scrim + `aria-expanded` follow state.
+*JS:* hover opens (with a ~140ms close-grace timer so the pointer can travel into the panel), click toggles, Esc closes, only one panel open at a time, scrim + `aria-expanded` follow state. A keyboard-started open or close (Esc; Enter/Space on a trigger, whose click has `event.detail === 0`) sets `.is-instant` on panel and scrim so the state changes with no transition; a pointer-started change clears it.
 
 **Knobs** — *Columns:* 2 · 3 · 4 · *Feature cell:* none · promo card · code sample · *Scrim:* dim+blur (default) · dim only · none · *Open on:* hover+click (default) · click only.
 *Anti-pattern:* never more than ~4 columns; never a panel taller than ~60vh; never open on hover with no close-grace timer (the menu flickers when the pointer crosses the gap). Items must carry a one-line description — a bare link grid is just N1b in disguise.

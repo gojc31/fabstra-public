@@ -8,7 +8,7 @@ Paste under the builder spec's Conventions; the reviewer spec gets the Gates and
 Pass: <CLIENT | INTERNAL> · scope <PAGE | SCREEN | COMPONENT | EXISTING> · <INHERIT | OPEN>
 
 Rules (binding):
-  The brief's pinned words override every rule below. No eyebrow or kicker label above a heading. No numbered section markers unless the content is a real sequence. No `->` or `→` glyph appended to link or button text. No italic display type. No invented metrics, testimonials, logos, or names. Colours and fonts only from the Tokens block.
+  The brief's pinned words override every rule below. No eyebrow or kicker label above a heading. No numbered section markers unless the content is a real sequence. No `->` or `→` glyph appended to link or button text. No italic anywhere. No helper or explainer text under labels, fields, charts or sections. No invented metrics, testimonials, logos, or names. Colours and fonts only from the Tokens block.
 
 Direction:
   Genre: <editorial | modern-minimal | atmospheric | playful>
@@ -36,6 +36,13 @@ References (0-2 rows; write "none - no external references" when empty):
 Layout (first viewport):
   <ASCII wireframe - boxes, labels, what sits where and at what scale>
 
+Components (one line per interactive component, or "none" when the surface has none; each line comes from the best fit for the role and the stack, core sources first (rule 3 of How to pick in the catalogue), looked up by role in D:\jc-ui-kit\CATALOG.md, and takes, written out in full, the shape references/components.md gives for that source - builders never load skills; a sourced component takes the Tokens above for brand - colours, fonts, radii, spacing, icons - and keeps its source motion and interaction 1:1, proven by D:\jc-ui-kit\scripts\motion-diff.py; interactive pieces come from a core source with authored motion (Arc, beUI, affectUI), structure pieces from the shadcn-native core):
+  Stack: <React | the framework> + <Tailwind | plain CSS> + <shadcn | no shadcn> · from <the signals: package.json react, tailwind.config.*, @import "tailwindcss", components.json, the brief, or "none found">
+  <component>: inherit <path>
+  (The project already ships a component for that role, on any stack or pass - on a shadcn project that includes its own shadcn or ReUI components.)
+  <component>: <the components.md shape for its source, stack and pass>
+  (What must survive onto the lines: a ReUI install only on React + shadcn, or React + Tailwind through the init route; on any other framework kit, Bencho and ReUI ride as checklists only. A kit component on an INHERIT or EXISTING pass takes the integration variant, never importing styles\base.css. Every data-grid line carries its keyboard clause and grid walk. Bencho lines carry their known gaps and checklist; Pro lines - any paid tier - only for a tier JC owns (SKILL.md, the Pro bullet) or on the brief's confirmation, ReUI Pro also on verified licence terms; else no Pro fit, and the role takes components.md section 9's Pro fallback, whose rebuild line always names what the builder builds until the rebuild lands. On React + Tailwind a line whose component has a kit counterpart may end "· behaviour reference: D:\jc-ui-kit\components\<Name>\README.md Motion and Keyboard sections", whichever source supplied the markup.)
+
 Gates (reviewer runs these on the built result; N/A is written, not skipped):
   1. <gate text> [<source tag>]
   2. <gate text> [<source tag>]
@@ -45,7 +52,7 @@ Verify:
   Screenshot at 375, 768, 1280 through browser-harness.
   First navigation is new_tab(<url>); never goto_url.
   Report each width pass/fail with the cause of any failure.
-  <any surface-specific check: a state to exercise, a flow to walk>
+  <any surface-specific check: a state to exercise, a flow to walk; a data grid's keyboard walk, copied from its Components line>
 
 Do-not-touch:
   <files, routes, components, copy, tokens the builder must leave alone, or "none">

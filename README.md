@@ -141,7 +141,7 @@ If both answer, the setup is live. Try `/fabsol build me a small test page`.
 
 ## Your skills on another machine
 
-`user-skills/` carries JC's own Claude Code skills (16) and two agents, scrubbed for
+`user-skills/` carries JC's own Claude Code skills (17) and two agents, scrubbed for
 sharing; every vendored one keeps its upstream licence
 ([user-skills/THIRD_PARTY.md](user-skills/THIRD_PARTY.md)). After cloning this repo:
 
@@ -153,6 +153,20 @@ powershell -ExecutionPolicy Bypass -File scripts\install-user-skills.ps1
 On Git Bash, macOS or Linux: `bash scripts/install-user-skills.sh [--dry-run]`. To update,
 `git pull` and run it again. Full steps and requirements: [SETUP.md](SETUP.md), "Your
 skills on another machine".
+
+## Keep the setup clean - `/audit-kit`
+
+`user-skills/skills/audit-kit` holds every audit JC runs on a Claude Code machine, in one
+user-invoked skill: `doctor` (install, settings, hooks, plugins, MCP, processes,
+disk), `context` (doctor-plus: always-loaded context vs the six context-engineering
+shifts), `prompts` (Anthropic's prompt-audit guide plus a drift pass), `skills`
+(usage from transcripts, limits, overlaps, trigger clashes), `memory` (MEMORY.md
+size and stale items), `loss` (did a fix pass drop anything) and `leak` (names,
+emails, home paths and secrets before a public push). Each audit is read-only and
+writes `~/.claude/audits/<date>/REPORT.md`; fixes run only after you approve them,
+with backups first. Run `/audit-kit` (all five main audits) monthly, `/audit-kit doctor`
+after a CLI upgrade, `/audit-kit prompts` when a new Claude model ships, and
+`/audit-kit leak` before publishing a repo.
 
 ## Change the defaults (everything is adjustable)
 

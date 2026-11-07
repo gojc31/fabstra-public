@@ -35,7 +35,7 @@
 
 | # | Pattern | Bad Example | Fixed |
 |---|---------|------------|-------|
-| 14 | **Missing output format** | "explain this concept" | "3 bullet points, each under 20 words, with a one-sentence summary at top" |
+| 14 | **Missing output format** | "explain this concept" | "A one-sentence summary, then a short bulleted list of the points a newcomer needs" |
 | 15 | **Implicit length** | "write a summary" | "Write a summary a busy CFO can act on: the decision, the cost, the deadline" |
 | 16 | **No role assignment** | (blank) | "You are a senior backend engineer specializing in Node.js and PostgreSQL" |
 | 17 | **Vague aesthetic adjectives** | "make it look professional" | "Monochrome palette, 16px base font, 24px line height, no decorative elements" |
@@ -50,7 +50,7 @@
 |---|---------|------------|-------|
 | 20 | **No scope boundary** | "fix my app" | "Fix only the login form validation in `src/auth.js`. Touch nothing else." |
 | 21 | **No stack constraints** | "build a React component" | "React 18, TypeScript strict, no external libraries, Tailwind only" |
-| 22 | **No stop condition for agents** | "build the whole feature" | Explicit stop conditions + ✅ checkpoint output after each step |
+| 22 | **No stop condition for agents** | "build the whole feature" | Explicit stop conditions + updates at milestones, blockers and decisions that need the user (row 33) |
 | 23 | **No file path for IDE AI** | "update the login function" | "Update `handleLogin()` in `src/pages/Login.tsx` only" |
 | 24 | **Wrong template for tool** | GPT-style prose prompt used in Cursor | Adapt to File-Scope Template (Template G) |
 | 25 | **Pasting entire codebase** | Full repo context every prompt | Scope to only the relevant function and file |

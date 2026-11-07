@@ -14,11 +14,11 @@ disable-model-invocation: true
 - **Grill.** Several interacting steps, two or more live systems, real client data, money or messages leaving the building, or a decision that is expensive to unpick later.
 - **Unsure?** Ask one question — "quick build, or grill this first?" — and take the answer. Do not open a round to decide whether to open a round.
 
-Relentless applies _inside_ a grilling that is worth running, never to the choice of whether to run one. **Stop early when a round stops producing surprises.** A round that only confirms what the user already told you means the tree is settled — that is a finished grilling, not a lazy one. Simple and working beats thorough and unbuilt.
+Thoroughness applies _inside_ a grilling that is worth running, never to the choice of whether to run one. **Stop early when a round stops producing surprises.** A round that only confirms what the user already told you means the tree is settled — that is a finished grilling, not a lazy one. Simple and working beats thorough and unbuilt.
 
 ## The method
 
-Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
+Interview the user in rounds until every branch of the design is settled and nothing is left silently assumed. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled — the questions you can ask _now_ without guessing at answers you haven't heard yet. Ask the whole frontier in one round: number each question and give your recommended answer. Then wait for the user's answers before the next round.
 

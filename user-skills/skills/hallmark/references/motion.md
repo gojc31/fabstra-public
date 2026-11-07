@@ -1,5 +1,7 @@
 # Motion
 
+Motion and interaction feel defer to [impeccable/reference/motion-craft.md](../../impeccable/reference/motion-craft.md); this file keeps tokens and layout-level guidance.
+
 Most AI-generated motion is scattered — hover lifts on every card, fade-in on every scroll, bouncing icons. Quiet it. One orchestrated moment beats ten small ones.
 
 > For per-interaction recipes (button press, focus, modal, toast, optimistic update, command palette, drag handle, etc.), see [`microinteractions.md`](microinteractions.md). This file is the *language* of motion; that file is the *vocabulary*.
@@ -8,31 +10,30 @@ Most AI-generated motion is scattered — hover lifts on every card, fade-in on 
 
 - **Animate only `transform` and `opacity`.** These are GPU-composited; they don't trigger layout. Anything else is a performance bug waiting.
 - **Duration is three buckets.** Micro (100–150ms), minor (200–300ms), major (300–500ms). Exits are ~75% of the enter.
-- **Easing is exponential ease-out.** Elements coming in slow down into place. Elements leaving accelerate away.
+- **Easing is exponential ease-out, both ways.** Elements coming in slow down into place; elements leaving use the same ease-out at the shorter exit duration. Hover and colour changes may use `ease`.
 - **Motion serves perception.** If you can't explain what a transition communicates, cut it.
 - **Reduced motion is non-optional.** `@media (prefers-reduced-motion: reduce)` collapses all spatial motion to opacity crossfade.
 
 ## Easings
 
-Use these three. Name them as tokens.
+Use these. Name them as tokens.
 
 ```css
 :root {
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* elements entering */
-  --ease-in:  cubic-bezier(0.7,  0, 0.84, 0);       /* elements leaving  */
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);    /* state toggles     */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* elements entering and leaving */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);    /* state toggles, on-screen moves */
 }
 ```
 
-`ease`, `ease-in-out` (default), `cubic-bezier(0.25, 0.1, 0.25, 1)` — these are the browser defaults and they read as uncrafted.
+`ease`, `ease-in-out` (default), `cubic-bezier(0.25, 0.1, 0.25, 1)` — these are the browser defaults and they read as uncrafted on entrances, exits and on-screen moves. `ease` stays allowed for hover and colour transitions.
 
 ## Durations
 
 ```css
 :root {
   --dur-micro: 120ms;   /* button press, toggle tick, color shift  */
-  --dur-short: 220ms;   /* hover lift, tooltip, menu open          */
-  --dur-long:  420ms;   /* modal, drawer, accordion, page reveal   */
+  --dur-short: 220ms;   /* hover lift, tooltip, menu open, accordion */
+  --dur-long:  420ms;   /* modal, drawer, page reveal              */
 }
 ```
 
@@ -40,7 +41,7 @@ Exits use roughly 75% of the enter:
 
 ```css
 .menu.is-open  { transition: transform var(--dur-short) var(--ease-out); }
-.menu.is-close { transition: transform calc(var(--dur-short) * 0.75) var(--ease-in); }
+.menu.is-close { transition: transform calc(var(--dur-short) * 0.75) var(--ease-out); }
 ```
 
 ## Page-load orchestration
@@ -76,9 +77,9 @@ Cap total stagger at ~500ms. Beyond that the page feels slow to settle.
 ## State transitions
 
 - Button hover / active: micro duration, `--ease-out`, `transform: translateY(-1px)` on hover, `translateY(0)` on active. Never a `box-shadow` transition on hover on a dark background (glow effect).
-- Menu / tooltip / dropdown: short duration, `--ease-out` on open, `--ease-in` on close. Use the popover API or `inert` to manage focus.
+- Menu / tooltip / dropdown: short duration, `--ease-out` on open and on close, the close shorter than the open. Use the popover API or `inert` to manage focus.
 - Modal: long duration, scale-in (0.96 → 1) + opacity crossfade. Backdrop fades in at the same duration.
-- Accordion: animate `grid-template-rows: 0fr` → `grid-template-rows: 1fr` (not `height`). With `--ease-in-out`.
+- Accordion: animate `grid-template-rows: 0fr` → `grid-template-rows: 1fr` (not `height`). Short duration, `--ease-out`.
 
 ## Reduced motion
 
@@ -98,9 +99,9 @@ Functional motion (progress bars, loading spinners, skeletons) still runs — ju
 
 ## Bans
 
-- `ease` (browser default, mediocre).
-- `linear` on anything except progress bars and ticking loaders.
-- Bounce / elastic / overshoot on UI elements. Dated; signals "template".
+- `ease` on entrances, exits and on-screen moves (browser default, mediocre there); hover and colour transitions may use it.
+- `linear` on anything except constant motion: progress bars, ticking loaders, marquees, hold-to-confirm fills.
+- Bounce / elastic / overshoot on UI elements. Dated; signals "template". The one exception is a momentum-driven gesture (flick or drag release, drag-to-dismiss), which may settle on a spring with bounce 0.1–0.3.
 - Animating `width`, `height`, `top`, `left`, `margin`, `padding`.
 - `will-change` set preemptively across a whole class. Only on the element, only while it's animating.
 - Parallax.

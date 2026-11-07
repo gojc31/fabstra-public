@@ -34,7 +34,7 @@ Every Hallmark output writes these tokens (or a subset, if the page doesn't use 
 | `--font-outlier` | font | `"Geist Mono", ui-monospace, monospace` |
 | `--space-3xs` … `--space-5xl` | length | 4-pt scale: `0.25rem` … `8rem` |
 | `--text-xs` … `--text-display` | length | 1.25 (major-third) ratio scale |
-| `--ease-out` / `--ease-in` / `--ease-in-out` | easing | `cubic-bezier(0.16, 1, 0.3, 1)` etc. |
+| `--ease-out` / `--ease-in-out` | easing | `cubic-bezier(0.16, 1, 0.3, 1)` / `cubic-bezier(0.65, 0, 0.35, 1)`; exits reuse `--ease-out` |
 | `--dur-micro` / `--dur-short` / `--dur-long` | time | `120ms` / `220ms` / `420ms` |
 | `--rule-hair` / `--rule-fine` | length | `1px` / `2px` |
 | `--radius-card` / `--radius-pill` / `--radius-input` | length | varies per theme |
@@ -107,7 +107,6 @@ Or, if the project uses a CSS bundler / framework that doesn't honour bare `@imp
   --radius-input: 0;
 
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   --dur-micro: 120ms;
@@ -198,7 +197,6 @@ Tailwind v4 reads CSS variables inside `@theme` and generates utilities (`bg-pap
 
   /* Easings — Tailwind reads --ease-* */
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 ```

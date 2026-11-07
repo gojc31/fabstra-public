@@ -36,7 +36,7 @@ Format: [Exact output format and length]
 ```
 Role: You are a senior technical writer.
 Task: Write a one-paragraph description of what a REST API is.
-Format: Plain prose, 3 sentences maximum, no jargon, suitable for a non-technical audience.
+Format: One short paragraph of plain prose, no jargon, for a non-technical reader who needs to know what it is and why it matters.
 ```
 
 ---
@@ -91,7 +91,7 @@ Steps:
   3. Define acceptance criteria for each story
   4. List out-of-scope items explicitly
 End Goal: A PRD that an engineering team can begin sprint planning from immediately.
-Narrowing: No technical implementation details. No wireframes. Under 600 words total.
+Narrowing: No technical implementation details. No wireframes. Only what an engineering team needs to start sprint planning.
 ```
 
 ---
@@ -397,7 +397,7 @@ Run these in order. Each output feeds the next.
 
 ## Template M — Claude Task Brief
 
-*Use for any complex, multi-step, or agentic task on a current Claude model (Opus 5.5, Sonnet 5.5; Opus 4.7 / 4.8 when the user pins one) — claude.ai, API, or Claude Code. They read prompts literally and produce narrow output when context is missing. This template front-loads everything so the first turn is the only turn.*
+*Use for any complex, multi-step, or agentic task on a current Claude model (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1, or the version the user names) — claude.ai, API, or Claude Code. They read prompts literally and produce narrow output when context is missing. This template front-loads everything so the first turn is the only turn.*
 
 ```
 ## Objective
@@ -435,7 +435,7 @@ Report at milestones, at blockers, and before any decision that needs me; end wi
 
 **Thinking depth** (Claude targets) — current Claude models think on their own (configuration exceptions: SKILL.md, Claude section); depth is set by effort (`/effort` in Claude Code, the `effort` parameter in the API), not by prose in the prompt:
 - Default: say nothing about depth here — set effort at the session or API level instead.
-- Quick, narrowly scoped task: the prompt may add `"Answer directly."`
+- Quick, narrowly scoped task: lower effort; an "Answer directly without deliberating." line is an Opus 5.5-only, measured exception (SKILL.md, Claude section).
 - Do not add "think step by step" or a fixed thinking-budget instruction.
 
 **Claude Code only — add Session Strategy block when relevant:**

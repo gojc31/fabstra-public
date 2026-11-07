@@ -1,5 +1,7 @@
 # Copy
 
+> design-pass override (JC, 2026-11-05): headlines and other short strings end without a full stop unless the Direction names the choice (design-pass gates.md 21c). Examples here that end a title in a full stop are a named Direction choice, not a default.
+
 Words are part of the design. A great layout with stock copy looks generic. Tight copy in an average layout reads as considered.
 
 ## Principles

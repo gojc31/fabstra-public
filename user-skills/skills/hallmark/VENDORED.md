@@ -35,3 +35,16 @@ Upstream text left as shipped; recorded here instead of patched.
 - U14 references/themes/hum.md: dropped "the old" history clauses; first-paint wobble rule restated.
 - U14 references/slop-test.md: dropped "(the old Manifesto / Sport / Brutal default)".
 - U16 SKILL.md: default mode row routes new UI to design-pass.
+
+## Local edits 2026-10-18 (Emil Kowalski motion layer: motion precedence)
+
+Motion and interaction feel now defer to `../impeccable/reference/motion-craft.md`, distilled from github.com/emilkowalski/skills at commit 2d22863 (MIT). Where a Hallmark motion line and motion-craft disagree, motion-craft wins. Pre-edit copies: `~/.claude/backups/emil-gov-2026-10-18/skills/hallmark/`.
+- SKILL.md Step 6 "Always" motion lines: the easing mandate defers to motion-craft (`--ease-out` for entrances and exits, `--ease-in-out` for on-screen moves, `ease` for hover and colour, no ease-in on UI, bounce only on a momentum gesture's spring); `transform`/`opacity` is the default, not an absolute; a Motion precedence line puts motion-craft over every Hallmark motion rule (these lines, motion.md, microinteractions.md, the component and craft references, slop-test gate 14; slop-test.md itself unedited), naming its property exceptions and component curves (measured-height accordion, `clip-path` reveal, Sonner-style toast on `ease`).
+- references/motion.md: deference line at the top; `--ease-in` token removed (exits reuse `--ease-out` at the shorter duration); menu close and accordion easing moved to `--ease-out`; the `ease` and `linear` bans narrowed; momentum-gesture spring exception to the bounce ban.
+- references/microinteractions.md: the ease-in exit token and the button, toast, modal, menu and tab-content exits moved to `--ease-out`; the `ease` ban narrowed to entrances, exits and moves; key-shortcut opens, keyboard-focus tooltips, arrow-key tab changes and command-palette selection change instantly (frequency gate); focus rings dropped from the 150-200 ms fade row.
+- references/export-formats.md: `--ease-in` dropped from the token table and from the tokens.css and Tailwind `@theme` exports, matching motion.md's token set.
+- references/components/n13-inline-cmdk-pill.md: palette open/close transitions removed; a command palette is a 100+/day, keyboard-first surface, so no trigger animates it.
+- references/components/n11-mega-menu.md: keyboard-started open or close (Esc, Enter/Space on a trigger) is instant via `.is-instant`; pointer opens keep the fade.
+- references/components/n1b-saas-three-section.md: the dropdown transition applies on hover only; keyboard `:focus-within` opens and closes instantly.
+- references/components/n11-mega-menu.md and n1b-saas-three-section.md: the menu `transform` transition moved from `var(--ease-spring)` (an overshoot curve that fails design-pass gate 31 and is undefined outside the Hum theme) to `var(--ease-out)`.
+- references/microinteractions.md: dropdown Escape close and tooltip Escape dismiss are instant (keyboard-started, design-pass gate 31d).

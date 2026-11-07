@@ -26,13 +26,12 @@ A **visible** search pill sits inline in the bar — placeholder text plus a `�
   background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 999px; color: var(--color-muted);
   transition: border-color 200ms, box-shadow 200ms; }
 .searchpill:hover { border-color: var(--color-rule-2); box-shadow: 0 4px 16px -10px oklch(0% 0 0 / 0.3); }
-.cmdk { position: fixed; inset: 0; z-index: 700; opacity: 0; visibility: hidden; transition: opacity 200ms, visibility 200ms; }
+.cmdk { position: fixed; inset: 0; z-index: 700; opacity: 0; visibility: hidden; } /* no transition: opens and closes instantly */
 .cmdk.is-open { opacity: 1; visibility: visible; }
-.cmdk__panel { position: absolute; top: 14vh; left: 50%; transform: translateX(-50%) translateY(-8px) scale(0.98);
-  width: min(560px, calc(100vw - 2rem)); transition: transform 240ms var(--ease-spring); }
-.cmdk.is-open .cmdk__panel { transform: translateX(-50%) translateY(0) scale(1); }
+.cmdk__panel { position: absolute; top: 14vh; left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 2rem)); }
 ```
-*JS:* ⌘K / Ctrl K toggles, Esc closes, backdrop-click closes, ↑/↓ move the active item, Enter selects, focus the input on open and lock body scroll.
+*JS:* ⌘K / Ctrl K toggles, Esc closes, backdrop-click closes, ↑/↓ move the active item, Enter selects, focus the input on open and lock body scroll. Open and close are instant on every trigger, pill click included: a command palette is a 100+/day, keyboard-first surface, so it never animates ([`motion-craft.md`](../../../impeccable/reference/motion-craft.md) section 1).
 
 **Knobs** — *Pill placement:* centred (default) · right-of-brand · *Result groups:* flat · grouped (default) · *Footer hints:* shown (default) · hidden · *Open trigger:* pill+⌘K (default) · ⌘K only (→ that's N4, not N13).
 *Anti-pattern:* don't fake the modal with a `<div>` that traps no focus and ignores Esc — if you ship the pill you ship the keyboard model. The pill must look like search (icon + placeholder), not a generic button.

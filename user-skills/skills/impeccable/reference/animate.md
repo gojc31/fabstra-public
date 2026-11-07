@@ -49,6 +49,8 @@ Sibling stagger is appropriate when a list appears as a list. Cap the total dela
 
 ## Timing and easing
 
+Exact curves, per-element durations, springs, the frequency gate, interruption rules and the never-ship list live in [motion-craft.md](motion-craft.md); load it before choosing any value, and where it disagrees with this file it wins.
+
 Timing should express distance and consequence:
 
 | Duration | Typical use |
@@ -58,7 +60,7 @@ Timing should express distance and consequence:
 | 300–500 ms | layout, overlay, or view transition |
 | 500–800 ms | a deliberately authored focal entrance |
 
-Exit faster than entrance. Use natural deceleration such as `cubic-bezier(0.16, 1, 0.3, 1)` for confident arrivals; do not use bounce or elastic curves by reflex. Long feedback feels like latency.
+Exit faster than entrance, on the same ease-out family; ease-in never carries a UI enter or exit. A strong deceleration such as `cubic-bezier(0.16, 1, 0.3, 1)` is one example of a confident arrival; the named curves are motion-craft.md's. Bounce and overshoot are earned only by a momentum gesture (motion-craft.md section 4), never applied by reflex. Long feedback feels like latency.
 
 ## Implement to the runtime
 

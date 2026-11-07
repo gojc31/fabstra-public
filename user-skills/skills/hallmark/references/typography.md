@@ -1,5 +1,7 @@
 # Typography
 
+> design-pass override (JC, 2026-11-05): labels are sentence case, and uppercase tracked labels appear only where the Direction names them (design-pass gates.md 11c). Instrument Serif is not a default face (11b). Recommendations below are named Direction choices, not defaults.
+
 Type carries the design. If the type is wrong, nothing else matters.
 
 ## Principles

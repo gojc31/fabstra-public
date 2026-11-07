@@ -11,7 +11,7 @@ date | project | scope | INHERIT/OPEN | inspo calls (n) and total result KB | sl
 Field notes:
 
 - **date** - `YYYY-MM-DD`, the day the build passed review.
-- **project** - the project folder name. On a CLIENT pass this is your redaction token if you used one, never the client's name.
+- **project** - the project folder name. On a CLIENT pass it is the folder name as given.
 - **scope** - `PAGE`, `SCREEN`, `COMPONENT`, or `EXISTING`.
 - **inspo calls (n) and total result KB** - `0 / 0 KB` when step 4 was skipped or Inspo was not connected.
 - **slugs** - the exemplar slugs picked, comma-separated; `none` when there were none.

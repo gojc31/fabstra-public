@@ -8,6 +8,8 @@ This is a code-level audit, not a design critique. Check what's measurable and v
 
 Run comprehensive checks across 5 dimensions. Score each dimension 0-4 using the criteria below.
 
+When the target has motion or interaction feel to judge, load [motion-craft.md](motion-craft.md); its never-ship table is the motion checklist, and each row present is a finding.
+
 ### 1. Accessibility (A11y)
 
 **Check for**:

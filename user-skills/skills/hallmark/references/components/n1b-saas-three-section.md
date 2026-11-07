@@ -24,9 +24,9 @@ Wordmark hard-left · a centred cluster of 4–6 links (some opening hover dropd
 .nav__inner { max-width: var(--page-max); margin: 0 auto; padding-inline: var(--page-gutter); height: 64px;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
 .nav__brand { justify-self: start; } .nav__center { justify-self: center; display: flex; gap: 0.35rem; } .nav__right { justify-self: end; }
-.nav__dropdown { position: absolute; opacity: 0; visibility: hidden; transform: translateY(-6px) scale(0.98);
-  transition: opacity 200ms, transform 220ms var(--ease-spring), visibility 200ms; }
+.nav__dropdown { position: absolute; opacity: 0; visibility: hidden; transform: translateY(-6px) scale(0.98); }
 .nav__item--menu:hover .nav__dropdown, .nav__item--menu:focus-within .nav__dropdown { opacity: 1; visibility: visible; transform: none; }
+.nav__item--menu:hover .nav__dropdown { transition: opacity 200ms, transform 220ms var(--ease-out), visibility 200ms; } /* pointer open only: keyboard focus opens and closes instantly */
 ```
 
 **Knobs** — *Centre links:* 3 · 4 · 5–6 · *Dropdowns:* none · 1 · 2 · *Scroll state:* frost-on-scroll (default) · always-solid · transparent-fixed · *CTA pair:* sign-in + fill · fill only.

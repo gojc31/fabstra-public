@@ -59,7 +59,7 @@ Pick from these durations. Do not invent new ones.
 | Bucket | Use for |
 | --- | --- |
 | **80–120 ms** | Instant feedback (button press tick, checkbox state, keystroke echo). The brain reads anything in this window as immediate. |
-| **150–200 ms** | Hover state transitions, focus rings appearing, single-property fades, tooltip appears (with delay before — see below). |
+| **150–200 ms** | Hover state transitions, single-property fades, tooltip appears (with delay before — see below). |
 | **250–300 ms** | Modal / dropdown / sheet opens, content fades in, validation icon scales in, tab content crossfade. |
 | **400–500 ms** | Toast slides in, page-load section reveal, complex multi-property transitions, accordion open. |
 | **0 ms** | The right answer surprisingly often. Focus state, keyboard navigation, error appearance — many things should not animate at all. |
@@ -75,8 +75,7 @@ Three curves cover ~90% of UI motion. Tokenise them and never freestyle.
   /* Entering elements — decelerate into place */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Exiting elements — accelerate away */
-  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  /* Exiting elements — reuse --ease-out at the shorter exit duration; no ease-in on UI */
 
   /* State toggles — symmetrical */
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -95,7 +94,7 @@ Spring physics replaces eases for **physical** interactions only — drag-and-dr
 | `stiffness: 280, damping: 26` | Stiff, minimal bounce | Picker snap; haptic-like button press |
 | `stiffness: 400, damping: 40` | Very stiff, no bounce | Position corrections; not a spring per se |
 
-**Banned curves:** `ease` (the browser default — flat and uncrafted), `linear` except for progress bars and infinite loaders, anything with overshoot above ~110% (`cubic-bezier(0.34, 1.56, 0.64, 1)` and friends). Bounce is dated and signals templated work.
+**Banned curves:** `ease` on entrances, exits and on-screen moves (the browser default — flat and uncrafted there; hover and colour transitions may use it, per [`impeccable/reference/motion-craft.md`](../../impeccable/reference/motion-craft.md)), `linear` except for progress bars and infinite loaders, anything with overshoot above ~110% (`cubic-bezier(0.34, 1.56, 0.64, 1)` and friends). Bounce is dated and signals templated work.
 
 ## Recipes
 
@@ -103,7 +102,7 @@ Each recipe: trigger, what changes, duration, easing, accessibility note. If a r
 
 ### Button press
 
-Trigger: pointer down. Changes: `transform: scale(0.98)` on press, base styling on release. Duration: 100ms in, 150ms out. Easing: in `--ease-in`, out `--ease-out`. A11y: focus ring stays visible; never animate the focus ring's existence.
+Trigger: pointer down. Changes: `transform: scale(0.98)` on press, base styling on release. Duration: 100ms in, 150ms out. Easing: `--ease-out` both ways. A11y: focus ring stays visible; never animate the focus ring's existence.
 
 ```css
 .btn {
@@ -125,23 +124,23 @@ Trigger: blur after the field has been touched once (the "touched" pattern), the
 
 ### Toast notification
 
-Trigger: action completes (or fails). Stack at one viewport corner; new toasts push existing ones in one direction; existing toasts do **not** reposition when a new one arrives. Duration: 400ms slide-in `--ease-out`, 4–6s dwell, 300ms slide-out `--ease-in`. Pause auto-dismiss on hover/focus. **Use sparingly:** if the action's effect is visible (a row was deleted; you can see the row is gone), no toast. Errors *always* get a toast with retry/undo.
+Trigger: action completes (or fails). Stack at one viewport corner; new toasts push existing ones in one direction; existing toasts do **not** reposition when a new one arrives. Duration: 400ms slide-in `--ease-out`, 4–6s dwell, 300ms slide-out `--ease-out` by the edge it entered from. Pause auto-dismiss on hover/focus. **Use sparingly:** if the action's effect is visible (a row was deleted; you can see the row is gone), no toast. Errors *always* get a toast with retry/undo.
 
 ### Modal open / close
 
-Trigger: explicit user action (click, key shortcut). Backdrop fades 300ms `--ease-out`. Content scales 0.96 → 1.0 + opacity 0 → 1, 300ms `--ease-out`. Close: 220ms `--ease-in`, scale 1.0 → 0.98, opacity → 0. Use the native `<dialog>` element — it handles focus trap and `::backdrop` for free. `inert` on background. First focus to first interactive element, not the close button. Reduced motion: opacity-only crossfade, 150ms.
+Trigger: explicit user action (click, key shortcut). Backdrop fades 300ms `--ease-out`. Content scales 0.96 → 1.0 + opacity 0 → 1, 300ms `--ease-out`. Close: 220ms `--ease-out`, scale 1.0 → 0.98, opacity → 0. A key-shortcut open and close are instant. Use the native `<dialog>` element — it handles focus trap and `::backdrop` for free. `inert` on background. First focus to first interactive element, not the close button. Reduced motion: opacity-only crossfade, 150ms.
 
 ### Dropdown / menu
 
-Trigger: click or key shortcut. Open: 180ms `--ease-out`, optional 30ms-stagger items if there are ≤ 8 of them. Close: 140ms `--ease-in`. Light-dismiss on outside click and Escape. Use the Popover API where available. Anchor positioning: flip when within 16px of viewport edge.
+Trigger: click or key shortcut. Open: 180ms `--ease-out`, optional 30ms-stagger items if there are ≤ 8 of them. Close: 140ms `--ease-out`. A key-shortcut open and an Escape close are instant. Light-dismiss on outside click and Escape. Use the Popover API where available. Anchor positioning: flip when within 16px of viewport edge.
 
 ### Tooltip
 
-Trigger: mouse hover (with **800–1000ms delay** to prevent flash on casual movement) OR keyboard focus (with **0ms delay** — keyboard users reached this deliberately, never delay them). Animation: 150ms `--ease-out` opacity. WCAG 1.4.13: tooltip must be hoverable (you can move pointer onto it without it disappearing), persistent (doesn't disappear on accidental movement), and dismissible (Escape).
+Trigger: mouse hover (with **800–1000ms delay** to prevent flash on casual movement) OR keyboard focus (with **0ms delay** — keyboard users reached this deliberately, never delay them). Animation: 150ms `--ease-out` opacity on hover; on keyboard focus it appears with no animation. WCAG 1.4.13: tooltip must be hoverable (you can move pointer onto it without it disappearing), persistent (doesn't disappear on accidental movement), and dismissible (Escape, which hides it with no animation).
 
 ### Tab change
 
-Trigger: click or arrow-key. Underline slides `transform: translateX()` + width transition, 250ms `--ease-out`. Outgoing content fades 100ms `--ease-in`, incoming fades 150ms `--ease-out` with a 50ms delay. **Never animate the tab content's height** — animate `grid-template-rows: 0fr → 1fr` if the tabs change height.
+Trigger: click or arrow-key. Underline slides `transform: translateX()` + width transition, 250ms `--ease-out`. Outgoing content fades 100ms `--ease-out`, incoming fades 150ms `--ease-out` with a 50ms delay; an arrow-key change switches instantly. **Never animate the tab content's height** — animate `grid-template-rows: 0fr → 1fr` if the tabs change height.
 
 ### Number tick
 
@@ -189,7 +188,7 @@ Trigger: input event. Debounce by 250ms before requesting; while debouncing, sho
 
 ### Command palette navigation
 
-Trigger: ⌘K or `/`. Open: instant, no animation. Arrow-keys move selection — **the indicator transitions** between rows (120ms `--ease-out` on the highlight's `transform: translateY()`), but the items themselves don't move. Enter selects. Escape closes. Items stagger-fade in on first open only, never on filter change. The text input stays focused throughout. This is the Linear / Raycast / Vercel pattern.
+Trigger: ⌘K or `/`. Open: instant, no animation. Arrow-keys move selection — **the highlight jumps** to the next row with no transition, and the items themselves don't move. Enter selects. Escape closes. Items render in place with no stagger, on open and on filter change: keyboard-started, 100+/day actions do not animate. The text input stays focused throughout. This is the Linear / Raycast / Vercel pattern.
 
 ### Page-load reveals
 

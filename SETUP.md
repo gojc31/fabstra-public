@@ -225,7 +225,7 @@ files, the manual route needs the copies redone.
 
 ## Your skills on another machine
 
-`user-skills/` ships JC's own skills - brief, bro, careful, design-pass,
+`user-skills/` ships JC's own skills - audit-kit, brief, bro, careful, design-pass,
 doctor-plus, grilling, hallmark, handoff, impeccable, prompt-master,
 speed-pass, to-questionnaire, triage, wait-what, wizard, writing-for-agents -
 and two agents, automation-governance-architect and

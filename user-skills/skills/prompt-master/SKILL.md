@@ -70,16 +70,16 @@ Identify the tool and route accordingly. Read full templates from [references/te
 
 **Claude (claude.ai, Claude API, Claude 5.x)**
 
-Current family: Opus 5.5, Sonnet 5.5, Haiku 4.5, Fable 5.1. Write for the current generation unless the user names a specific version. For a system prompt sent through the API to Opus 5.5 or Sonnet 5.5, check Anthropic's current prompting documentation for effort and thinking settings.
+Current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1. Write for the current generation unless the user names a specific version. For a system prompt sent through the API to any of them, check Anthropic's current prompting documentation for effort and thinking settings.
 
 *Durable across current Claude models:*
-- Be explicit and specific — Claude follows instructions literally. It does exactly what you say, nothing more. Missing context = narrow literal output, not a smart guess.
+- Be explicit and specific — Claude follows instructions literally. Missing context = narrow literal output, not a smart guess.
 - When the task could invite extra features or refactors (Sonnet 5.5 adds unrequested tests, docs and files at every effort level), state the scope: "Only make changes directly requested. Do not add features or refactor beyond what was asked."
 - XML tags help for complex multi-section prompts: `<context>`, `<task>`, `<constraints>`, `<output_format>`
 - Provide context and reasoning WHY, not just WHAT — Claude generalizes better from explanations
 - Always specify output format and length explicitly
 - For complex or multi-step tasks: front-load everything in one turn — intent, constraints, acceptance criteria, relevant files. Every extra back-and-forth turn adds reasoning overhead and token cost.
-- Do NOT add "think step by step", a `<thinking>` scaffold, or a request to write out reasoning, and do not steer depth with prose like "think carefully" or "respond quickly". Depth is set by effort (the `/effort` command in Claude Code, or the API `effort` parameter), not by prose, and asking for reasoning in the response text invites `reasoning_extraction` refusals. Whether the model thinks depends on configuration: Opus 5.5 always thinks; Sonnet 5.5 under adaptive thinking thinks before almost every reply from `medium` effort up, but with `thinking: {"type": "between_tools"}` in a request without tools it answers without thinking. One narrow exception, which asks for thinking, not written-out reasoning: a Sonnet 5.5 API task with adaptive thinking that returns JSON needing a few steps of working out ends its system prompt with "Think the problem through before you answer." For a quick answer, lower effort first; the prompt may also say "Answer directly."
+- Do NOT add "think step by step", a `<thinking>` scaffold, or a request to write out reasoning, and do not steer depth with prose like "think carefully" or "respond quickly". Depth is set by effort (the `/effort` command in Claude Code, or the API `effort` parameter), not by prose, and asking for reasoning in the response text invites `reasoning_extraction` refusals. Whether the model thinks depends on configuration: Opus 5.5 always thinks; Sonnet 5.5 under adaptive thinking thinks before almost every reply from `medium` effort up, but with `thinking: {"type": "between_tools"}` in a request without tools it answers without thinking. One narrow exception, which asks for thinking, not written-out reasoning: a Sonnet 5.5 API task with adaptive thinking that returns JSON needing a few steps of working out ends its system prompt with "Think the problem through before you answer." For a quick answer, lower effort. Only on Opus 5.5, and only where the latency route was measured, may the prompt add "Answer directly without deliberating." - on Sonnet 5.5 from medium effort up and on Haiku 5.5 that line has no effect.
 - Use Template M for agentic or multi-step tasks.
 
 ---
@@ -166,7 +166,7 @@ Current family: Opus 5.5, Sonnet 5.5, Haiku 4.5, Fable 5.1. Write for the curren
 - Agentic — runs tools, edits files, executes commands autonomously
 - Starting state + target state + allowed actions + forbidden actions + stop conditions + checkpoints
 - Stop conditions are MANDATORY — runaway loops are the biggest credit killer
-- The model is the user's setting (current family: Opus 5.5, Sonnet 5.5, Haiku 4.5, Fable 5.1). Effort and thinking depth are set in the Claude Code harness (`/effort`) — do NOT hardcode an effort level or thinking budget in prompts.
+- The model is the user's setting (current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1). Effort and thinking depth are set in the Claude Code harness (`/effort`) — do not hardcode an effort level or thinking budget in prompts.
 - Current Claude models read prompts literally: a vague first turn gets a narrow result. Front-load intent, file scope, constraints, acceptance criteria and session strategy.
 - When the task needs particular tool use or a subagent, say so ('Read all files in /src/auth/ before starting', 'Use a subagent to investigate X so it stays out of main context').
 - When the task could invite extra files, abstractions or features, state the scope: 'Only make changes directly requested.'

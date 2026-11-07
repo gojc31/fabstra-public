@@ -20,3 +20,14 @@ Upstream text left as shipped; recorded here instead of patched.
 - U17 reference/distill.md: deleted "Be ruthless."
 - U17 reference/adapt.md + optimize.md: real-device line replaced with the emulation sentence.
 - U18 reference/audit.md + audit.native.md: IMPORTANT/NEVER block replaced with one actionable-report sentence.
+
+## Local edits 2026-10-18 (Emil Kowalski motion layer, fabstra T3)
+
+- NEW reference/motion-craft.md: the single motion and interaction-feel reference that design-pass, impeccable and Hallmark defer to. Distilled from github.com/emilkowalski/skills at commit 2d22863 (2026-10-11), MIT, Copyright (c) 2026 Emil Kowalski; the MIT notice is carried at the file's end and a value -> file:line source map sits above it. Not an upstream impeccable file.
+- reference/animate.md "Timing and easing": pointer line to motion-craft.md added; the `cubic-bezier(0.16, 1, 0.3, 1)` line kept as an example only, with exits on ease-out and bounce limited to momentum gestures.
+- reference/craft-floor.md Motion bullet: conditional pointer to motion-craft.md (load it when the work evaluates or changes motion or interaction feel; its never-ship table is the checklist builder specs cite).
+- reference/audit.md: motion-craft.md load line after the Diagnostic Scan intro (each never-ship row present is a finding).
+- reference/critique.md Hard Invariants: motion-craft.md load line after the browser-inspection invariant, matching audit.md's wording.
+- reference/motion-craft.md Never ship: the layout-property row exempts the measured-height accordion (matches emil-skills animate/SKILL.md:85).
+- reference/motion-craft.md + design-pass gates.md 31d: keyboard-started = commands fired from the keyboard; field focus states are not (Emil animate/SKILL.md:43,48).
+- Pre-edit copies: `C:\Users\<you>\.claude\backups\emil-gov-2026-10-18\skills\impeccable\`.

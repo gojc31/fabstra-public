@@ -1,5 +1,5 @@
 ---
-description: Run the FabStra flow on Fable 5 (claude-fable-5; the Fable 5.1 flow is /fabstra) - Fable 5 plans and never codes, GPT-6 Astra design-reviews the plan before build and adversarially reviews Claude-built work, Opus 5 / Sonnet 5 / Haiku build via the Agent tool, Astra runs the Codex side spawning GPT-5.6 Sol / Terra / Luna; Sol at the same effort is the reviewer when Astra's quota is spent, a fresh Fable context reviews Codex-built work; Lane B "astra solo" = Astra designs and builds from a Fable brief, Sol and a fresh Fable both review, three must agree
+description: Run the FabStra flow on Fable 5 (claude-fable-5; the current flow is /fabstra) - Fable 5 plans and never codes, GPT-6 Astra design-reviews the plan before build and adversarially reviews Claude-built work, Opus 5 / Sonnet 5 / Haiku build via the Agent tool, Astra runs the Codex side spawning GPT-5.6 Sol / Terra / Luna; Sol at the same effort is the reviewer when Astra's quota is spent, a fresh Fable context reviews Codex-built work; Lane B "astra solo" = Astra designs and builds from a Fable brief, Sol and a fresh Fable both review, three must agree
 argument-hint: "<brief> [xhigh|high|medium] [fast]"
 ---
 

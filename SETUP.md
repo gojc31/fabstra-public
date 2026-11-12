@@ -1,19 +1,19 @@
-# Setup - FabStra + fable-mode on your machine
+# Setup - FabStra on your machine
 
 This is JC's fork of RoboNuggets' `model-router` plugin, with the FabStra flow,
-the fable-mode skill, and the shell shims it depends on. Everything
-machine-specific is now an environment variable with a sane default. Work
+the Claude build and review agents it calls, and the shell shims it depends on. Everything
+machine-specific is an environment variable with a sane default. Work
 through the steps in order; each one is a few minutes.
 
 ## What you need
 
 | Piece | Why | Where |
 |---|---|---|
-| Claude Code (CLI, desktop, or VSCode) with Claude Fable 5.1 available | Fable is the planner in fabstra; fable-mode runs on Opus 5 / Sonnet 5 / Haiku 4.5 | claude.com/claude-code |
+| Claude Code (CLI, desktop, or VSCode) with Claude Fable 5.2 and Claude Opus 5.5 available | fabstra runs on any Claude session: Fable 5.2 always orchestrates, Opus 5.5 orchestrates at 2+ independent tasks or an excluded category and leads below that, Sonnet 5.5 / Haiku 5.5 lead. The build seats are Opus 5.5 and the fresh-context reviewer is Fable 5.2 | claude.com/claude-code |
 | OpenAI Codex plugin for Claude Code (`openai-codex` marketplace) | The Codex transport - Astra / Sol / Terra / Luna run through its companion script | `/plugin marketplace add openai/codex-plugin-cc` then `/plugin install codex@openai-codex` (check the current name in `/plugin`) |
 | Codex desktop app or CLI signed in to a ChatGPT login | The `codex` shim finds the bundled `codex.exe` | openai.com/codex |
 | CLIProxyAPI running on `http://127.0.0.1:8317` | The "proxy" - holds your ChatGPT (and other) logins so Claude Code can call GPT models with no API key | github.com/router-for-me/CLIProxyAPI - copy `proxy/config.example.yaml` to `~/cli-proxy-api/config.yaml` |
-| A ChatGPT plan that includes GPT-6 Astra (Pro) | Astra is the senior seat. Without it fabstra falls back to Sol review and fable-mode loses its design gate - still usable | chatgpt.com |
+| A ChatGPT plan that includes GPT-6 Astra (Pro) | Astra holds the gate seat on excluded-category, architecture and data-model plans. Without it Sol takes those plan gates and reviews too - still usable | chatgpt.com |
 | Git Bash (Windows) or any bash, plus Python 3 | The shims and `proxy-key` are bash; the key reader is Python | git-scm.com |
 
 Anthropic's terms ban routing a Claude **subscription** login through third-party
@@ -23,14 +23,22 @@ out to the GPT models via the proxy. Keep it that way.
 ## Step 1 - environment variables
 
 Set these once (User scope on Windows via `[Environment]::SetEnvironmentVariable(name, value, "User")`,
-or in `~/.bashrc` / `~/.zshrc` on Mac/Linux). Only the first is required.
+or in `~/.bashrc` / `~/.zshrc` on Mac/Linux). `MODEL_ROUTER_HOME` is required.
+Set `MODEL_ROUTER_KEY` too, to the same value as your proxy's `api-keys:`
+entry (`proxy/config.example.yaml` asks for the two to match), unless you kept
+the placeholder `my-proxy-key`: only `bin/proxy-key` and its callers (the
+fabstra skill's proxy commands, the `codex` shim, the doctor) fall back to
+reading the key from `config.yaml`; `scripts/worker.*`, `scripts/session.*`,
+`scripts/vscode.*` and the `model-router` skill's commands never call
+`proxy-key` and send `MODEL_ROUTER_KEY`, else the literal `my-proxy-key`. The
+rest are optional.
 
 | Variable | Meaning | Default |
 |---|---|---|
 | `MODEL_ROUTER_HOME` | Where you cloned this repo | none - set it, e.g. `C:\Users\you\fabstra` |
 | `CODEX_BIN` | Path to the Codex CLI binary, if the shim cannot find it on its own | Codex desktop bundle on Windows, else any other `codex` on PATH |
 | `CLIPROXY_DIR` | CLIProxyAPI install folder (holds `config.yaml`, `.management-key`) | `~/cli-proxy-api` |
-| `MODEL_ROUTER_KEY` | The proxy API key (first entry under `api-keys:` in the proxy config) | read from `config.yaml` by `bin/proxy-key` |
+| `MODEL_ROUTER_KEY` | The proxy API key (the same value as the first entry under `api-keys:` in the proxy config) | `bin/proxy-key` and its callers: read from `config.yaml`; the worker, session and VSCode scripts: the literal `my-proxy-key` |
 | `MODEL_ROUTER_URL` | Proxy URL | `http://127.0.0.1:8317` |
 | `CODEX_PRO_HOME` | A second `CODEX_HOME` holding your Pro login, used when Astra must run natively (not via the proxy) | `~/.codex-pro` |
 | `PROXY_PRO_AUTHFILE` | The proxy auth-file name for your Pro login, e.g. `codex-you@example.com-plus.json`. Only needed if you run two ChatGPT logins and use `proxy-pin` | unset |
@@ -46,14 +54,20 @@ both). The shims:
   `gpt-6-astra` call to the Pro home natively. Both guards have override env vars
   documented at the top of the file.
 - `codex-pro` - same binary, `CODEX_HOME=$CODEX_PRO_HOME`, never via the proxy.
-- `proxy-key` - prints the proxy API key. Every skill calls it instead of
-  hard-coding the key.
+- `proxy-key` - prints the proxy API key: `MODEL_ROUTER_KEY` if set, else the
+  first `api-keys:` entry in `$CLIPROXY_DIR/config.yaml`. The fabstra skill's
+  proxy commands, the `codex` shim (which exports it as `MODEL_ROUTER_KEY` for
+  Codex's `router` provider) and the doctor call it instead of hard-coding the
+  key; the worker, session and VSCode scripts do not (Step 1).
 - `proxy-pin team|both|status` - only for a two-login setup: disables or
   re-enables the Pro login inside the proxy's rotation. Skip it with one login.
 - `codex-fast on|off|status` - toggles Codex Fast mode (`service_tier = "fast"`)
-  in the Pro home's `config.toml`. The skills run it only for a brief that says
-  `fast` ("astra fast"); it costs 2.5x on the Pro weekly window and only
-  reaches native Pro-home launches, never the proxy or `claude -p`.
+  in the Pro home's `config.toml`. Outside the standing fast window ("Two
+  ChatGPT logins" below) the skills run it only for a brief that says `fast`
+  ("astra fast"); during the window the native homes hold fast for the whole
+  window and no `fast` word is needed. Fast costs 2.5x on the Pro weekly
+  window and only reaches native-home launches, never the proxy or
+  `claude -p`.
 - `codex.cmd`, `codex-pro.cmd` - PowerShell / cmd wrappers for the bash shims
   (Windows only). They assume Git for Windows at `C:\Program Files\Git`.
 - `lanew`, `lanew.cmd` - launches a Lane W job (see
@@ -110,8 +124,10 @@ copy `proxy/config.example.yaml`). Start it with `scripts/start-proxy.ps1` or
 curl -s "$MODEL_ROUTER_URL/v1/models" -H "Authorization: Bearer $(proxy-key)"
 ```
 
-You should see `gpt-6-astra` and `gpt-5.6-sol` (or whatever your plan serves)
-in the list.
+You should see `gpt-6-astra` and `gpt-6.1-sol` (the flow's gate and review
+seats), `gpt-6.1-terra` and `gpt-6-luna` (the `terra` and `luna` Codex
+agents), plus `gpt-5.6-sol` (the worker scripts' default), or whatever your
+plan serves, in the list.
 
 ## Step 3b - run the doctor
 
@@ -120,9 +136,15 @@ bash "$MODEL_ROUTER_HOME/scripts/doctor.sh"      # Mac / Linux / Git Bash
 powershell -ExecutionPolicy Bypass -File scripts\doctor.ps1   # Windows
 ```
 
-One line per check. `FAIL` lines are blockers with the fix named; `warn` lines
-are optional pieces (Astra on a non-Pro plan, the Pro home login). Re-run it
-until it ends with "All required checks passed."
+One line per check. `FAIL` lines are blockers with the fix named - among them
+a model the shipped Codex agents and skills pin that the proxy does not serve
+(`gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`). `warn` lines are optional
+pieces (`MODEL_ROUTER_HOME` unset, Astra on a non-Pro plan, `gpt-5.6-sol`
+not served - it is the worker and session scripts' default, which
+`MODEL_ROUTER_MODEL` replaces, and the `worker` agent's model, which the
+`model:` line of `agents/worker.md` sets - the Pro home login, `spark`,
+`cua-headless.mjs`, the plugin not installed yet). Re-run it until it ends
+with "All required checks passed."
 
 ## Step 4 - install into Claude Code
 
@@ -133,13 +155,15 @@ Plugin route (recommended - one command, updates with `git pull`):
 /plugin install model-router@gojc31
 ```
 
-Commands are then `/model-router:fabstra <brief>`, `/model-router:fabsol <brief>`,
-and the skills load as `model-router:fabstra`, `model-router:fabsol`,
-`model-router:fable-mode`, `model-router:model-router`.
+The command is then `/model-router:fabstra <brief>`, and the skills load as
+`model-router:fabstra` and `model-router:model-router`. Run
+`/model-router:fabstra` for every flow (name Sol in the brief to pin Sol):
+`/model-router:fabsol` and `model-router:fabsol` are retired aliases, and
+`model-router:fable-mode` is a retired alias too.
 
 Manual route: copy `skills/*` into `~/.claude/skills/`, `commands/*.md` into
 `~/.claude/commands/`, and `agents/*.md` into `~/.claude/agents/`. Then the
-commands are plain `/fabstra` and `/fabsol`.
+command is plain `/fabstra`.
 
 ## AGENTS.md and CLAUDE.md in your own projects
 
@@ -157,25 +181,47 @@ the method without being asked:
 ```markdown
 ## The Fable Method - always on
 
-Applies to every non-trivial task. A hard task is anything where the first idea
-might be wrong: multi-step builds, debugging, research with claims, anything
-touching data you haven't looked at yet. On Fable 5.1 a real build goes through
-`/model-router:fabstra` (Fable plans and never codes). On Opus 5, Sonnet 5, or
-Haiku 4.5, invoke the `fable-mode` skill for any hard task.
+Every hard task, on any Claude model, goes through `/model-router:fabstra`. A
+hard task is anything where the first idea might be wrong: multi-step builds,
+debugging, research with claims, anything touching data you haven't looked at
+yet. Fable 5.2 always orchestrates (plans, specs, routes, arbitrates; never
+codes). Opus 5.5 orchestrates when the plan has 2+ independent tasks or an
+excluded category (money, auth, PII, permissions, data migration,
+concurrency, a client-facing release), else leads (Lead mode: plans, builds
+or delegates by tier, arbitrates). Sonnet 5.5 and Haiku 5.5 lead.
+Independent tasks edit disjoint files and neither needs the other's result
+before its spec can be written - the full definition is in
+`$MODEL_ROUTER_HOME/skills/fabstra/references/phases.md`, "Session check".
 
 Always: convert relative to absolute (dates, versions); confirm before
 irreversible or outward-facing actions; preserve by default; script anything
 mechanical repeating 3+ times; surface constraints before they bite.
 
-Skip the gates entirely for trivial one-file edits and simple lookups.
+Skip fabstra entirely for trivial one-file edits and simple lookups.
 ```
 
 ## Two ChatGPT logins (optional)
 
-The skills describe a routing policy where Astra runs natively on a Pro login
-(`codex-pro`, `CODEX_PRO_HOME`) and the proxy is pinned to a second "team"
-login for Sol / Terra / Luna (`proxy-pin team`). That is how JC's machine is
-set up and it protects the Pro weekly window. With a single login:
+The skills run a standing fast window (`skills/fabstra/references/quota.md`,
+"The fast pin"; always on, no end date). By default the design review and
+Reviewer A/B run read-only on the Codex transport, and every Codex-transport
+launch (Codex-side builds and fixes included) runs natively, on a fast home
+picked round-robin over `.codex-pro` and `.codex-biz` by the
+`codex-fast-home` picker in `~/bin`, each home holding `service_tier =
+"fast"` in its `config.toml`; a home that hits its usage limit goes into
+`~/.codex-fast-skip`. The proxy is the fallback: when every fast home is
+skipped or the Codex CLI fails, reviews run the proxy `claude -p` command and
+builds run the router launch, rotating over every ChatGPT login in the proxy
+with the standing pin `proxy-pin both`; `proxy-pin team` takes the Pro login
+out of that rotation only when you ask for it, to protect the Pro weekly
+window. Lane B always stays on the proxy `claude -p`. This repo does not ship
+`codex-fast-home` (nor a `codex-biz` shim), so on a fresh install the picker
+is not found and the skills take the proxy path - reviews through the proxy
+`claude -p`, Codex builds through the router launch. The native Pro home
+(`codex-pro`, `CODEX_PRO_HOME`) also keeps what only it can do: the Browser /
+Computer Use / image generation surfaces and `spark`; the `codex` shim also
+sends any `gpt-6-astra` Codex call there (Step 2). That is how JC's machine
+is set up. With a single login:
 
 - ignore `proxy-pin` and `PROXY_PRO_AUTHFILE`;
 - point `CODEX_PRO_HOME` at your one `CODEX_HOME` (or leave `~/.codex-pro`
@@ -210,15 +256,19 @@ machine, in order:
    "Two ChatGPT logins" above for what to skip.
 2. `git clone https://github.com/gojc31/fabstra-public` and set
    `MODEL_ROUTER_HOME` to the clone (Step 1).
-3. Install CLIProxyAPI, copy `proxy/config.example.yaml` to
-   `$CLIPROXY_DIR/config.yaml`, set your own `api-keys:` entry, log the
-   ChatGPT account into the proxy (Step 3). The key never leaves the machine.
-4. Copy `bin/` to `~/bin` and the Codex agents + provider block (Steps 2, 2b).
+3. Copy `bin/` to `~/bin` and the Codex agents + provider block (Steps 2, 2b).
    With one login, `CODEX_PRO_HOME` can point at your only `CODEX_HOME`.
-5. `/plugin marketplace add gojc31/fabstra-public` + `/plugin install model-router@gojc31`
+4. Install CLIProxyAPI, copy `proxy/config.example.yaml` to
+   `$CLIPROXY_DIR/config.yaml`, set your own `api-keys:` entry and set
+   `MODEL_ROUTER_KEY` to the same value (Step 1), log the ChatGPT account into
+   the proxy and start it (Step 3). The key never leaves the machine.
+5. The OpenAI Codex plugin ("What you need"), then
+   `/plugin marketplace add gojc31/fabstra-public` + `/plugin install model-router@gojc31`
    (Step 4), then the CLAUDE.md rule (Step 5) if you want it always on.
-6. `bash scripts/doctor.sh` until it passes. `spark`, the Pro home login, and
-   `cua-headless.mjs` are warn-only; everything else is a blocker.
+6. `bash scripts/doctor.sh` until it passes. `MODEL_ROUTER_HOME`,
+   `gpt-6-astra`, `gpt-5.6-sol`, `spark`, the Pro home login,
+   `cua-headless.mjs` and the plugin are warn-only; everything else is a
+   blocker.
 
 Update later with `git pull` in the clone; the plugin route re-reads the
 files, the manual route needs the copies redone.
@@ -229,7 +279,7 @@ files, the manual route needs the copies redone.
 doctor-plus, grilling, hallmark, handoff, impeccable, prompt-master,
 speed-pass, to-questionnaire, triage, wait-what, wizard, writing-for-agents -
 and two agents, automation-governance-architect and
-engineering-frontend-developer. fable-mode is not in that folder because the
+engineering-frontend-developer. The FabStra flow is not in that folder because the
 plugin ships it. Licences and provenance: `user-skills/THIRD_PARTY.md`.
 
 **Requirements**
@@ -297,15 +347,27 @@ folder, for testing.
 ## Where to go next
 
 Read [USE-CASES.md](USE-CASES.md) - ten worked briefs covering fabstra,
-the Astra solo lane, fable-mode on Sonnet, fabsol, headless workers, and
-routed sessions.
+the Astra solo lane, Lead mode on Sonnet, Haiku or Opus (below the
+Orchestrate threshold), a Sol-pinned run,
+headless workers, and routed sessions.
 
 ## Troubleshooting
 
 - `proxy-key: ... not found` - set `CLIPROXY_DIR` or `MODEL_ROUTER_KEY`.
 - `codex shim: no codex.exe` - install the Codex desktop app, or edit the shim's
   `d=` line to your Codex CLI location.
-- Nothing on 8317 - start the proxy (`scripts/start-proxy.*`); the skills retry
-  once and then stop rather than fall through to a paid API.
-- Astra `model not found` - your ChatGPT plan doesn't serve `gpt-6-astra`; the
-  fabstra skill's "Fallback reviewer" section covers running with Sol only.
+- Nothing on 8317 - start the proxy (`scripts/start-proxy.*`). A launch on a
+  fast native Codex home skips the proxy, so a dead 8317 does not block it
+  (`skills/fabstra/references/transport.md`, "Standing fast window: reviews");
+  on a fresh install without the `codex-fast-home` picker every build, gate
+  and review launch takes the proxy path ("Two ChatGPT logins"); surface jobs
+  on the native Pro home (`codex-pro`) do not use the picker or the proxy. On the proxy path the skills restart
+  the proxy and retry once; if 8317 is still dead, the design gate and the
+  reviews go to a fresh Fable 5.2 context (Reviewer C), logged as a
+  same-family review, and the design review on a real build is never skipped
+  (transport.md, "Reviewer fallback"). Lane B ("astra solo") has no other
+  transport: after that one retry it stops and tells you
+  (`skills/fabstra/references/lane-b.md`).
+- Astra `model not found` - your ChatGPT plan doesn't serve `gpt-6-astra`;
+  `skills/fabstra/references/transport.md`, "Reviewer fallback", covers running
+  with Sol only.

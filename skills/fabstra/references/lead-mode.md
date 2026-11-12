@@ -25,8 +25,8 @@ you reach the gate or lane it covers, not before.
 | USER | you, the person running the session | the brief, the go signal, the final word over the lead |
 | LEAD | you (Opus 5.5 / Sonnet 5.5 / Haiku 5.5) | the plan, BUILDER tasks, the Codex launches, the smoke gate, every verdict, the user, the report |
 | GATE SEAT | GPT-6 Astra (or GPT-6.1 Sol, per the rubric) | the plan gate; parents the Codex side (`sol` / `terra` / `luna` / `spark`); reviews BUILDER-side work; advises, never decides |
-| SUPPORT / MECHANIC | Claude Sonnet 5.5 / Haiku 5.5; Opus 5.5 low | Agent tool, `model: "sonnet"` / `"haiku"` (lookups, commands, one-file mechanical edits); `model-router:builder-low` for mechanical edits across 2+ files |
-| INDEPENDENT REVIEWER | fresh Fable 5.1 (`subagent_type: "model-router:reviewer"`) | reviews what the gate seat's own thread built or fixed; the fallback seat per transport.md |
+| BUILDERS | Claude Opus 5.5, effort by tier | Agent tool: `model-router:builder-low` (mechanical tier), `model-router:builder-medium` (contract tier), `model-router:builder-high` (hard tier); the excluded-category floor, the miss ladder and the pins in phases.md, "Claude seat efforts", decide every other case |
+| INDEPENDENT REVIEWER | fresh Fable 5.2 (`subagent_type: "model-router:reviewer"`, high; excluded category: `"model-router:reviewer-xhigh"`) | reviews what the gate seat's own thread built or fixed; the fallback seat per transport.md |
 
 Codex builders, homes and depth limits: transport.md, "The crew in full".
 Astra holds the Astra-row gates by the user's choice (2026-09-05, Sol row added 2026-09-27; evidence in
@@ -144,14 +144,12 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 ### Build - executing the authoritative plan
 
-- **BUILDER tasks** are yours. Build them yourself, or delegate a sizeable,
-  self-contained one to Sonnet (a "sonnet max" pin: `model-router:sonnet-max`,
-  phases.md), a one-file mechanical one to Haiku (Agent
-  tool, `model: "sonnet"` / `"haiku"`), a mechanical one across 2+ files to
-  `model-router:builder-low` (`arm=builder-low eligible=no`), or an Opus-tier one to
-  `model-router:builder` (Opus 5.5 xhigh; `arm=builder eligible=post-trial`,
-  SKILL.md, Effort). Every delegation carries a spec per specs.md
-  "Builder spec contract".
+- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on
+  the seat phases.md, "Claude seat efforts", picks - mechanical
+  `model-router:builder-low`, contract `model-router:builder-medium`, hard
+  `model-router:builder-high`, with that section's excluded-category floor,
+  miss ladder and pins (a "sonnet max" pin: `model-router:sonnet-max`); log
+  `seat=`. Every delegation carries a spec per specs.md "Builder spec contract".
 - **Design block:** a UI surface gets its `## Design (from design-pass)`
   block first - on an Opus 5.5 session you run the `design-pass` skill; a
   Sonnet or Haiku session makes one `model-router:designer` call stating
@@ -187,7 +185,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 - **Seat by what was built:** BUILDER-side work -> the gate seat (Astra, or
   Sol at the rubric effort; contained change: Sol high); CODEX-side work -> the fresh Fable
-  (`subagent_type: "model-router:reviewer"`), because the gate seat's own
+  (`subagent_type: "model-router:reviewer"`; excluded category: `"model-router:reviewer-xhigh"`, phases.md "Claude seat efforts"), because the gate seat's own
   thread built it. On an xhigh row (an excluded category, multi-file
   architecture, re-review after a P1) the BUILDER-side review runs twice in
   parallel: the gate seat and a fresh Fable, each with the full BUILDER
@@ -222,7 +220,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   Fix-every-instance sweep, PRE-EXISTING routing, and review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line): phases.md "Phase 4".
 - **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by
   default, the Claude column when Codex is blocked or the fix needs the
-  Claude harness; a mechanical multi-file fix goes to `model-router:builder-low`; any other multi-file Claude-column fix goes to a fresh Opus subagent (`model-router:builder`) even on an Opus session. A Codex-column fix
+  Claude harness; the Claude column takes its seat from that table and the rules in "Claude seat efforts". A multi-file fix goes to a fresh subagent even on an Opus session. A Codex-column fix
   is its own launch (lead-mode-deltas.md, "Lead mode delta - transports"). The `claude -p` transport
   never carries fixes outside Lanes B and C. Independent fixes launch in
   parallel. In-session only: a one-line P3 you can see whole; a P1 or P2
@@ -272,8 +270,8 @@ runs, do not build; prepare test names and the review-spec skeleton.
   questions arrive as OPEN FOR THE USER items that you carry. You never
   present Astra's call as yours or yours as Astra's; the report says who
   decided what.
-- A task that keeps failing: raise effort or move up a row in the seat
-  rubric.
+- A task that keeps failing: follow the miss ladder (phases.md,
+  "Claude seat efforts") or move up a row in the seat rubric.
 - Stacks with task skills: `/code-review`, and `grilling` for settling a
   design with the user before the plan gate.
 

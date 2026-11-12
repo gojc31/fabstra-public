@@ -68,16 +68,20 @@ with this report.
 
 Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via Astra.
 
-One Agent tool call per task. Opus tier: `subagent_type: "model-router:builder"`
-(Opus 5.5 xhigh; log `arm=builder eligible=post-trial`); a mechanical task
-spanning 2+ files: `"model-router:builder-low"` (Opus 5.5 low; log
-`arm=builder-low eligible=no`). Both pin their own model and effort. Sonnet and Haiku tiers:
-`subagent_type: "general-purpose"`, `model: "sonnet"` / `"haiku"` per the rubric (required - an
-omitted model inherits the Fable session; the guard denies it), prompt = a
-self-contained spec. Under a Sonnet max pin the Sonnet tier takes
+One Agent tool call per task. The tier picks the seat (phases.md, "Claude
+seat efforts", which also holds the excluded-category floor, the miss ladder
+and the pins): hard tier `subagent_type: "model-router:builder-high"`,
+contract tier `"model-router:builder-medium"`, mechanical tier
+`"model-router:builder-low"`. Each pins its own model and effort, so the call
+passes no `model` field and no `effort` field; log `seat=<subagent_type>`.
+Under a Sonnet max pin the contract tier takes
 `subagent_type: "model-router:sonnet-max"` instead, no `model:` field
-(phases.md routing rubric, Sonnet max pin). The spec fixes the decisions that must not drift; the
-builder owns everything inside them.
+(phases.md routing rubric, Sonnet max pin). A seat that is not a pinned
+`model-router:` agent names its model in the call, because an omitted model
+inherits the session model and the guard denies a model-less call: a user pin of Sonnet or Haiku is `subagent_type: "general-purpose"`, `model: "sonnet"` / `"haiku"`,
+and the "any other Claude seat" of phases.md takes its model and effort from
+there. The prompt is a self-contained spec. The spec fixes the decisions that
+must not drift; the builder owns everything inside them.
 
 The spec fixes, in this order:
 
@@ -110,9 +114,11 @@ The builder investigates the code it touches and owns internal signatures,
 structure, algorithms, and additional tests, and lists each such decision in
 its report. Escalate (NEEDS_CONTEXT) only when the spec contradicts the
 repository, an action is unsafe, or business meaning is ambiguous.
-Scale it to the tier: a Haiku mechanical spec is exact text, file paths, what not to touch, and its acceptance checks.
+Scale it to the tier: a mechanical-tier spec is exact text, file paths, what not to touch, and its acceptance checks.
 
-Haiku tier = Claude Haiku 5.5: `~/.claude/settings.json` env
+The Haiku seat is reached only through a user pin (phases.md, "Claude seat
+efforts", Pins); the rest of this block applies to that seat. The Haiku seat
+is Claude Haiku 5.5: `~/.claude/settings.json` env
 `ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-5-5` maps the `haiku` alias to
 it (since CLI 2.1.296 the bare alias also resolves to Haiku 5.5 on its own - verified 2026-10-10 - so the pin is a safeguard). A Haiku
 subagent inherits the session's effort (`effortLevel` is `high` here, which
@@ -144,7 +150,8 @@ Anthropic's Haiku 5.5 prompting guide, a Haiku spec also carries, verbatim:
 
 Haiku 5.5 runs safety classifiers (`stop_reason: "refusal"`; the `cyber`
 category can fire on benign security work) and a resend usually refuses
-again: send a refused Haiku task to Sonnet with the same spec.
+again: send a refused Haiku task to the seat its tier takes unpinned
+(phases.md, "Claude seat efforts") with the same spec.
 
 Every spec also carries these lines, verbatim:
 
@@ -170,13 +177,27 @@ Every spec also carries these lines, verbatim:
 - "Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better."
 - Multi-app specs only (n8n, GHL, Drive, mail, CRM automations): "Before taking any action, explore broadly with tool calls: list and open the emails, documents, spreadsheet tabs and records across the available apps that could be relevant to this task, including ones the task does not explicitly mention, and use what you find."
 - Automation specs (n8n, Make, GHL, VAPI) carry verbatim: "A source that fails to read is reported as unreadable and its cursor does not move; a write is recorded only after the destination confirms it."
-- Sonnet-tier specs only: "Keep working until everything this spec asks for is done; stop only when you cannot go on without the user or before a risky step."
+- Contract- and mechanical-tier specs (`model-router:builder-medium`, `model-router:builder-low`, and a pinned Sonnet or Haiku seat): "Keep working until everything this spec asks for is done; stop only when you cannot go on without the user or before a risky step."
 - "Before your report, stop every background command you started (dev servers, watchers, tails): a headless run waits for them and can hit its timeout."
 - "Keep the report short, ending with exactly one status: DONE /
   DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED - plus changed paths, each
   implementation decision you made inside the spec, the verification
   commands you ran this session, and the tail of their output. 'It should
   work' does not count; only fresh command output counts."
+
+**Advisor block** (advisor.md) - optional. Only when RUN.md logs
+`advisor=<model>` (not `off`; the default is `fable`) and the effective state
+matches it (advisor.md, Lifecycle): the seat has that advisor attached (a
+headless seat launched with `--advisor <model>`; an Agent-tool seat only while
+the lead's `status --project` read shows `effective=<model>`) and `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is not
+set to a true value in the lead's environment or a settings `env` block, a
+Claude builder spec carries, verbatim:
+
+> An advisor model is attached to this session. Consult it before you settle how to build the feature, and again before you report DONE; it reads your whole transcript, so ask in one line. Its reply is advice: check it against this spec and the code before you act on it. In your report, list each consult and what you did with its advice.
+
+While an advisor is effective, every review, gate and grading spec
+carries, verbatim: "Do not consult the advisor tool in this session; this seat's judgment must be its own."
+On an `advisor=off` run with no advisor effective, no spec carries either.
 
 **Codex-side tasks** take the same spec, delivered headless through Astra.
 Write the spec to `<scratch>/fabstra-task-N.md`, then run the Codex
@@ -208,10 +229,10 @@ followed by Claude-only rules.
 
 **Astra delegates by tier.** Codex's `multi_agent` feature gives the parent
 thread `spawn_agent`; three custom agents exist for it in `~/.codex/agents`:
-`sol` (GPT-6.1 Sol at xhigh, workspace-write, the Opus-tier role), `terra`
-(GPT-6.1 Terra at high, the Sonnet-tier role), and `luna` (GPT-6 Luna at
-medium, the Haiku-tier role), plus `spark` (GPT-5.3-Codex-Spark at medium,
-the same Haiku-tier role at 1000+ tok/s; defined only in `~/.codex-pro/agents`
+`sol` (GPT-6.1 Sol at xhigh, workspace-write, the hard-tier role), `terra`
+(GPT-6.1 Terra at high, the contract-tier role), and `luna` (GPT-6 Luna at
+medium, the mechanical-tier role), plus `spark` (GPT-5.3-Codex-Spark at medium,
+the same mechanical-tier role at 1000+ tok/s; defined only in `~/.codex-pro/agents`
 because it is Pro-only and the proxy cannot serve it; it meters on its own
 5-hour and 7-day Spark windows, separate from the general window Astra, Sol,
 Terra, and Luna share, so prefer it over `luna` whenever the parent runs
@@ -274,7 +295,7 @@ A re-review keeps its round facts even as a plain spec: beside
 `<prior_findings>` it still carries the `Build-start base:` line, that
 round's diff, and from round 3 the round-3 `<review_scope>` text.
 
-**Reviewer C (the fresh Fable 5.1 Agent seat, `model-router:reviewer`):**
+**Reviewer C (the fresh Fable 5.2 Agent seat, `model-router:reviewer`, high; `model-router:reviewer-xhigh` on a build in an excluded category):**
 drop the `<turn_budget>` block from the spec it receives. The 30-call
 ceiling is the proxy `claude -p` seats' `--max-turns 30` (transport.md); the
 Agent seat has no cap and carries about 2.5x the scope (fanout.md, seat

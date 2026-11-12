@@ -22,8 +22,8 @@ lane-b.md is the text; on a Lead-mode session only this differs.
 lane-c.md is the text; on a Lead-mode session only this differs.
 
 - The session model orchestrates the crew. On an Opus or Sonnet session where
-  the Claude limit is not the problem you may still build the Sonnet / Haiku
-  tiers through the Agent tool as usual, sending only the pieces that need it
+  the Claude limit is not the problem you may still build the contract and
+  mechanical tiers through the Agent tool as usual, sending only the pieces that need it
   to the OpenRouter crew; on a routed session every seat runs on the proxy.
 - The reviewer-alias overlap does not arise when an Opus or Sonnet session
   orchestrates the crew itself.
@@ -51,7 +51,7 @@ differs.
 
 ## Model notes (for the model running this session)
 
-- **Fable 5.1** - not this file's audience: run Orchestrate mode (SKILL.md,
+- **Fable 5.2 (and any other Fable)** - not this file's audience: run Orchestrate mode (SKILL.md,
   phases.md); you orchestrate and never write code.
 - **Opus 5.5** - at or above the Orchestrate threshold you run Orchestrate mode (SKILL.md session switch): phases.md is your text and you never write code in-session. Below it: one check per claim, no verifier
   subagents (the plan gate and review gate are the reviews). Status notes go with the next tool call; keep going until the
@@ -66,7 +66,8 @@ differs.
   hardest long-horizon work suits an Opus model better.
 - **Haiku 5.5** - you are the mechanical tier. Send a hard task to the plan
   gate at once; a short draft plan is fine, Astra's plan does the design. Do the mechanical parts exactly as specified and hand
-  judgment calls to the senior seat or the user. With this long a prompt at
+  judgment calls to the senior seat (the run's gate seat through the
+  design-gate transport; on `advisor=<model>`, the advisor first) or the user. With this long a prompt at
   low effort you may stop early or call a change done unchecked: keep going
   until the acceptance criteria pass, run a real check that exercises each
   change before reporting it, and build only what the plan names. Search

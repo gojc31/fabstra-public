@@ -16,6 +16,10 @@ completes: `scripts/logbooks.py` reads a report newer than its logbook as a
 finished run, so a mid-run hand-off keeps its detail in the logbook and an
 evidence file, never in the report file.
 
+Write the report file for a reader who did not watch the run and has none of
+its context: the result first, full sentences, plain words, and every label
+or abbreviation the run coined spelled out as what it is.
+
 ## The short report (end of run; mid-run hand-offs use lines 1 and 4)
 
 Strict shape, at most 6 lines in chat:

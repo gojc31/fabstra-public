@@ -1,5 +1,5 @@
 ---
-model: claude-fable-5-1
+model: claude-fable-5-2
 max_turns: 12
 timeout_seconds: 240
 allowed_tools: [Read, Glob, Grep, Skill]

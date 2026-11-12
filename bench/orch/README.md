@@ -2,7 +2,7 @@
 
 One fixed real build (brief.md: the "ledger" CSV summary CLI, four tasks T1-T4) run headlessly through three arms, scored on held-out tests plus process metrics.
 
-Arms (case-sensitive): `A` = Fable 5.1, Orchestrate mode, Astra review; `B1` = Opus 5.5, Lead mode, fresh-Fable review (model-router:reviewer); `B2` = Opus 5.5 forced into Orchestrate mode, fresh-Fable review. Astra gates the plan in all three.
+Arms (case-sensitive): `A` = Fable 5.2, Orchestrate mode, Astra review; `B1` = Opus 5.5, Lead mode, fresh-Fable review (model-router:reviewer); `B2` = Opus 5.5 forced into Orchestrate mode, fresh-Fable review. Astra gates the plan in all three.
 - `B0` = Opus 5.5 no-skill baseline: model-router plugin off for the run, prompt keeps only the generic headless rules plus a per-run exemption from the CLAUDE.md fabstra mandate, no Astra probe, METRICS `"mode":"none"`.
 - `B1L` = `B1` with fabstra loaded from `variants/model-router-lean` via `--plugin-dir`; only the preamble's file-access line differs (names the variant path only).
 - Mechanism (B0, B1L): run.sh writes `.scratch/settings.json` = `{"enabledPlugins":{"model-router@robonuggets":false}}` and passes `--settings .scratch/settings.json` (per run; user config untouched). Verified 2026-10-07 from the stream-json init message: B0 lists no model-router plugin, agents or fabstra; B1L lists one `model-router@inline` plugin at the variant path.
@@ -29,6 +29,8 @@ Empty cell = input missing, never a crash. Delete `results/` for a clean series.
 | Opus 5.5 orchestrate | Astra (+Fable parallel) | 2 | 36/36 | 38 | 9.08 | 6.0 | 2.0 |
 | Opus 5.5 orchestrate | Fable | 2 | 36/36 | 16 | 5.75 | 0.5 | 0.0 |
 | Opus 5.5 lead | Fable | 2 | 36/36 | 20 | 7.08 | 1.5 | 1.0 |
+
+Rows labelled Fable 5.1 were measured before the arms moved to Fable 5.2 (2026-11-10).
 
 1. The reviewer, not the orchestrator, drives findings and wall time: Astra reports 6-7 findings where Fable reports about 0.5 on the same build.
 2. With the reviewer held constant, Opus 5.5 orchestrating is cheaper than Fable 5.1 orchestrating at identical hidden-test quality.

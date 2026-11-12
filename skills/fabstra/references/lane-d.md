@@ -29,8 +29,10 @@ returned clean with both aliases in `modelUsage`; an Agent call on a
 `sonnet`-pinned subagent failed with `400 unknown provider for model
 claude-sonnet-5`. The proxy serves no Anthropic models by design (routing a
 Claude subscription login through it is banned), so in Lane D `model: "opus"`,
-`"sonnet"`, `"haiku"`, `model-router:reviewer` are all
-unreachable through the Agent tool. The one legitimate way to a Claude seat
+`"sonnet"`, `"haiku"` and the Claude-pinned agents
+(`model-router:builder-low`, `model-router:builder-medium`,
+`model-router:builder-high`, `model-router:builder`, `model-router:reviewer`, `model-router:reviewer-xhigh`,
+`model-router:designer`) are all unreachable through the Agent tool. The one legitimate way to a Claude seat
 from a routed session is headless delegation on the user's own Claude login -
 Claude Code calling Claude Code, which is not a third-party tool - by stripping
 the proxy env from the child (VERIFIED 2026-09-11: from a proxied env,
@@ -41,16 +43,19 @@ three: leaving `ANTHROPIC_API_KEY` in place bills the API key, not the
 subscription. Shape, one background Bash call per task, cwd = the project:
 
 ```bash
-env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY timeout 1500 claude -p --model opus|sonnet|haiku --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/lane-d-task-N.md > <scratch>/lane-d-task-N.md.out 2>&1
+env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY timeout 1500 claude -p --model claude-opus-5-5 --effort <low|medium|high|xhigh> --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/lane-d-task-N.md > <scratch>/lane-d-task-N.md.out 2>&1
 ```
+
+Advisor state (advisor.md): every run logs `advisor=fable` unless the brief opts out (`advisor=off`) or asks for `advisor=opus`; on a run that logs `advisor=<model>` add `--advisor <model>`, only after that launch's state check found `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` not set to a true value in the lead's environment or a settings `env` block - that preflight covers the on-form, so the child inherits no disable variable and the form adds no `-u` for it; on an `advisor=off` run add `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` after the three `-u` flags. The designer and reviewer launches below take the off form.
 
 No `--bare` here: on Claude Code 2.1.280 bare mode disables the subscription
 login and the child answers 'Not logged in' (verified 2026-09-23); the child
-therefore loads CLAUDE.md, which is fine for a Claude seat. The designer route
+therefore loads CLAUDE.md, which is fine for a Claude seat. The build effort
+follows the task's tier as in phases.md, "Claude seat efforts". The designer route
 uses this same command with `--model claude-opus-5-5 --effort xhigh`.
 
-Reviewer the same way, read-only: `--model claude-fable-5-1 --permission-mode
-default --allowedTools "Read,Grep,Glob,Bash"` with the Phase 3 spec verbatim.
+Reviewer the same way, read-only: `--model claude-fable-5-2 --effort high --permission-mode
+default --allowedTools "Read,Grep,Glob,Bash"` with the Phase 3 spec verbatim, and `--effort xhigh` for a build in an excluded category.
 Spend it knowingly - it draws on the Claude window the routed session was
 chosen to protect - and log every such call as `login: claude`. Do not plan a
 seat you cannot fill otherwise: if a run needs Claude seats and the Claude
@@ -69,7 +74,7 @@ window is the problem, say so instead of burning it.
 | REVIEWER - fresh context, read-only, GPT or GLM builder | `model-router:reviewer-routed` | `deepseek-v4-flash` |
 | REVIEWER - fresh context, read-only, DeepSeek builder | `model-router:reviewer-glm` | `glm-5.3-flash` |
 | ASTRA as a seat (design gate / review / hardest slice) when GLM or DeepSeek leads | `model-router:astra-routed` | `gpt-6-astra` |
-| CLAUDE seats (Opus / Sonnet / Haiku build, Fable review) | stripped-env headless `claude -p`, see below | the user's Claude login |
+| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | stripped-env headless `claude -p`, see below | the user's Claude login |
 
 The prompt of every OpenRouter seat (`deepseek41-routed`, `builder-budget`, `reviewer-glm`, `reviewer-routed`) carries `excluded: no - <reason>` as a line of its own (a hook denies the Agent call otherwise; lane-c.md, The excluded marker).
 

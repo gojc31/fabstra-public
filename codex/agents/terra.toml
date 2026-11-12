@@ -1,7 +1,7 @@
 name = "terra"
-description = "GPT-5.6 Terra builder. Spawn for a self-contained, well-specified implementation sub-task (one feature plus its test, one endpoint, one component, one refactor with a written before/after) while the parent thread (GPT-6 Astra, or GPT-6 Sol as fallback or in FabSol) owns the plan, the integration, and the final report."
+description = "GPT-6.1 Terra builder. Spawn for a self-contained, well-specified implementation sub-task (one feature plus its test, one endpoint, one component, one refactor with a written before/after) while the parent thread (GPT-6 Astra, or GPT-6 Sol as fallback or in FabSol) owns the plan, the integration, and the final report."
 nickname_candidates = ["terra", "builder"]
-model = "gpt-5.6-terra"
+model = "gpt-6.1-terra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = '''

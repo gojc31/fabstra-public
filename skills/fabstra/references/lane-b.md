@@ -150,7 +150,7 @@ not to the reviewer.
 normally two seats, run in parallel on the same build with the same Phase 3
 review spec: Reviewer B, Sol at xhigh through the proxy (the Phase 3 proxy
 command with `--model gpt-6.1-sol --effort xhigh`), and Reviewer C, a fresh
-Fable 5.1 (one Agent tool call, `subagent_type: "model-router:reviewer"`,
+Fable 5.2 at high (one Agent tool call, `subagent_type: "model-router:reviewer"`, or `"model-router:reviewer-xhigh"` on a build in an excluded category,
 the spec verbatim). Launch both in the same message. Give each seat its own
 findings file: substitute `fabstra-review-findings-sol.md` and
 `fabstra-review-findings-fable.md` for the spec's `fabstra-review-findings.md`

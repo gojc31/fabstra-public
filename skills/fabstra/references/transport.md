@@ -12,19 +12,19 @@ Related:
 
 | Role | Model | How it runs |
 |---|---|---|
-| ORCHESTRATOR - align, plan, blueprint, route, arbitrate, report | Claude Fable 5.1, or Claude Opus 5.5 at or above the Orchestrate threshold (SKILL.md) (session model) | this session; never builds, never edits code; owns every decision |
+| ORCHESTRATOR - align, plan, blueprint, route, arbitrate, report | Claude Fable 5.2, or Claude Opus 5.5 at or above the Orchestrate threshold (SKILL.md) (session model) | this session; never builds, never edits code; owns every decision |
 | LEAD (Lead mode) - plan, build or delegate by tier, arbitrate, report | Claude Opus 5.5 / Sonnet 5.5 / Haiku 5.5 (session model) | this session; builds the authoritative plan and owns every decision - lead-mode.md |
 | DESIGN REVIEWER - critiques the plan and blueprints before build | GPT-6 Astra on the Astra row, GPT-6.1 Sol on the Sol row (gate seat rubric, SKILL.md), effort per the effort rubric | `claude -p` through the local proxy, read-only tools, background Bash call (Phase 1b); Codex transport read-only is its fallback |
-| BUILDER - complex implementation | Claude Opus 5.5 at xhigh | Agent tool subagent, `subagent_type: "model-router:builder"` (it pins its own model and effort); log `arm=builder eligible=post-trial` (SKILL.md, Effort) |
-| SUPPORT - well-specified medium tasks | Claude Sonnet 5.5 | Agent tool subagent, `model: "sonnet"` |
-| SONNET MAX - Sonnet-tier tasks, only when the user pins it | Claude Sonnet 5.5 at max | Agent tool subagent, `subagent_type: "model-router:sonnet-max"` (pins its own model and effort); rule: phases.md routing rubric, Sonnet max pin |
-| MECHANIC - lookups, commands, single-file mechanical edits | Claude Haiku 5.5 | Agent tool subagent, `model: "haiku"` |
-| MECHANIC (multi-file) - mechanical edits spanning 2+ files | Claude Opus 5.5 at low | Agent tool subagent, `subagent_type: "model-router:builder-low"` (it pins its own model and effort); outside the effort trial, logged `arm=builder-low eligible=no` |
-| BUILDER (routed) - the Codex side, keep Claude usage down | the gate seat (Astra on the Astra row, Sol on the Sol row) as the parent thread, effort per the rubric | headless on the Codex CLI through the Codex transport below (`task --background --write --model gpt-6-astra`); Astra spawns the `sol` (GPT-6.1 Sol xhigh, Opus-tier), `terra` (GPT-6.1 Terra high, Sonnet-tier), `luna` (GPT-6 Luna medium, mechanic), and `spark` (GPT-5.3-Codex-Spark medium, fast mechanic; Pro home only, its own quota pool so it never draws on the general Codex window) custom agents from `~/.codex/agents` (`spark` only in `~/.codex-pro/agents`) |
+| BUILDER (hard tier) - multi-file features, architecture or data-model decisions, tricky algorithms, integration surfaces, debugging where the first theory might be wrong | Claude Opus 5.5 at high | Agent tool subagent, `subagent_type: "model-router:builder-high"` (it pins its own model and effort); logged `seat=model-router:builder-high`; every tier and seat: phases.md, "Claude seat efforts" |
+| BUILDER (hard tier, xhigh) - a hard-tier task in an excluded category (SKILL.md), or any task after its second miss at high | Claude Opus 5.5 at xhigh | Agent tool subagent, `subagent_type: "model-router:builder"` (it pins its own model and effort); logged `seat=model-router:builder` |
+| SUPPORT (contract tier) - a self-contained change with a written contract | Claude Opus 5.5 at medium | Agent tool subagent, `subagent_type: "model-router:builder-medium"` (it pins its own model and effort); logged `seat=model-router:builder-medium` |
+| SONNET MAX - contract-tier tasks, only when the user pins it | Claude Sonnet 5.5 at max | Agent tool subagent, `subagent_type: "model-router:sonnet-max"` (pins its own model and effort); rule: phases.md routing rubric, Sonnet max pin |
+| MECHANIC (mechanical tier, any file count) - exact-text or known-pattern edits | Claude Opus 5.5 at low | Agent tool subagent, `subagent_type: "model-router:builder-low"` (it pins its own model and effort); logged `seat=model-router:builder-low`; lookups and commands stay in the lead's own loop (phases.md, "Delegate or keep") |
+| BUILDER (routed) - the Codex side, keep Claude usage down | the gate seat (Astra on the Astra row, Sol on the Sol row) as the parent thread, effort per the rubric | headless on the Codex CLI through the Codex transport below (`task --background --write --model gpt-6-astra`); Astra spawns the `sol` (GPT-6.1 Sol xhigh, hard tier), `terra` (GPT-6.1 Terra high, contract tier), `luna` (GPT-6 Luna medium, mechanical tier), and `spark` (GPT-5.3-Codex-Spark medium, fast, mechanical tier; Pro home only, its own quota pool so it never draws on the general Codex window) custom agents from `~/.codex/agents` (`spark` only in `~/.codex-pro/agents`) |
 | SOLO BUILDER (Lane B) - designs and builds a task end to end from a brief | GPT-6 Astra, xhigh (Sol xhigh when Astra's quota is spent) | `claude -p` through the local proxy, acceptEdits, no `--bare` so CLAUDE.md and skills load; see lane-b.md |
 | REVIEWER A - adversarial review of Claude-built work | GPT-6 Astra on the Astra row, GPT-6.1 Sol on the Sol row (gate seat rubric, SKILL.md), effort per the rubric | `claude -p` through the local proxy, read-only tools, background Bash call (Phase 3); Codex transport read-only is its fallback |
 | REVIEWER B - Astra's quota fallback for Claude-built work | GPT-6.1 Sol, at the same effort the Astra call would have used | same `claude -p` command with `--model gpt-6.1-sol`; Codex transport read-only is its fallback; never reviews Codex-built work (same family) |
-| REVIEWER C - adversarial review of Codex-built work; also the parallel second reviewer on an xhigh row (pairing rule, phases.md); fallback only when the proxy itself is down, or for excluded work when Astra and Sol are both cooling (Astra and Sol both cooling otherwise routes the review seat and the Phase 1b design gate to Lane C instead) | fresh Claude Fable 5.1 context | Agent tool, `subagent_type: "model-router:reviewer"` (read-only tools enforced), same review spec |
+| REVIEWER C - adversarial review of Codex-built work; also the parallel second reviewer on an xhigh row (pairing rule, phases.md); fallback only when the proxy itself is down, or for excluded work when Astra and Sol are both cooling (Astra and Sol both cooling otherwise routes the review seat and the Phase 1b design gate to Lane C instead) | fresh Claude Fable 5.2 context (high; xhigh on a build in an excluded category) | Agent tool, `subagent_type: "model-router:reviewer"`, or `"model-router:reviewer-xhigh"` on a build in an excluded category (phases.md, "Claude seat efforts") (read-only tools enforced), same review spec |
 | PRO CONSULT - advisory second opinion, never a gate or review seat | GPT-6 Astra Pro (`chatgpt-web/gpt-6-pro`) on JC's ChatGPT Pro chat allowance | `astrapro` wrapper, background Bash; see pro-consult.md |
 | BUDGET CREW (Lane C) - orchestrator, build, and review when Claude and every ChatGPT login are both spent | `glm-5.3-flash` orchestrates; `deepseek-v4.1-flash` builds all coding (empty-200 retry, `glm-5.3-flash` fallback); `glm-5.3-flash` and `deepseek-v4-pro` review; `deepseek-v4-flash` takes the design gate and mechanic - all OpenRouter, via the proxy | `claude -p` through the local proxy only - no Agent tool, no Codex transport; see lane-c.md |
 | ROUTED ORCHESTRATOR (Lane D) - the session model is itself a proxy model and leads the run | `gpt-6-astra` (default) or `glm-5.3-flash`; not `deepseek-v4.1-flash` (0/5 as lead, see Lane D) | the session; spawns proxy-served seats through the Agent tool (`model-router:worker` / `support-routed` / `mechanic-routed` / `builder-budget` / `reviewer-routed` / `astra-routed` / `deepseek41-routed`). Claude seats only by stripped-env headless `claude -p`, never the Agent tool - see lane-d.md |
@@ -67,7 +67,7 @@ in the run, build and review.
 
 - **Sol builds on the Codex transport** (`task --background --fresh --write
   --model gpt-6.1-sol ...`, job id in `<scratch>/sol-job-<name>.txt`): native
-  sandbox and `spawn_agent`. A Sol parent does the Opus-tier work itself and
+  sandbox and `spawn_agent`. A Sol parent does the hard-tier work itself and
   spawns only `terra` (contained sub-task with a written contract) and `luna`
   (mechanical; `spark` natively on Pro), never `sol`; leave the delegation
   clause out for a task that fits one thread - each spawn costs a fresh
@@ -211,7 +211,7 @@ One table for the design gate (Phase 1b) and Reviewers A/B/C (Phase 3). Every ro
 | Astra available, Sol cooling (Sol row) | Astra at the Sol row's effort; log "Sol quota spent, Astra gated" | Astra at the Sol row's effort; log "Sol quota spent, Astra reviewed" |
 | Astra spent on every login (proxy 429 "All credentials for model gpt-6-astra are cooling down", or every usage endpoint >= 95%) | Sol through the proxy at the same effort the Astra call would have used (the pin or the rubric row, never a fixed xhigh); log "design review by Sol, Astra quota spent" | Reviewer B: Sol, same effort, only after a Claude build; log "Astra quota spent, Sol reviewed at <effort>" |
 | Astra and Sol both cooling, work not excluded | Lane C gate: the same read-only command with `--model deepseek-v4-flash --effort high --max-turns 30` (lane-c.md; the command ends `# excluded: no - <reason>`); log "design review by Lane C gate, Astra and Sol cooling" | Reviewer A (Lane C), `glm-5.3-flash`, cross-family to the DeepSeek builder (lane-c.md); log why |
-| Astra and Sol both cooling, work excluded (SKILL.md, Excluded categories) | fresh Fable (Reviewer C), `model-router:reviewer`; log "same-family review, GPT seats cooling, Lane C excluded" | the same fresh Fable seat and log line - nothing sensitive leaves the Claude login |
+| Astra and Sol both cooling, work excluded (SKILL.md, Excluded categories) | fresh Fable (Reviewer C), `model-router:reviewer-xhigh`; log "same-family review, GPT seats cooling, Lane C excluded" | the same fresh Fable seat and log line - nothing sensitive leaves the Claude login |
 | Proxy 8317 still dead after one restart (`powershell -NoProfile -File '$MODEL_ROUTER_HOME/scripts/start-proxy.ps1 (start-proxy.sh on Mac/Linux)'`, retry once) | fresh Fable (Reviewer C), logged as a same-family review | fresh Fable (Reviewer C), same log |
 
 Never skip the design review on a real build because the gate seat is down; never run it twice with the same spec. Codex-built work always goes to Reviewer C (pairing rule), whatever this table says for Claude-built work. `--bare` children load no ~/.claude hooks: the excluded-work check runs on the parent's launch command, and the auth-JSON guard does not reach inside the child.
@@ -283,10 +283,10 @@ used (the pin or the rubric row, not a fixed xhigh); the Codex transport
 with `--model gpt-6.1-sol` is its fallback. Use only after a Claude build
 when Astra is blocked. Log "Astra quota spent, Sol reviewed at <effort>".
 
-**Reviewer C, fresh Fable 5.1 context:** one Agent tool call,
-`subagent_type: "model-router:reviewer"` (Fable 5.1 with Read, Grep, Glob,
-and Bash only, enforced by the agent definition), prompt = the review spec
-verbatim. It has seen none of the build, which is the point - never paste
+**Reviewer C, fresh Fable 5.2 context:** one Agent tool call,
+`subagent_type: "model-router:reviewer"` (Fable 5.2 at high with Read, Grep,
+Glob, and Bash only, enforced by the agent definition), prompt = the review spec
+verbatim. A build in an excluded category takes `subagent_type: "model-router:reviewer-xhigh"` (Fable 5.2 at xhigh, the same tools) - phases.md, "Claude seat efforts". It has seen none of the build, which is the point - never paste
 your session context into it. Run it as the review when the Codex side
 built, and as the fallback "Reviewer fallback" names (log it as a
 same-family review); Astra and Sol both cooling with the proxy still up is

@@ -3,10 +3,10 @@
 #
 #   bash run.sh <A|B1|B2|AF|B2A|B0|B1L> <N> [--dry]
 #
-# A  = Fable 5.1, Orchestrate mode, Astra reviews (skill's pairing rule)
+# A  = Fable 5.2, Orchestrate mode, Astra reviews (skill's pairing rule)
 # B1 = Opus 5.5, Lead mode, fresh-Fable reviewer (model-router:reviewer)
 # B2 = Opus 5.5 forced into Orchestrate mode, fresh-Fable reviewer
-# AF = Fable 5.1, Orchestrate mode, review seat overridden to a fresh Fable (not Astra/Sol)
+# AF = Fable 5.2, Orchestrate mode, review seat overridden to a fresh Fable (not Astra/Sol)
 # B2A = Opus 5.5 forced into Orchestrate mode, review seat follows the skill's pairing rule (Astra)
 # B0 = Opus 5.5, no-skill baseline: model-router plugin disabled for the run, no fabstra lines, no Astra probe
 # B1L = B1 with fabstra loaded from variants/model-router-lean (--plugin-dir) and the installed plugin disabled
@@ -33,14 +33,14 @@ EXTRA=""
 READ_LINE='- You may read the fabstra skill files (the plugin cache under ~/.claude/plugins/cache/robonuggets/model-router/ and $MODEL_ROUTER_HOME/skills/fabstra/) and the proxy config key; otherwise do not read or modify anything outside this repository and its .scratch directory. Never push. Commits are fine.'
 
 case "$ARM" in
-  A)  MODEL="claude-fable-5-1"
-      ARM_TEXT='Run /model-router:fabstra in Orchestrate mode as the skill says for Fable 5.1. The review seat follows the skill'"'"'s pairing rule (Astra).' ;;
+  A)  MODEL="claude-fable-5-2"
+      ARM_TEXT='Run /model-router:fabstra in Orchestrate mode as the skill says for Fable 5.2. The review seat follows the skill'"'"'s pairing rule (Astra).' ;;
   B1) MODEL="claude-opus-5-5"
       ARM_TEXT='MODE OVERRIDE for this run: run /model-router:fabstra in LEAD mode (lead-mode.md) even though the plan is above the Orchestrate threshold - you build BUILDER tasks yourself or delegate by tier as lead-mode.md says. REVIEW SEAT OVERRIDE: the review and every re-review are done by a fresh Fable (Agent tool, subagent_type "model-router:reviewer"), not by Astra or Sol; Astra still gates the plan.' ;;
   B2) MODEL="claude-opus-5-5"
       ARM_TEXT='MODE OVERRIDE for this run: run /model-router:fabstra in ORCHESTRATE mode (phases.md, specs.md) exactly as Fable 5.1 would, even though you are Opus 5.5: never write or edit code or tests in-session - every task, fix, and probe file is built by a subagent by tier; you write specs, verdicts, the logbook and the report only. REVIEW SEAT OVERRIDE: the review and every re-review are done by a fresh Fable (Agent tool, subagent_type "model-router:reviewer"), not by Astra or Sol; Astra still gates the plan.' ;;
-  AF) MODEL="claude-fable-5-1"
-      ARM_TEXT='Run /model-router:fabstra in Orchestrate mode as the skill says for Fable 5.1. REVIEW SEAT OVERRIDE for this run: the review and every re-review are done by a fresh Fable (Agent tool, subagent_type "model-router:reviewer"), not by Astra or Sol; Astra still gates the plan.' ;;
+  AF) MODEL="claude-fable-5-2"
+      ARM_TEXT='Run /model-router:fabstra in Orchestrate mode as the skill says for Fable 5.2. REVIEW SEAT OVERRIDE for this run: the review and every re-review are done by a fresh Fable (Agent tool, subagent_type "model-router:reviewer"), not by Astra or Sol; Astra still gates the plan.' ;;
   B2A) MODEL="claude-opus-5-5"
       ARM_TEXT='MODE OVERRIDE for this run: run /model-router:fabstra in ORCHESTRATE mode (phases.md, specs.md) exactly as Fable 5.1 would, even though you are Opus 5.5: never write or edit code or tests in-session - every task, fix, and probe file is built by a subagent by tier; you write specs, verdicts, the logbook and the report only. The review seat follows the skill'"'"'s pairing rule with Astra pinned (Astra reviews).' ;;
   B0) MODEL="claude-opus-5-5"

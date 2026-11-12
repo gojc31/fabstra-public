@@ -5,16 +5,23 @@ thing to type, which seats fire, and what lands in your repo. Effort words
 (`xhigh`, `high`, `medium`) anywhere in a brief pin the Astra and Sol effort
 for that run; leave them out and the skill's effort rubric picks.
 
-Legend: **Fable** = Claude Fable 5.1 (your session model, plans only).
-**Astra** = GPT-6 Astra (senior reviewer, runs the Codex side). **Sol / Terra /
-Luna** = GPT-5.6 tiers on Codex. **Opus / Sonnet / Haiku** = Claude builders
-via the Agent tool on your normal Claude login.
+Legend: **Fable** = Claude Fable 5.2 (orchestrates and never codes when it is
+your session model; also the fresh-context reviewer). **Opus** = Claude Opus
+5.5 (orchestrates or leads as the session model; every Claude build seat, at
+low / medium / high / xhigh by tier). **Sonnet / Haiku** = Claude Sonnet 5.5 /
+Haiku 5.5 (lead as the session model; Sonnet max builds only on a pin).
+**Astra** = GPT-6 Astra (the gate seat for excluded-category, architecture and
+data-model plans; runs the Codex side). **Sol** = GPT-6.1 Sol (the gate seat
+for every other real build; the hard-tier Codex agent). **Terra / Luna** =
+GPT-6.1 Terra / GPT-6 Luna, the contract and mechanical Codex agents. Claude
+seats run via the Agent tool on your normal Claude login.
 
 ---
 
 ## 1. A real feature, start to finish (`/model-router:fabstra`)
 
-**Session model:** Fable 5.1.
+**Session model:** Fable 5.2, or Opus 5.5 (auth is an excluded category, so
+Opus orchestrates this one too).
 
 ```
 /model-router:fabstra Add a "forgot password" flow to the Next.js app: request page,
@@ -22,21 +29,26 @@ signed one-hour token emailed via Resend, reset page, and a rate limit of 3 requ
 per email per hour. Supabase auth is already wired. Tests for the token and the limit.
 ```
 
-What happens: Fable reads the repo and writes a plan with one blueprint per
-task (files, function signatures, test names). Astra design-reviews the plan
-before anything is built and can block it. Tasks tagged Claude go to Opus or
-Sonnet subagents; tasks tagged Codex go to Astra's thread, which spawns Sol
-(hard), Terra (medium), or Luna (mechanical). Astra adversarially reviews the
-Claude-built parts; a fresh Fable context reviews the Codex-built parts. Fable
-arbitrates every finding and logs why.
+What happens: Fable reads the repo and writes a plan with one spec per task
+(outcome, interfaces and file ownership, test names, acceptance). Auth is an
+excluded category, so Astra holds the gate seat at xhigh and critiques the
+plan and specs before anything is built; Fable rules on every finding. Tasks
+tagged Claude go to the Opus 5.5 build seats (auth work takes the
+excluded-category floor: `builder` at xhigh for hard tasks, `builder-high`
+for the rest); tasks tagged Codex go to Astra's thread, which spawns Sol
+(hard), Terra (contract), or Luna / Spark (mechanical). Astra adversarially
+reviews the Claude-built parts, with a fresh Fable context
+(`reviewer-xhigh`) in parallel on this xhigh row; a fresh Fable context
+reviews the Codex-built parts. Fable arbitrates every finding and logs why.
 
 You get: the code, the tests run green in a smoke gate, `.fabstra/RUN.md` in
-the project with the plan, every finding, and every decision, and a calibrated
-report that separates verified from unverified.
+the project with the plan, every finding, and every decision, and a short
+report that separates verified from assumed, with anything that needs you
+asked in chat.
 
 ## 2. Let Astra design and build alone (Lane B, "astra solo")
 
-**Session model:** Fable 5.1.
+**Session model:** Fable 5.2 (any Claude session runs Lane B the same way).
 
 ```
 /model-router:fabstra astra solo: turn scripts/export.py into a proper CLI with
@@ -44,15 +56,15 @@ subcommands (csv, json, sheets), a --since date filter, and a --dry-run flag. Ke
 the current behaviour as the default `csv` subcommand. xhigh
 ```
 
-What happens: instead of blueprints, Fable writes a brief. Astra runs through
+What happens: instead of per-task specs, Fable writes a brief. Astra runs through
 the proxy as a single long session and designs plus builds end to end. Sol at
-xhigh and a fresh Fable context both review; the three must agree before it
-ships. Use it when the design space is wide and you'd rather one strong model
+xhigh and a fresh Fable context both review, in parallel and independently,
+and the lead rules on every finding before it ships. Use it when the design space is wide and you'd rather one strong model
 own the whole shape than split it into tasks.
 
 ## 3. Fan out several Astras on disjoint slices
 
-**Session model:** Fable 5.1.
+**Session model:** Fable 5.2.
 
 ```
 /model-router:fabstra spawn 3 astra subagents: migrate the three legacy jobs in
@@ -65,40 +77,53 @@ up to three solo Astras in flight, and each slice gets the same Sol plus Fable
 double review. Best for repetitive-but-not-mechanical migrations where the
 slices don't touch the same files.
 
-## 4. You are on Sonnet or Opus, not Fable (`fable-mode`)
+## 4. You are on Sonnet or Haiku, or on Opus below the threshold (Lead mode)
 
-**Session model:** Opus 5, Sonnet 5, or Haiku 4.5.
-
-```
-fable mode: the checkout webhook handler double-charges on Stripe retries. Find
-the real cause and fix it - I have already tried adding an idempotency key on
-the client and it still happens.
-```
-
-What happens: the skill loads the five gates (scope, evidence, adversarial
-reasoning, verify, calibrated report). Your session drafts a plan; Astra reads
-it plus the repo and returns the authoritative plan, which binds. Your session
-builds it (itself, or through Sonnet / Haiku subagents), launches any Codex
-side work, runs the smoke gate, and Astra reviews the finished build. On a
-debugging brief like this the plan gate usually kills the first theory before
-you spend an hour on it.
-
-Trigger phrases that also work: "think like Fable", "slow down and do this
-right", "have Astra check the plan".
-
-## 5. Medium change, no design review needed (`/model-router:fabsol`)
-
-**Session model:** Fable 5.1.
+**Session model:** Sonnet 5.5 or Haiku 5.5 (Opus 5.5 leads a plan with fewer
+than 2 independent tasks and no excluded category; this one is money, so
+Opus orchestrates it as in case 1).
 
 ```
-/model-router:fabsol Replace the hand-rolled retry loop in lib/http.py with
+/model-router:fabstra the checkout webhook handler double-charges on Stripe
+retries. Find the real cause and fix it - I have already tried adding an
+idempotency key on the client and it still happens.
+```
+
+What happens: the skill runs Lead mode and its five gates (scope, evidence,
+adversarial reasoning, verify, calibrated report). Your session drafts a
+plan; the gate seat - Astra here, because money is an excluded category -
+reads it plus the repo read-only and tries to break it, and your session
+rules on every finding: accepted by revising the plan, rejected with one
+logged line. Your session builds the authoritative plan (itself, or through
+the Opus 5.5 build seats by tier), launches any Codex side work, runs the
+smoke gate, and the gate seat reviews the finished build, with a fresh Fable
+in parallel on this xhigh row. On a debugging brief like this the plan gate
+usually kills the first theory before you spend an hour on it.
+
+The `fable-mode` skill is a retired alias for this; run `/model-router:fabstra`
+instead.
+
+## 5. Pin Sol for the gate and review seats (name Sol in the brief)
+
+**Session model:** any Claude session (Fable 5.2 orchestrates; Opus 5.5,
+Sonnet 5.5 and Haiku 5.5 as the session switch says).
+
+```
+/model-router:fabstra sol: Replace the hand-rolled retry loop in lib/http.py with
 tenacity, same backoff (0.5s, x2, max 5 tries), and update the three call sites.
 ```
 
-What happens: Fable specs, Opus / Sonnet / Haiku or Sol build, Sol at xhigh or
-a fresh Fable context reviews. Cheaper than fabstra because there is no Astra
-design gate. Reach for it when the shape of the change is obvious and you want
-the build plus adversarial review without the full crew.
+What happens: naming Sol pins GPT-6.1 Sol for every gate and review seat in
+the run instead of Astra; the plan gate and the reviews run the same
+commands with `--model gpt-6.1-sol`, at the rubric's effort (high for a
+refactor like this) or the effort word in the brief. A refactor with a clear
+before/after takes the Sol row without being named; the pin matters when the
+run would otherwise reach an Astra row. Claude built -> Sol reviews; Sol
+built -> a fresh Fable reviews; Sol never reviews Sol. Reach for it when you
+want to keep Astra's quota for something else.
+
+`/model-router:fabsol` is a retired alias for this pin; run
+`/model-router:fabstra` and name Sol in the brief instead.
 
 ## 6. Plan review only - no build
 
@@ -119,7 +144,7 @@ written. Good the night before a migration.
 
 ```bash
 scripts/worker.sh "Write docstrings for every public function in lib/parsers.py. \
-Do not change behaviour." gpt-5.6-sol medium
+Do not change behaviour." gpt-6.1-sol medium
 ```
 
 What happens: one `claude -p` run on Sol through the proxy with edits allowed
@@ -131,19 +156,28 @@ directly for chores you would not bother orchestrating.
 **Any terminal or VSCode.** Requires the proxy running.
 
 ```bash
-scripts/session.sh gpt-5.6-sol        # terminal
-scripts/vscode.sh gpt-5.6-sol         # separate VSCode profile on that model
+scripts/session.sh gpt-6.1-sol        # terminal, on Sol
+scripts/vscode.sh path/to/project     # separate VSCode profile, opened on that folder
 ```
 
-What happens: Claude Code starts with Sol as its model, on your ChatGPT login
-via the proxy. Everything in the session (subagents included) runs there. Use
+What happens: `session.sh` starts Claude Code with `--model gpt-6.1-sol` (no
+argument: `MODEL_ROUTER_MODEL`, else `gpt-5.6-sol`), on your ChatGPT login
+via the proxy. `vscode.sh` (Windows: `scripts\vscode.ps1`) takes a folder, not
+a model (no argument: the current folder): it sets `ANTHROPIC_BASE_URL` from
+`MODEL_ROUTER_URL` and `ANTHROPIC_AUTH_TOKEN` from `MODEL_ROUTER_KEY`, then
+opens a new VSCode window on that folder with its own profile directory, so
+the Claude Code sessions in that window talk to the proxy; neither VSCode
+script takes or sets a model. Everything in the session (subagents included)
+runs there. Use
 it to burn ChatGPT capacity on exploratory work while your Claude quota rests.
 Never point this at a Claude subscription login; see "Play it safe" in the
 README.
 
 ## 9. Design mockups before the build (Pro home only)
 
-**Session model:** Fable 5.1, with Codex's image generation on a Pro login.
+**Session model:** any Claude session (Fable 5.2 orchestrates; Opus 5.5,
+Sonnet 5.5 and Haiku 5.5 as the session switch says), with Codex's image
+generation on a Pro login.
 
 ```
 /model-router:fabstra Build the onboarding wizard (3 steps: workspace name,
@@ -162,15 +196,19 @@ your plan has no image generation; the flow works without it.
 
 ```bash
 proxy-pin status     # which logins are in rotation
-proxy-pin team       # Sol / Terra / Luna draw on the team login only
+proxy-pin team       # proxy calls draw on the team login only
 proxy-pin both       # put the Pro login back in rotation
 ```
 
 What happens: `proxy-pin` flips one login's `disabled` flag through the
-proxy's management API, no restart. The default policy in the skills is Astra
-native on the Pro login (`codex-pro`), proxy pinned to the second login for
-everything else, so an Astra build never empties the pool your Sol reviews
-depend on. With one login, ignore this entirely.
+proxy's management API, no restart. The standing pin in the skills is
+`proxy-pin both`: proxy calls rotate over every login in the proxy, and
+`proxy-pin team` keeps the Pro login out of the rotation when you want its
+weekly window spared. The pin governs the proxy path only: the skills'
+standing fast window (always on, no end date) sends the design review,
+Reviewer A/B and every Codex-transport build to a fast native Codex home
+first, and the proxy is the fallback (SETUP.md, "Two ChatGPT logins"). With
+one login, ignore `proxy-pin` entirely.
 
 ---
 
@@ -181,8 +219,9 @@ depend on. With one login, ignore this entirely.
 | A feature with design review and adversarial review | `/model-router:fabstra <brief>` | highest, best for anything you'd hate to redo |
 | One strong model owning the design end to end | `... astra solo: <brief>` | one long Astra session plus two reviews |
 | Several independent slices in parallel | `... spawn N astra subagents: <brief>` | N Astra sessions |
-| Build plus review, no design gate | `/model-router:fabsol <brief>` | medium |
-| The Fable discipline on an Opus / Sonnet session | `fable mode: <brief>` | Astra plan gate plus Astra review |
+| Build plus review, no design gate (a contained change, all six of: at most 3 files; an existing repo pattern cited file:line; an existing test or named check proves it; no excluded category; no architecture or data-model decision; no new or changed user-facing surface) | `/model-router:fabstra <brief>` - the lead classes it | one review: Sol high if Claude built it, a fresh Fable if Codex built it |
+| Sol in every seat Astra would hold (Sol-built work still goes to a fresh Fable) | `/model-router:fabstra sol: <brief>` | Sol's quota instead of Astra's |
+| The same flow on a Sonnet / Haiku session, or an Opus session below the Orchestrate threshold (fewer than 2 independent tasks, no excluded category) | `/model-router:fabstra <brief>` (Lead mode) | gate-seat plan gate plus gate-seat review |
 | Someone to break a plan | `astra review: <plan>` | one read-only Astra call |
 | A chore on a GPT model | `scripts/worker.sh "<task>"` | one headless run |
 | A whole session on a GPT model | `scripts/session.sh <model>` | your ChatGPT quota |

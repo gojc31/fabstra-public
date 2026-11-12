@@ -3,6 +3,15 @@
 Runs the merge spec's acceptance list against the plugin tree and prints one
 line per check, then `RESULT: PASS` (exit 0) or `RESULT: FAIL` (exit 1).
 Standard library only.
+2026-11-10 (FabStra 1.11.0): seat pins, Fable 5.2 session switch row, retired wording,
+short reference names, and all four builder agents.
+2026-11-12 (1.12.0): the advisor - advisor.md, its builder paragraph, and its state-check names.
+2026-11-12 (1.13.0): the automatic advisor - advisor.md names its switch script, and the
+superseded 'never write advisorModel' rule stays out.
+2026-11-12 (1.13.0 fix round 1): advisor.md pins `advisor-wrote=` (only a run that wrote the
+setting switches it off) and `advisor-phase=post-build` (no re-enable after the last builder).
+2026-11-12 (1.13.0 fix round 2): advisor.md pins `equals the run's model` (ownership re-checked
+before every off) and `fable_ok=yes` (the Fable CLI check on every confirm path).
 
     python scripts/check-fabstra.py [--root <model-router dir>] [--home <user home>]
 """
@@ -42,12 +51,41 @@ EXPLORE_LINE = ("Before taking any action, explore broadly with tool calls: list
                 "documents, spreadsheet tabs and records across the available apps that could be relevant "
                 "to this task, including ones the task does not explicitly mention, and use what you find.")
 TRIAL_FIRST = "Opus 5.5 builder effort trial, 2026-09-24 to 2026-10-08."
-TRIAL_POINTER = "Opus-tier builder: `model-router:builder`"  # phases.md names the post-trial seat (2026-11-01)
+TRIAL_POINTER = "Hard-tier builder: `model-router:builder-high`"  # phases.md names the hard-tier seat (2026-11-10)
 NOTHING_WRONG = "Finding nothing wrong is a legitimate result"
 SEPARATE = "Separate verified from assumed"
 ARCHIVE = "RUN-<YYYY-MM-DD-HHMMSS>"
+# the builder spec's advisor paragraph, verbatim in specs.md and advisor.md (2026-11-12)
+ADVISOR_PARA = ("An advisor model is attached to this session. Consult it before you settle how to build the "
+                "feature, and again before you report DONE; it reads your whole transcript, so ask in one line. "
+                "Its reply is advice: check it against this spec and the code before you act on it. In your "
+                "report, list each consult and what you did with its advice.")
+# names the advisor state check cannot drop silently (design gate P1, 2026-11-12;
+# the per-seat re-read, review F1, 2026-11-12)
+ADVISOR_STATE = ("CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1", "advisorModel", "before each Claude seat",
+                 "advisor-state.py", "advisor-wrote=", "advisor-phase=post-build",
+                 "equals the run's model", "fable_ok=yes")
+# the 1.12.0 rule the automatic advisor (1.13.0, 2026-11-12) superseded: the lead now switches it
+ADVISOR_SUPERSEDED = ("Never write `advisorModel`",)
 FABLE_MODE_ALLOWED = ("retired", "alias", "lead-mode.md")
 REF_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/([A-Za-z0-9_.-]+\.md)")
+# a backticked reference name in the SKILL.md References section, with or without the path prefix
+REF_SHORT_RE = re.compile(r"`(?:\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/)?([A-Za-z0-9_.-]+\.md)`")
+# each Claude seat file and the frontmatter lines it must hold (contract D2, 2026-11-10)
+SEAT_PINS = {
+    "builder-low.md": {"model": "claude-opus-5-5", "effort": "low"},
+    "builder-medium.md": {"model": "claude-opus-5-5", "effort": "medium"},
+    "builder-high.md": {"model": "claude-opus-5-5", "effort": "high"},
+    "builder.md": {"model": "claude-opus-5-5", "effort": "xhigh"},
+    "reviewer.md": {"model": "claude-fable-5-2", "effort": "high"},
+    "reviewer-xhigh.md": {"model": "claude-fable-5-2", "effort": "xhigh"},
+}
+SONNET_MAX_PINS = {"model": "claude-sonnet-5-5", "effort": "max"}
+TOP_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(.*)$")  # a frontmatter key at column 0
+# wording retired by 1.11.0; allowed only inside an "## Old patterns" section
+RETIRED = [re.compile(re.escape("Fable 5.1")), re.compile(re.escape("fable-5-1")),
+           re.compile(r"(?i)(opus|sonnet|haiku)[- ]tier"), re.compile(re.escape("arm=")),
+           re.compile(re.escape("eligible="))]
 
 
 class Report:
@@ -69,14 +107,76 @@ class Report:
 
 
 def read(p: Path) -> str | None:
+    """The UTF-8 text of `p`, or None when it is missing, unreadable, or not valid UTF-8."""
     try:
         return p.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def size(p: Path) -> int | None:
+    """The byte size of `p`, or None when it is missing or cannot be stat-ed."""
+    try:
+        return p.stat().st_size if p.is_file() else None
     except OSError:
         return None
 
 
 def md_files(d: Path) -> list[Path]:
     return sorted(p for p in d.rglob("*.md") if p.is_file())
+
+
+def frontmatter_keys(text: str | None) -> dict[str, list[str]]:
+    """Top-level (column-0) keys of the block between the first two '---' lines, each with every value seen."""
+    lines = (text or "").splitlines()
+    if not lines or lines[0].rstrip() != "---":
+        return {}
+    keys: dict[str, list[str]] = {}
+    for ln in lines[1:]:
+        if ln.rstrip() == "---":
+            return keys
+        m = TOP_KEY_RE.match(ln)
+        if m:
+            keys.setdefault(m.group(1), []).append(m.group(2).strip())
+    return {}  # no closing '---': no frontmatter
+
+
+def pin_problems(name: str, text: str | None, want: dict[str, str]) -> list[str]:
+    """What is wrong with `name`'s top-level pins: missing file, missing key, duplicated key, or wrong value."""
+    if text is None:
+        return [f"{name} missing or unreadable"]
+    keys = frontmatter_keys(text)
+    out = []
+    for key, value in want.items():
+        found = keys.get(key, [])
+        if not found:
+            out.append(f"{name} lacks top-level '{key}: {value}'")
+        elif len(found) > 1:
+            out.append(f"{name} has {len(found)} top-level '{key}:' lines {found}")
+        elif found[0] != value:
+            out.append(f"{name} {key} is '{found[0]}', want '{value}'")
+    return out
+
+
+def first_cell_parts(row: str) -> list[str]:
+    """The first cell of a markdown table row, split on '/' and stripped."""
+    cells = row.strip().strip("|").split("|")
+    return [part.strip() for part in cells[0].split("/")] if cells else []
+
+
+def file_lines(p: Path, problems: list[str], label: str) -> list[str]:
+    """The lines of `p`; a missing or unreadable file is recorded in `problems` and yields no lines."""
+    text = read(p)
+    if text is None:
+        problems.append(f"{label} missing or unreadable")
+        return []
+    return text.splitlines()
+
+
+def h2_section(text: str, heading: str) -> str | None:
+    """The body of the H2 `heading` up to the next H2 or the end of the file."""
+    m = re.search(rf"^## {re.escape(heading)}[ \t]*\n(.*?)(?=^## |\Z)", text.replace("\r\n", "\n"), re.S | re.M)
+    return m.group(1) if m else None
 
 
 def main() -> int:
@@ -92,6 +192,7 @@ def main() -> int:
     phases = refs / "phases.md"
     trial = refs / "effort-trial.md"
     specs = refs / "specs.md"
+    advisor = refs / "advisor.md"
     fable_dir = args.home / ".claude" / "skills" / "fable-mode"
     fable_alias = fable_dir / "SKILL.md"
     fabsol_alias = root / "skills" / "fabsol" / "SKILL.md"
@@ -101,26 +202,34 @@ def main() -> int:
 
     # 1. size caps
     for path, cap in [(skill, 6800), (lead, 20480), (fable_alias, 600), (fabsol_alias, 600), (cmd_fabsol, 500)]:
-        if not path.is_file():
-            r.fail(f"size {path.name}", f"missing: {path}")
+        n = size(path)
+        if n is None:
+            r.fail(f"size {path.parent.name}/{path.name}", f"missing or unreadable: {path}")
             continue
-        n = path.stat().st_size
+        try:
+            path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError:
+            r.fail(f"size {path.parent.name}/{path.name}", f"not valid UTF-8: {path}")
+            continue
+        except OSError:
+            r.fail(f"size {path.parent.name}/{path.name}", f"missing or unreadable: {path}")
+            continue
         r.check(n <= cap, f"size {path.parent.name}/{path.name}", f"{n} bytes, cap {cap}")
 
     # 2. forbidden strings under skills/fabstra/ and in the two aliases
     scan = md_files(fabstra) + [p for p in (fable_alias, fabsol_alias) if p.is_file()]
-    hits = []
+    hits: list[str] = []
     for p in scan:
-        for i, line in enumerate((read(p) or "").splitlines(), 1):
+        for i, line in enumerate(file_lines(p, hits, p.relative_to(p.anchor).as_posix()), 1):
             for s in FORBIDDEN:
                 if s in line:
                     hits.append(f"{p.relative_to(p.anchor)}:{i} '{s}'")
     r.check(not hits, "forbidden strings", "; ".join(hits) if hits else f"0 hits in {len(scan)} files")
 
     # 3. `fable-mode` only on retired / alias / lead-mode.md lines
-    bad = []
+    bad: list[str] = []
     for p in md_files(fabstra) + [cmd_fabstra]:
-        for i, line in enumerate((read(p) or "").splitlines(), 1):
+        for i, line in enumerate(file_lines(p, bad, p.relative_to(root).as_posix()), 1):
             if "fable-mode" in line and not any(w in line.lower() for w in FABLE_MODE_ALLOWED):
                 bad.append(f"{p.name}:{i}")
     r.check(not bad, "fable-mode mentions", ", ".join(bad) if bad else "only retired/alias/lead-mode.md lines")
@@ -138,23 +247,33 @@ def main() -> int:
         (skill, "separate-verified line", SEPARATE),
         (lead, "separate-verified line", SEPARATE),
         (phases, "archive name", ARCHIVE),
+        (specs, "advisor paragraph", ADVISOR_PARA),
+        (advisor, "advisor paragraph", ADVISOR_PARA),
     ]
     for path, name, needle in required:
         text = read(path)
-        r.check(text is not None and needle in text, f"verbatim {name} in {path.name}",
-                "present" if text is not None and needle in text else "missing")
+        if text is None:
+            r.fail(f"verbatim {name} in {path.name}", f"{path.name} missing or unreadable")
+            continue
+        r.check(needle in text, f"verbatim {name} in {path.name}", "present" if needle in text else "missing")
 
     # 5. every reference cited in SKILL.md exists
-    cited = sorted(set(REF_RE.findall(read(skill) or "")))
+    skill_read = read(skill)
+    skill_text = skill_read or ""
+    ref_section = h2_section(skill_text, "References") or ""
+    cited = sorted(set(REF_RE.findall(skill_text)) | set(REF_SHORT_RE.findall(ref_section)))
     missing = [c for c in cited if not (refs / c).is_file()]
-    r.check(bool(cited) and not missing, "SKILL.md references exist",
-            f"missing {missing}" if missing else f"{len(cited)} cited, all present")
+    if skill_read is None:
+        r.fail("SKILL.md references exist", "SKILL.md missing or unreadable")
+    else:
+        r.check(bool(cited) and not missing, "SKILL.md references exist",
+                f"missing {missing}" if missing else f"{len(cited)} cited, all present")
 
     # 6. no duplicate H2 inside any file under skills/fabstra/
-    dups = []
+    dups: list[str] = []
     for p in md_files(fabstra):
         seen: dict[str, int] = {}
-        for line in (read(p) or "").splitlines():
+        for line in file_lines(p, dups, p.name):
             if line.startswith("## "):
                 seen[line] = seen.get(line, 0) + 1
         dups += [f"{p.name}: {h}" for h, c in seen.items() if c > 1]
@@ -168,39 +287,80 @@ def main() -> int:
         r.fail("fable-mode folder", f"missing: {fable_dir}")
 
     # 8. builder agents carry the time-matters line
-    for name, soft in [("builder.md", False), ("builder-medium.md", True)]:
+    for name in ("builder.md", "builder-high.md", "builder-medium.md", "builder-low.md"):
         p = root / "agents" / name
         text = read(p)
         if text is None:
-            (r.warn if soft else r.fail)(f"agents/{name}", "not there yet" if soft else "missing")
+            r.fail(f"agents/{name}", "missing or unreadable")
         else:
             r.check("Time matters here" in text, f"agents/{name}", "has 'Time matters here'"
                     if "Time matters here" in text else "lacks 'Time matters here'")
 
     # 9. sonnet-max seat pins Claude Sonnet 5.5 at max (2026-10-01)
-    sm = read(root / "agents" / "sonnet-max.md")
-    fm = sm.split("---", 2)[1] if sm and sm.startswith("---") and sm.count("---") >= 2 else ""
-    fm_lines = {ln.strip() for ln in fm.splitlines()}
-    sm_ok = "model: claude-sonnet-5-5" in fm_lines and "effort: max" in fm_lines
-    r.check(sm_ok, "agents/sonnet-max.md", "model claude-sonnet-5-5, effort max" if sm_ok
-            else ("frontmatter lacks model: claude-sonnet-5-5 / effort: max" if sm else "missing"))
+    sm_bad = pin_problems("sonnet-max.md", read(root / "agents" / "sonnet-max.md"), SONNET_MAX_PINS)
+    r.check(not sm_bad, "agents/sonnet-max.md", "; ".join(sm_bad) if sm_bad
+            else "model claude-sonnet-5-5, effort max")
 
     # 10. the SKILL.md session switch table names Sonnet 5.5
-    m = re.search(r"^## Session switch\n(.*?)(?=^## )", (read(skill) or "").replace("\r\n", "\n"), re.S | re.M)
+    m = re.search(r"^## Session switch\n(.*?)(?=^## )", skill_text.replace("\r\n", "\n"), re.S | re.M)
     rows = [ln for ln in (m.group(1) if m else "").splitlines() if ln.startswith("|")]
-    has_row = any("Sonnet 5.5" in ln for ln in rows)
+    no_section = "SKILL.md missing or unreadable" if skill_read is None else "no '## Session switch' section"
+    has_row = any("Sonnet 5.5" in first_cell_parts(ln) for ln in rows)
     r.check(has_row, "session switch Sonnet 5.5",
-            "row present" if has_row else ("no Sonnet 5.5 row" if m else "no '## Session switch' section"))
+            "row present" if has_row else ("no Sonnet 5.5 row" if m else no_section))
 
     # 11. the contained-change build class is stated in both modes (2026-10-02)
     for path in (phases, lead):
-        low = (read(path) or "").lower()
-        gaps = [s for s in ("contained change", "at most 3 files") if s not in low]
+        text = read(path)
+        if text is None:
+            r.fail(f"contained change in {path.name}", f"{path.name} missing or unreadable")
+            continue
+        gaps = [s for s in ("contained change", "at most 3 files") if s not in text.lower()]
         r.check(not gaps, f"contained change in {path.name}",
                 "class and 3-file criterion present" if not gaps else f"missing {gaps}")
-    tlow = (read(refs / "transport.md") or "").lower()
-    r.check("contained change" in tlow, "contained change in transport.md",
-            "review seat clause present" if "contained change" in tlow else "missing ['contained change']")
+    ttext = read(refs / "transport.md")
+    if ttext is None:
+        r.fail("contained change in transport.md", "transport.md missing or unreadable")
+    else:
+        tlow = ttext.lower()
+        r.check("contained change" in tlow, "contained change in transport.md",
+                "review seat clause present" if "contained change" in tlow else "missing ['contained change']")
+
+    # 12. each Claude seat pins its model and effort (2026-11-10)
+    bad_pins: list[str] = []
+    for name, want in SEAT_PINS.items():
+        bad_pins += pin_problems(name, read(root / "agents" / name), want)
+    r.check(not bad_pins, "seat pins", "; ".join(bad_pins) if bad_pins
+            else f"{len(SEAT_PINS)} seat files pin model and effort")
+
+    # 13. the SKILL.md session switch table names Fable 5.2 (2026-11-10)
+    has_fable = any("Fable 5.2" in first_cell_parts(ln) for ln in rows)
+    r.check(has_fable, "session switch Fable 5.2",
+            "row present" if has_fable else ("no Fable 5.2 row" if m else no_section))
+
+    # 14. no retired wording outside an "## Old patterns" section (2026-11-10)
+    retired_scan = [skill] + [p for p in md_files(refs) if p.name != "effort-trial.md"] + [cmd_fabstra]
+    retired_hits: list[str] = []
+    for p in retired_scan:
+        in_old = False
+        for i, line in enumerate(file_lines(p, retired_hits, p.relative_to(root).as_posix()), 1):
+            if line.startswith("## "):
+                in_old = line.rstrip() == "## Old patterns"  # history runs from this exact H2 to the next H2
+            if not in_old and any(rx.search(line) for rx in RETIRED):
+                retired_hits.append(f"{p.relative_to(root).as_posix()}:{i}")
+    r.check(not retired_hits, "retired wording", ", ".join(retired_hits) if retired_hits
+            else f"0 hits in {len(retired_scan)} files")
+
+    # 15. the advisor reference exists and keeps its state-check names (2026-11-12)
+    adv_text = read(advisor)
+    r.check(adv_text is not None, "advisor.md exists", "present" if adv_text is not None
+            else f"missing or unreadable: {advisor}")
+    adv_gaps = [s for s in ADVISOR_STATE if s not in (adv_text or "")]
+    r.check(not adv_gaps, "advisor state check", f"advisor.md lacks {adv_gaps}" if adv_gaps
+            else "advisor.md names " + " and ".join(ADVISOR_STATE))
+    adv_old = [s for s in ADVISOR_SUPERSEDED if s in (adv_text or "")]
+    r.check(not adv_old, "advisor superseded rule", f"advisor.md still says {adv_old}" if adv_old
+            else "advisor.md drops " + " and ".join(ADVISOR_SUPERSEDED))
 
     print("RESULT: FAIL" if r.failed else "RESULT: PASS")
     return 1 if r.failed else 0

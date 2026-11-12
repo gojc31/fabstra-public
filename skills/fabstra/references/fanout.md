@@ -60,6 +60,7 @@ Add one **cross-cutting seat** when the surface has shared parts - app shell, na
 - Every seat gets the same rubric (Design block, review spec, or audit checklist), the same report format, its own slice list, and the cross-cutting seat's ownership line. Shared material goes in one file every spec points at; a slice spec carries only its slice.
 - Each seat writes `<scratch>/findings-<slice>.md` and overwrites it as it goes.
 - Browser seats each run their own daemon: `BU_NAME=<slice>` on every browser-harness call, open new tabs only, close only their own tabs. On 2026-10-03 builders sharing the default daemon moved each other's tabs.
+- A Claude seat that is none of the named agents (a research or audit seat) takes its `subagent_type`, model and effort from phases.md, "Claude seat efforts" ("Any other Claude seat"), and its Agent call names the model and the effort.
 - All seats launch in one message (multiple Agent calls; proxy seats as background Bash launches per transport.md).
 
 ### 5 - Merge and log

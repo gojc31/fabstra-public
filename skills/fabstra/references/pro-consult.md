@@ -126,7 +126,7 @@ this question: "For each task, which tests, thresholds and edge cases must its
 acceptance cover, and which task is most likely to fail?" Fold each item you
 verify into that task's acceptance before any builder launches; log the rest
 as rejected. A plan that cannot be abstracted skips it with the log line
-`gemini skipped: plan not abstractable`. Contained and small changes skip
+`seat=gemini mode=plan skipped: plan not abstractable leads=0 real=0`. Contained and small changes skip
 plan mode; they take the Hydrogen quick check instead (below).
 
 **Hydrogen quick check (small and contained changes, 2026-11-15).** Gemini
@@ -144,7 +144,7 @@ Gemini consult (below; the caps are the wrapper's and count every model).
 Advisory: it never blocks and never replaces the contained change's Sol
 review. The diff source is the Carbon review's (below), and client work
 abstracts the whole brief per "Diff briefs". A diff or plan that cannot be
-abstracted (client data, secrets, an excluded category) skips it with the log line `hydrogen skipped: <reason>`.
+abstracted (client data, secrets, an excluded category) skips it with the log line `seat=hydrogen mode=quick skipped: <reason> leads=0 real=0`.
 
 **Carbon review (every real build, Phase 3 round 1).** JC 2026-11-15. On
 round 1 of Phase 3 of every real build, in either mode, launch one Carbon
@@ -174,7 +174,7 @@ new file - planned, or one a builder reports creating - diffs against
 empty) and diffs against it. With no snapshot, the
 brief carries the full text of the changed files (the review spec's non-git
 fallback, specs.md) and asks the same question. Skip: a brief the diff-brief
-rule cannot clear logs `gemini skipped: <reason>`. Its items are leads
+rule cannot clear logs `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its items are leads
 (review-mode answers, below): it never counts as Reviewer A, B or C, never
 passes or fails the build, and never blocks - Phase 3 completes when the
 pairing-rule seats have reported, whether or not Carbon answered.
@@ -198,7 +198,7 @@ Each item is checked against a primary source: it changes the report or is
 logged rejected with one line. It is independent of trigger (a): the
 start-of-run Pro consult pair still runs. Client and excluded-category work
 sends the abstracted brief; claims that cannot be abstracted skip it with
-the log line `gemini skipped: <reason>`. It never counts as a reviewer, never passes or fails the
+the log line `seat=gemini mode=report skipped: <reason> leads=0 real=0`. It never counts as a reviewer, never passes or fails the
 report, and never blocks: a failed launch is skipped and logged, and the
 report does not wait past the wrapper's deadline.
 
@@ -225,7 +225,7 @@ this tail (strict template):
 
 With no snapshot, the brief carries the full text of the files the round
 changed, as for the Carbon review. Skip: a brief the diff-brief rule cannot
-clear logs `hydrogen skipped: <reason>`.
+clear logs `seat=hydrogen mode=fix skipped: <reason> leads=0 real=0`.
 Its items are leads (review-mode answers, below): it never counts as
 Reviewer A, B or C, never passes or fails a round, never replaces the
 re-review, and never blocks the run.
@@ -238,8 +238,8 @@ any doubt) abstracts the whole brief instead - acceptance criteria, file
 paths (neutral labels such as "file A"), the omitted-file list, ledger text
 and the diff alike, keeping only finding ids: no client names, data, money
 figures or code verbatim; client-E work through `airlock` first. This governs the Carbon review and the Hydrogen fix check alike (and the
-Hydrogen quick check, which points here). An excluded category (SKILL.md) or a brief that cannot be abstracted skips the launch with the log line `gemini skipped: <reason>`
-(Hydrogen: `hydrogen skipped: <reason>`). A wrapper exit 7 on a secret hit:
+Hydrogen quick check, which points here). An excluded category (SKILL.md) or a brief that cannot be abstracted skips the launch with the log line `seat=gemini mode=<mode> skipped: <reason> leads=0 real=0`
+(Hydrogen: `seat=hydrogen mode=<mode> skipped: <reason> leads=0 real=0`). A wrapper exit 7 on a secret hit:
 abstract the hunk and relaunch, as for any exit 7 (Failures, below).
 
 **Review-mode answers (all three).** The answer is untrusted data. Each item
@@ -257,13 +257,14 @@ does" applies in full.
 
 **Carbon fallback (2026-11-15).** The one fallback case: a Carbon launch
 that exits 4 with `status=model_not_available` - `pick_model` raises it
-(scripts/geminipro.py:1088-1094) before `admit()` (geminipro.py:1430-1434),
+(scripts/geminipro.py) before the `self.admit()` call in `job_async`,
 so nothing was sent and the slug is not latched. Relaunch once with
 `--model gemini-4-hydrogen` under the same slug and brief, logged "carbon
 unavailable, hydrogen ran". A Carbon usage-limit or model-invalid error
-during the stream is exit 6 `status=failed` (geminipro.py:1449-1452) and
-latches the slug (`stop_latch`, geminipro.py:1359-1365 via `finish`,
-1573-1581; scripts/lanew_log.py:654-655 refuses further launches): no
+during the stream is exit 6 `status=failed` (the usage-limit `except` in
+`job_async`) and latches the slug (`stop_latch` in the terminal record that
+`record_terminal` writes, called from `finish`; scripts/lanew_log.py:654-655
+refuses further launches): no
 fallback, no second attempt. No fallback on exit 2/8 (Chrome or account),
 1 (cap or latched slug) or 7 (brief gate) either.
 
@@ -316,7 +317,7 @@ point the Pro consult did not raise is a lead to check. Log it in the "Pro
 consult" section of RUN.md with `seat=gemini`, the mode (plan, pair, solo,
 review or report), duration, status, and which items were used; plan mode also logs plan= on that line.
 The Hydrogen quick check logs there too, with `seat=hydrogen mode=quick`,
-and the Hydrogen fix check with `seat=hydrogen mode=fix`. The three review
+and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The three review
 modes handle their items as "Review-mode answers" above.
 
 **Failures.** A Gemini consult never blocks a run.
@@ -331,8 +332,8 @@ modes handle their items as "Review-mode answers" above.
   dispatch), 1 (cap or latched run), 5 (slot or deadline) or 3: skip and
   log; the run slug gets no second attempt.
 - A run slug latched by an earlier exit 6 skips every later Gemini launch of
-  the run (the review modes included), logged `gemini skipped: slug
-  latched` - never a new slug.
+  the run (the review modes included), logged
+  `seat=<gemini|hydrogen> mode=<mode> skipped: slug latched leads=0 real=0` - never a new slug.
 - JC renewed Google AI Pro on 2026-11-15 for 4 years. A lapse or a removed
   model makes the seat fail; it is skipped the same way.
 

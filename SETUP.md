@@ -245,6 +245,33 @@ is set up. With a single login:
   `node_repl` / `cua_repl` MCP blocks copied from `~/.codex/config.toml` into
   the Pro home's `config.toml` - re-copy them after every Codex app update,
   the runtime hashes in those paths change.
+- `geminipro` (`bin/geminipro`, `bin/geminipro.cmd`, `scripts/geminipro.py`) - the
+  Gemini consult seat the fabstra skill's `pro-consult.md` describes: it sends one
+  brief to the Gemini web app on your own Google AI Pro account and prints the
+  answer. Skip it if you don't use Gemini consults; nothing else depends on it.
+  To set it up:
+  1. Make a Python 3.12 virtual environment just for it (for example
+     `python -m venv ~/geminipro-lab/.venv`) and run
+     `pip install gemini_webapi==2.1.1` inside it. That exact release is required
+     (the wrapper refuses any other); it brings `curl_cffi` and `loguru` with it.
+     Add `pytest` to the same venv to run `tests/test_geminipro.py`.
+  2. Set `GEMINIPRO_PYTHON` to that venv's interpreter
+     (`<venv>\Scripts\python.exe` on Windows, `<venv>/bin/python` elsewhere). The
+     shims default to `~/geminipro-lab/.venv/Scripts/python.exe`.
+  3. Set `GEMINIPRO_ACCOUNT` to the Google account address you use for Gemini. The
+     shared copy has no default account: until it is set, `geminipro` stops with
+     exit 2 before it touches Chrome or the network. Before sending anything it
+     checks that Gemini is signed in as exactly that account (exit 8 if not).
+  4. Sign Chrome in to that Google account, on a Google AI Pro plan, and keep the
+     `browser-harness` CLI on PATH with its daemon running and attached to that
+     Chrome. `geminipro` reads the Gemini session cookies from the running Chrome
+     through it; it never opens or switches tabs and never stores the cookies.
+  5. Check the setup with `geminipro --status`: it reads the account, plan,
+     models and remaining credits, and sends no brief.
+  Risk: `gemini_webapi` is an unofficial client of gemini.google.com, not a
+  Google API. Automated use of the consumer app may breach Google's terms of
+  service, and Google can limit or suspend the account. Use it at your own risk
+  and keep the volume low (the wrapper's default daily cap is 80 jobs).
 
 ## Moving to a second machine (a VM, a client box)
 

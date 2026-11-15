@@ -5,7 +5,11 @@
 # Usage: astrapro <run> <name> [--keep-open] < brief.md
 # Resolves the script like bin/lanew resolves lanew_log.py: first next to this
 # file (the shareable repo has bin/ and scripts/ side by side), then
+# $MODEL_ROUTER_HOME/scripts when set (a clone with bin/ copied to ~/bin), then
 # $HOME/model-router/scripts.
 script="$(dirname "$0")/../scripts/astrapro.py"
+if [ ! -f "$script" ] && [ -n "${MODEL_ROUTER_HOME:-}" ]; then
+  script="$MODEL_ROUTER_HOME/scripts/astrapro.py"
+fi
 [ -f "$script" ] || script="$HOME/model-router/scripts/astrapro.py"
 exec python "$script" "$@"

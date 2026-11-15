@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# geminipro - send ONE brief to Gemini (gemini.google.com, the Google AI Pro account)
+# through gemini_webapi. Thin shim: the wrapper is scripts/geminipro.py (usage, exit
+# codes, env and design are in its docstring).
+# Usage: geminipro <run> <name> [--model <m>] [--json] < brief.md | geminipro --status
+# Runs the geminipro-lab venv interpreter (gemini_webapi lives only there);
+# GEMINIPRO_PYTHON overrides it. Resolves the script like bin/astrapro: next to this
+# file first, then $MODEL_ROUTER_HOME/scripts when set (a clone with bin/ copied
+# to ~/bin), then $HOME/model-router/scripts.
+script="$(dirname "$0")/../scripts/geminipro.py"
+if [ ! -f "$script" ] && [ -n "${MODEL_ROUTER_HOME:-}" ]; then
+  script="$MODEL_ROUTER_HOME/scripts/geminipro.py"
+fi
+[ -f "$script" ] || script="$HOME/model-router/scripts/geminipro.py"
+py="${GEMINIPRO_PYTHON:-$HOME/geminipro-lab/.venv/Scripts/python.exe}"
+exec "$py" "$script" "$@"

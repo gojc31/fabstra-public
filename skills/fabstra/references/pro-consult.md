@@ -265,8 +265,12 @@ during the stream is exit 6 `status=failed` (the usage-limit `except` in
 `job_async`) and latches the slug (`stop_latch` in the terminal record that
 `record_terminal` writes, called from `finish`; scripts/lanew_log.py:654-655
 refuses further launches): no
-fallback, no second attempt. No fallback on exit 2/8 (Chrome or account),
-1 (cap or latched slug) or 7 (brief gate) either.
+fallback, no second attempt. Exit 2 or 8 (Chrome or account) gets no
+relaunch from the lead either; the wrapper's own API backup covers it (the
+next paragraph). Exit 1 (cap or latched slug) and exit 7 (brief gate) get
+no fallback.
+
+**API backup (2026-11-15).** When the app path cannot run for a Chrome, harness, library or account reason - the wrapper's exit 2 or 8, raised after the brief gate and before anything was sent to the app - the wrapper sends the same brief once to the Gemini API instead: to `gemini-4-hydrogen` through the `gemini-api` CLI, with the request not stored, whichever model the launch asked for (Carbon included). It never fires on exit 1, 4, 5, 6 or 7. The wrapper does this by itself inside the same launch, so the lead launches nothing extra and never runs `gemini-api` by hand for a consult. The lead sees an answered backup as exit 0 with `"via": "api"` in the status line, plus `primary_exit` (2 or 8) and `requested_model` (the model the launch asked for); exit 0 with `"via": "api"` is the normal form of a backup answer. An exit 3 with `"via": "api"` and `backup` = `ok` also carries the answer (printed on stderr under `--json`): the report file or the usage record could not be confirmed, so use the answer and log the exit. An admitted backup counts toward the same caps as an app launch (12 per run slug, 80 per day). A backup that fails leaves the original exit 2 or 8 with its original status, the status line carries `backup` = `failed` and the reason ends with `; API backup failed: ...`; a backup that was not run leaves the same exit with `backup` = `not_run`, `"via": "app"` and a reason ending `; API backup not run: ...`. An API failure never latches the run slug. The backup is not run when the API key is missing or shorter than 16 characters, the CLI is missing, under 60 seconds remain before the wrapper's deadline, or the brief itself contains the key (it is never sent and never silently scrubbed). A configuration exit 2 raised before the brief is read (no account configured, a test-only variable without GEMINIPRO_TEST=1) never considers the backup. Data: the API key on this machine is a free-tier key, on which Google may use the inputs to improve its models; JC accepted that for every brief on 2026-11-15. Client briefs are abstracted by the existing brief rule, and on this machine the `gemini-api` guard still refuses private or signed links in the brief (the backup then fails and is logged). The backup is never the primary seat, and its answer is a list of leads like any Gemini answer: it never gates, never counts as Reviewer A, B or C, and never blocks a run. `GEMINIPRO_API_BACKUP=0` switches it off; "no gemini" turns every Gemini launch off as before, the backup included. Log an answered backup by the record rule in "Handling the answer" below (`seat=hydrogen`, `via=api`).
 
 **Pair mode.** Every Pro consult launch (Triggers a-d) also launches one Gemini
 consult on the same question, in the same message.
@@ -293,7 +297,8 @@ counts); a launch the cap refuses (exit 1) is skipped and logged. Launches
 can overlap (a review mode beside a pair-mode consult): a second launch
 while one runs waits for the slot (`GEMINIPRO_SLOT_WAIT`, default 300 s). It needs JC's Chrome
 open with the profile window signed in to the Google AI Pro account and
-the browser-harness daemon already running; it starts neither.
+the browser-harness daemon already running; it starts neither. When they are not available, the
+wrapper falls back to the API backup by itself ("API backup" above).
 
 **The brief** (every mode) follows "The brief" above: the wrapper applies the
 same gate (the `brief-check:` line, 20,000 characters, the secret scan), and an
@@ -317,14 +322,22 @@ point the Pro consult did not raise is a lead to check. Log it in the "Pro
 consult" section of RUN.md with `seat=gemini`, the mode (plan, pair, solo,
 review or report), duration, status, and which items were used; plan mode also logs plan= on that line.
 The Hydrogen quick check logs there too, with `seat=hydrogen mode=quick`,
-and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The three review
+and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). An answer that came through the API backup is logged with `seat=hydrogen` (the model that answered, even when Carbon was asked for) and the token `via=api` after the mode, for example `seat=hydrogen mode=review via=api review-r1 41 s ok leads=4 real=1`; a record with no `via=` token is an app launch. The three review
 modes handle their items as "Review-mode answers" above.
 
 **Failures.** A Gemini consult never blocks a run.
 - Exit 7 (brief gate): fix the brief and relaunch, as for Pro consult.
-- Exit 2 (Chrome, the harness daemon or the profile window is not available,
-  or the library version is not 2.1.1) or 8 (the signed-in account is not
-  the configured account): skip, log, and tell JC in the report; these are JC's steps.
+- Exit 2 or 8, two cases. (a) Exit 2 (Chrome, the harness daemon or the
+  profile window is not available, or the library version is not 2.1.1) or 8
+  (the signed-in account is not the configured account), raised after the brief gate: the
+  wrapper has already considered the API backup, so the status line carries
+  `backup` (`not_run` or `failed`) and its `reason` ends with
+  `; API backup not run: ...` or `; API backup failed: ...`. Skip, log, and
+  tell JC in the report; these are JC's steps. (b) A configuration exit 2
+  raised before the brief is read (no account configured, a test-only
+  variable without GEMINIPRO_TEST=1): the backup is never considered, and the
+  status line has no `backup` key and no suffix. Skip, log, and tell JC.
+  An exit 0 with `"via": "api"` is a normal answer, handled like any other.
 - Exit 4 `model_not_available` on a Carbon launch: the Carbon fallback
   above, once. Any other launch exiting 4 (Hydrogen itself included): skip
   and log.

@@ -35,11 +35,11 @@ def as_json(res):
     return json.loads(res.stdout)
 
 
-def row(data, seat, mode):
+def row(data, seat, mode, via="app"):
     for r in data["rows"]:
-        if r["seat"] == seat and r["mode"] == mode:
+        if r["seat"] == seat and r["mode"] == mode and r.get("via", "app") == via:
             return r
-    raise AssertionError(f"no row {seat}/{mode}: {data['rows']}")
+    raise AssertionError(f"no row {seat}/{mode}/{via}: {data['rows']}")
 
 
 def test_scored_lines_summed_per_seat_mode(tmp_path):
@@ -145,7 +145,7 @@ def test_env_roots_override_defaults(tmp_path):
     missing = tmp_path / "does-not-exist"
     data = as_json(run(["--json"], roots=[other, missing], tmp_path=tmp_path))
     assert data["files_read"] == 2
-    assert [(r["seat"], r["mode"]) for r in data["rows"]] == [("gemini", "pair")]
+    assert [(r["seat"], r["mode"], r["via"]) for r in data["rows"]] == [("gemini", "pair", "app")]
     assert data["rows"][0]["leads"] == 4
 
 
@@ -176,15 +176,15 @@ def test_json_shape_and_table(tmp_path):
     data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
     assert set(data) == {"rows", "totals", "files_read", "unreadable"}
     assert data["unreadable"] == 0
-    keys = {"seat", "mode", "launches", "scored", "unscored", "invalid", "skipped",
+    keys = {"seat", "mode", "via", "launches", "scored", "unscored", "invalid", "skipped",
             "leads", "real", "hit_rate"}
     assert set(data["rows"][0]) == keys
-    assert set(data["totals"]) == keys - {"seat", "mode"}
+    assert set(data["totals"]) == keys - {"seat", "mode", "via"}
     assert data["rows"][0]["hit_rate"] is None
     res = run([tmp_path], tmp_path=tmp_path)
     assert res.returncode == 0
     out = res.stdout
-    assert "seat" in out and "hit" in out and "files read: 1" in out
+    assert "seat" in out and "via" in out and "hit" in out and "files read: 1" in out
     assert "unreadable files: 0" in out
     plan_line = [ln for ln in out.splitlines() if ln.startswith("gemini")][0]
     assert plan_line.rstrip().endswith("-")
@@ -294,3 +294,83 @@ def test_bad_option_exit_64(tmp_path):
     res = run(["--nope"], tmp_path=tmp_path)
     assert res.returncode == 64
     assert "--nope" in res.stderr
+
+
+# ---- API backup launches: the via=api record token ----
+
+def test_b1_via_api_record(tmp_path):
+    write_run(tmp_path, "RUN.md", ["seat=hydrogen mode=fix via=api fix-r1 20 s ok leads=3 real=1"])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    assert len(data["rows"]) == 1
+    r = row(data, "hydrogen", "fix", "api")
+    assert (r["via"], r["launches"], r["scored"], r["leads"], r["real"]) == ("api", 1, 1, 3, 1)
+
+
+def test_b2_app_and_api_rows_split_totals_joined(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=hydrogen mode=fix via=api fix-r1 20 s ok leads=3 real=1",
+        "seat=hydrogen mode=fix fix-r2 ok leads=2 real=2",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    assert sorted(r["via"] for r in data["rows"]) == ["api", "app"]
+    api, app = row(data, "hydrogen", "fix", "api"), row(data, "hydrogen", "fix", "app")
+    assert (api["leads"], api["real"]) == (3, 1)
+    assert (app["leads"], app["real"]) == (2, 2)
+    assert (data["totals"]["leads"], data["totals"]["real"], data["totals"]["launches"]) == (5, 3, 2)
+    assert "via" not in data["totals"]
+
+
+def test_b3_skip_rule_unchanged_by_via(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review skipped: slug latched leads=0 real=0",
+        "seat=hydrogen mode=quick via=api skipped: x leads=0 real=0",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    rev = row(data, "gemini", "review", "app")
+    assert (rev["launches"], rev["skipped"]) == (1, 1)
+    q = row(data, "hydrogen", "quick", "api")
+    assert (q["launches"], q["skipped"], q["scored"], q["leads"], q["real"], q["hit_rate"]) == (1, 0, 1, 0, 0, None)
+    assert data["totals"]["skipped"] == 1
+
+
+def test_b4_only_exact_via_api_token_counts(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=plan notvia=api leads=1 real=1",
+        "seat=gemini mode=plan via=apix leads=1 real=1",
+        "seat=gemini mode=plan via=web leads=1 real=1",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    assert [r["via"] for r in data["rows"]] == ["app"]
+    assert row(data, "gemini", "plan", "app")["launches"] == 3
+
+
+def test_b4_via_api_outside_a_record_changes_nothing(tmp_path):
+    base = ["seat=gemini mode=plan ok leads=2 real=1"]
+    write_run(tmp_path / "a", "RUN.md", base)
+    write_run(tmp_path / "b", "RUN.md", base + [
+        "via=api seat=gemini mode=plan leads=1 real=1",
+        "The backup line carries via=api seat=hydrogen mode=fix leads=4 real=4",
+    ])
+    want = as_json(run([tmp_path / "a", "--json"], tmp_path=tmp_path))
+    got = as_json(run([tmp_path / "b", "--json"], tmp_path=tmp_path))
+    assert got["rows"] == want["rows"] and got["totals"] == want["totals"]
+    assert [r["via"] for r in got["rows"]] == ["app"]
+
+
+def test_b5_table_aligned_with_via_column(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=hydrogen mode=fix via=api fix-r1 ok leads=3 real=1",
+        "seat=hydrogen mode=fix fix-r2 ok leads=12 real=2",
+        "seat=gemini mode=review ok leads=4 real=4",
+    ])
+    res = run([tmp_path], tmp_path=tmp_path)
+    assert res.returncode == 0, res.stderr
+    lines = res.stdout.splitlines()
+    head = lines[0]
+    assert head.split()[:3] == ["seat", "mode", "via"]
+    table = [ln for ln in lines if ln.split() and ln.split()[0] in ("seat", "gemini", "hydrogen", "TOTAL")]
+    assert len(table) == 5
+    assert len({len(ln) for ln in table}) == 1
+    col = head.index("via")
+    vias = [ln[col:].split()[0] for ln in table[1:-1]]
+    assert sorted(vias) == ["api", "app", "app"]

@@ -7,6 +7,14 @@ items raised, m items the lead verified and used. Lines that mention seat=
 anywhere else are not records; counts on a following line are not joined.
 This script reads logbooks and writes nothing.
 
+An API-backup launch (the brief went to the Gemini API because the app path
+could not run) carries the whitespace-delimited token `via=api` anywhere after
+the seat token: `seat=hydrogen mode=<m> via=api <free text> leads=<n> real=<m>`.
+A record with no `via=` token, or with any other `via=<x>` token, is an app
+launch. The seat names the model that answered, so an API-backup record is
+`seat=hydrogen` even when Carbon was asked for. App and API launches are
+separate rows (`via` = app | api); the totals cover every row.
+
     python scripts/gemini-hitrate.py [PATH ...] [--json]
 
 PATH is a folder (scans its .fabstra/RUN*.md) or a file. With no PATH it scans
@@ -15,7 +23,7 @@ PATH is a folder (scans its .fabstra/RUN*.md) or a file. With no PATH it scans
 GEMINI_HITRATE_ROOTS (os.pathsep-separated folders) replaces those defaults;
 each root is scanned as <root>/.fabstra/RUN*.md and <root>/*/.fabstra/RUN*.md.
 
-Per seat+mode: launches = scored + unscored + invalid + skipped.
+Per seat+mode+via: launches = scored + unscored + invalid + skipped.
   skipped  - `skipped:` directly after the mode=<m> token (a launch, never summed)
   scored   - terminal counts present and real <= leads (summed)
   invalid  - terminal counts present and real > leads (counted, not summed)
@@ -41,6 +49,8 @@ RECORD_RE = re.compile(r"^\s*(?:[-*]\s+)?seat=(gemini|hydrogen)(?=\s|$)(.*)$")
 MODE_RE = re.compile(r"(?:^|\s)mode=([A-Za-z0-9_-]+)(\s+skipped:)?")
 # the terminal count pair: the last thing on the line (trailing whitespace allowed)
 COUNTS_RE = re.compile(r"(?:^|\s)leads=(\d+)\s+real=(\d+)\s*$")
+# an API-backup launch: the exact token via=api anywhere after the seat token
+VIA_RE = re.compile(r"(?:^|\s)via=api(?=\s|$)")
 COUNT_KEYS = ("launches", "scored", "unscored", "invalid", "skipped", "leads", "real")
 
 
@@ -92,7 +102,7 @@ def hit_rate(c: dict):
 
 
 def tally(files: list[Path]) -> dict:
-    rows: dict[tuple[str, str], dict] = {}
+    rows: dict[tuple[str, str, str], dict] = {}
     read = unreadable = 0
     for f in files:
         try:
@@ -107,7 +117,8 @@ def tally(files: list[Path]) -> dict:
                 continue
             rest = rec.group(2)
             mode = MODE_RE.search(rest)
-            key = (rec.group(1), mode.group(1) if mode else "unknown")
+            via = "api" if VIA_RE.search(rest) else "app"
+            key = (rec.group(1), mode.group(1) if mode else "unknown", via)
             c = rows.setdefault(key, empty_counts())
             c["launches"] += 1
             if mode and mode.group(2):
@@ -126,8 +137,8 @@ def tally(files: list[Path]) -> dict:
             c["real"] += m
     out_rows = []
     totals = empty_counts()
-    for (seat, mode), c in sorted(rows.items()):
-        out_rows.append({"seat": seat, "mode": mode, **c, "hit_rate": hit_rate(c)})
+    for (seat, mode, via), c in sorted(rows.items()):
+        out_rows.append({"seat": seat, "mode": mode, "via": via, **c, "hit_rate": hit_rate(c)})
         for k in COUNT_KEYS:
             totals[k] += c[k]
     totals["hit_rate"] = hit_rate(totals)
@@ -139,15 +150,15 @@ def fmt_rate(v) -> str:
 
 
 def print_table(data: dict) -> None:
-    head = ["seat", "mode", "launches", "scored", "skipped", "leads", "real", "hit"]
-    body = [[r["seat"], r["mode"], *(str(r[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
+    head = ["seat", "mode", "via", "launches", "scored", "skipped", "leads", "real", "hit"]
+    body = [[r["seat"], r["mode"], r["via"], *(str(r[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
              fmt_rate(r["hit_rate"])] for r in data["rows"]]
     t = data["totals"]
-    body.append(["TOTAL", "", *(str(t[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
+    body.append(["TOTAL", "", "", *(str(t[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
                  fmt_rate(t["hit_rate"])])
     widths = [max(len(row[i]) for row in [head, *body]) for i in range(len(head))]
     for row in [head, *body]:
-        print("  ".join(cell.ljust(w) if i < 2 else cell.rjust(w)
+        print("  ".join(cell.ljust(w) if i < 3 else cell.rjust(w)
                         for i, (cell, w) in enumerate(zip(row, widths))).rstrip())
     print(f"unscored lines: {t['unscored']}")
     print(f"invalid lines (real > leads): {t['invalid']}")

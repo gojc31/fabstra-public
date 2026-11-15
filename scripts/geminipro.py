@@ -24,11 +24,14 @@ Exit codes:
   6    the request ran and did not end ok (Gemini error, empty answer, blocked, quota)
   7    brief gate
   8    account mismatch
-  64   usage error (run/name must match [A-Za-z0-9._-]{1,80})
+  64   usage error (run/name must match [A-Za-z0-9._-]{1,80}; a run/name argument holding the
+       GEMINI_API_KEY value, in any mode, or a job-mode CLIPROXY_DIR or GEMINIPRO_LOG holding
+       it - the value is never echoed, nothing is read, admitted or written)
   130  interrupted
 Every exit path emits one JSON status line (keys tool, exit, status, reason, run,
-name, model, job_id, report, account_ok, duration_s, submissions, context; --status
-adds account, tier, models, credits_5h, credits_weekly, abuse). Default: the
+name, model, job_id, report, account_ok, duration_s, submissions, context, via; --status
+adds account, tier, models, credits_5h, credits_weekly, abuse; the API backup trigger
+adds backup, primary_exit, primary_reason, requested_model - see "API backup"). Default: the
 answer (or the --status summary) on stdout, the status line on stderr. --json
 (honoured on every exit, usage errors included): stdout carries only the status
 line. Steps log to stderr. The status line is written in its own step: a failed
@@ -50,6 +53,10 @@ Env: GEMINIPRO_ACCOUNT (the Google account the signed-in Gemini session must be;
   BACKSTOP_GRACE = 60 s more, then a hard exit), GEMINIPRO_SLOT_WAIT (s, default 300), GEMINIPRO_LOG (default
   ~/.cli-proxy-api/geminipro-usage.jsonl), CLIPROXY_DIR (default ~/.cli-proxy-api:
   geminipro-out/ reports and the geminipro.d/ state dir live under it).
+  API backup: GEMINIPRO_API_BACKUP (`0` turns it off; default on), GEMINI_API_KEY (read by
+  the gemini-api CLI itself; 16+ characters, else not a key), GEMINIPRO_API_CLI (an explicit
+  CLI path; default `gemini-api` on PATH), GEMINIPRO_API_MODEL (default gemini-4-hydrogen),
+  GEMINIPRO_API_TIMEOUT (s per attempt, default 300; a non-number is exit 64).
 Test-only, honoured ONLY with GEMINIPRO_TEST=1 (exit 2 otherwise):
   GEMINIPRO_EXPECT_ACCOUNT (replaces the expected account for the identity check;
   GEMINIPRO_ACCOUNT must still resolve non-empty), GEMINIPRO_TEST_CONTEXT
@@ -88,7 +95,8 @@ Design (T1, 2026-11-13; fix round 1 the same day):
   reject code 7: exit 8; others: exit 2); a missing, extra or malformed part is exit 2.
   The proven browserContextId (not a secret) is kept in geminipro.d/last-context
   and tried first next time; other contexts are scanned only if it fails (never
-  written under GEMINIPRO_TEST=1).
+  written under GEMINIPRO_TEST=1, nor - the memory is simply not updated - when the
+  context id or the state dir path contains the GEMINI_API_KEY value, in either mode).
 - Blocks: a challenge page, HTTP 403 or 429 at ANY stage (bootstrap GET, init RPCs,
   generate) ends the whole run - no other context is tried: exit 6, "no brief
   submitted" before dispatch, outcome_unknown after. No request follows redirects
@@ -110,6 +118,112 @@ Design (T1, 2026-11-13; fix round 1 the same day):
   lanew_log.admit on geminipro's own log, a daily cap counted from that log. The
   terminal record is written here (lanew_log.record_end classifies Codex
   transcripts) with status ok / failed / outcome_unknown and Codex fields null.
+
+API backup (2026-11-15). When the app path cannot run for a Chrome or account reason, the
+same gate-passed brief goes ONCE to the Gemini API through the `gemini-api` CLI (on this
+machine a guard wrapper; never the HTTP API directly). It is never the primary path.
+- Trigger: job mode only (never --status). An exit 2 (preflight_refused) or 8
+  (account_mismatch) raised after the brief gate, the slot and the precheck passed and
+  before admission (no job_id, 0 submissions, no answer held): harden(), candidates(),
+  open_verified(). Exits from argument parsing / config (no account configured, a
+  test-only variable without GEMINIPRO_TEST=1) and every other code (1, 3, 4, 5, 6, 7, 64,
+  130) never trigger.
+- Preconditions, in order (a miss = "not run"): GEMINIPRO_API_BACKUP is not 0;
+  GEMINI_API_KEY is non-blank and 16+ characters; GEMINIPRO_API_MODEL does not contain the
+  key ("GEMINIPRO_API_MODEL contains the API key"); the CLI resolves (GEMINIPRO_API_CLI, else
+  gemini-api on PATH) and its path does not contain the key ("the CLI path contains the API
+  key"); JOB_MIN seconds remain; the brief does not contain the key (such a brief is never
+  written to a body file or sent, and not silently scrubbed). Not run: the original exit
+  code and status, reason + "; API backup not run: <why>", nothing admitted or logged, no
+  report, the CLI never started. Metadata carrying the key is refused, never scrubbed into a
+  file or argv - one check (key_in) at every persistence and process boundary: run/name, and
+  in job mode CLIPROXY_DIR and GEMINIPRO_LOG (the report, state, lock, log and log-lock paths
+  all derive from them), are exit 64 (see the exit codes); a string of the usage record (run,
+  name, model - on the app path a name from the app's registry -, report path, log path) is
+  exit 3 log_failure, nothing admitted; a context id or a state dir holding it is never
+  remembered; a browser-harness path holding the key is exit 2 preflight_refused before the
+  harness child starts (in job mode that is the backup trigger); the requested --model only
+  reaches the scrubbed status line. Report text is scrubbed field by field; the body file
+  holds only the checked brief and API model.
+- Call: admit() first (same per-run ceiling and daily cap; the record's model is the API
+  model), then body.json - {"input": <brief>, "model": <API model>, "stream": false,
+  "store": false}, UTF-8 JSON - in a new empty directory under geminipro.d/, and
+  `<cli> generate --output-format json --body @body.json` with no shell, stdin DEVNULL,
+  cwd that directory, the environment inherited (the CLI reads the key; the key is never
+  in argv or the body). Never --stdin or @- (the guard refuses them). The directory is
+  removed on every path. The --model / GEMINIPRO_MODEL choice is ignored on this path.
+- Timing: per attempt min(GEMINIPRO_API_TIMEOUT, time left - API_MARGIN); at most 2
+  attempts, the 2nd only after a non-zero exit whose stderr JSON says error_type
+  server_error or error.code service_unavailable, after API_RETRY_PAUSE, while JOB_MIN
+  seconds remain. A timed-out or interrupted child is killed with its children, never by
+  taskkill: on Windows one process snapshot while the child is still alive gives its
+  verified descendants (below), then the child is killed through its own handle, then each
+  verified descendant through its own (POSIX: the process group, then the child); the child
+  is killed again in a finally - even when the descendant step is interrupted or fails -
+  and, if that step did not finish, the verified tree step runs on the dead child. With the
+  child's creation time unknown only the child itself is killed. Every
+  path out of the CLI call (return, timeout, interrupt, cancellation, any exception) kills a
+  child still running; the child stays tracked until it is confirmed dead, and finish()
+  kills one still tracked (with its verified descendants). The verified tree step: the
+  child's creation time is recorded at start while it is alive; a process counts as a
+  descendant only when its recorded parent is the child (or a verified descendant) and it
+  was created at or after that parent - from one process snapshot that carries parent ids
+  and creation times; a process whose creation time cannot be read is never killed, and each
+  kill goes through the process's own handle after its creation time is re-checked (never
+  by pid alone). The backstop, before its hard exit, kills a live child synchronously
+  (proc.kill() first), then runs the verified tree step, waiting KILL_WAIT = 12 s for it (the
+  kill step is bounded by about 12 s), and only then removes the body directory.
+- Answer: stdout is one JSON object with status "completed"; the answer is the text items
+  of the model_output steps in order (thought steps ignored), then the usual hold()
+  validation - the answer is held BEFORE any interruptible cleanup, so an interrupt, a
+  deadline or an error while the body directory is removed keeps it (report written,
+  terminal ok, answer printed). Housekeeping never changes the result: whatever a cleanup
+  step raises (an interrupt included) - the body-directory removal on the success, failure
+  and not-run paths, finish()'s retry of it, its reap of a tracked child, its no-cache
+  existence check and removal and its library-spy log line, the backstop's kill step - is
+  contained, and the original exit code, status and reason (with its suffix)
+  stand. A removal that failed or was interrupted is tried once more on the way out; a
+  directory that still exists after that is the status-line note "the API body directory
+  could not be removed" (no note when the retry removed it). Success: report written
+  (account line "n/a (API key)", plus
+  "- via: api (backup; app path exit <2|8>)"), terminal record ok with via "api" and
+  primary_exit, exit 0.
+- Failure after admission (non-zero exit - the guard's 9 and the CLI's auth exit 3
+  included -, timeout, unexpected stdout, status not completed, empty or error-card
+  answer): terminal record failed with via "api", primary_exit and stop_latch false (an
+  API failure never latches the run); the ORIGINAL exit code (2 or 8) and status; reason +
+  "; API backup failed: <scrubbed text, at most 300 characters>". The child's stdout and
+  stderr are never echoed raw.
+- Backup terminal records never carry a latch. The policy is chosen before admission (via
+  "api", backup "failed", the API model are set before admit() is called). Once admit() has
+  handed the wrapper a job id, every terminal record of that job is unlatched whatever ends
+  it - success, failure, timeout, interrupt, cancellation, any exception, the backstop - and
+  the status line says via "api". The job id is taken from the entry lanew_log.admit returns
+  in the very next statement. When admission ends without a job id (refused, failed, or
+  interrupted) via returns to "app", backup to "not_run", model and report to the app path's;
+  a refusal or an admission error is the original exit (2 or 8) with "; API backup not run:
+  admission refused (...)" / "admission failed (...)", an interrupt stays exit 130. The
+  wrapper never searches the log for a record to adopt and never writes a terminal record
+  for a job id it was not handed. With a job id, an interrupt stays exit 130; the backstop
+  with no answer held exits with the ORIGINAL code (2 or 8) and status, reason + "; API
+  backup failed: hard backstop: ..."; with an answer held it keeps the kept-answer exit. No
+  new exit code.
+- Known limit (accepted): inside admission - from the call into lanew_log.admit until the
+  wrapper holds the job id - the wrapper fails closed exactly like the app path. If an
+  interrupt, or an error in lanew_log's verification read, lands just after lanew_log wrote
+  the started record, that record stays without a terminal record. Nothing was sent (the CLI
+  had not started). The effect: once this process has ended, later launches of that run are
+  refused as "usage unknown" until the log is looked at by hand.
+- Status line: `via` is "app" or "api" ("api" from the start of the API admission, back to
+  "app" when it ends with no job id) on every exit. Only when the trigger fired: `backup` ok |
+  failed | not_run, `primary_exit` 2 | 8,
+  `primary_reason` (the app path's reason), `requested_model` (the model asked for). On
+  an API run `model` is the API model, `context` null, `account_ok` as the app path left
+  it (false after exit 8, else null); `submissions` counts app-path POSTs only (0).
+- Secrets: a GEMINI_API_KEY of 16+ characters is registered with remember_secret() when
+  the wrapper starts - before argument parsing and any output, in every mode - so any
+  text carrying it (a usage error, an app answer, a reason, CLI output) is scrubbed like
+  the cookie values; a shorter value is never registered and never used.
 """
 import asyncio
 import contextlib
@@ -174,6 +288,17 @@ ERROR_CARD_RE = re.compile(
 CHALLENGE_RE = re.compile(
     r"unusual traffic|not a robot|/sorry/|captcha|verify (?:that )?you(?:'|&#39;|’| a)re "
     r"(?:a )?human|verify it(?:'|&#39;|’)?s you", re.IGNORECASE)
+
+# the API backup (module docstring, "API backup")
+API_CLI_NAME = "gemini-api"   # resolved on PATH (may be a guard wrapper) unless GEMINIPRO_API_CLI is set
+API_MODEL = "gemini-4-hydrogen"
+API_TIMEOUT = 300     # per-attempt timeout default (s), GEMINIPRO_API_TIMEOUT
+API_MARGIN = 10       # seconds kept back from the total deadline for an attempt's timeout
+API_RETRY_PAUSE = 5   # pause before the one retry after a server error; tests set 0
+API_REASON_MAX = 300  # longest API failure text in a reason (scrubbed first)
+API_BODY = "body.json"
+KILL_WAIT = 12        # the backstop waits this long for its verified tree step; the whole kill
+#                       step - direct kill + tree step - is bounded by about 12 s (<= 15)
 
 HARD_EXIT = os._exit  # the backstop's exit; tests replace it
 _ABSENT = object()    # "no such field" (distinct from a JSON null)
@@ -1101,6 +1226,275 @@ def pick_model(client, wanted):
                % (wanted, ", ".join(model_names(client)) or "none"))
 
 
+# --------------------------------------------------------------------------
+# the API backup: one child process of the gemini-api CLI (never the HTTP API directly)
+# --------------------------------------------------------------------------
+
+class ApiFailure(Exception):
+    """The API backup ran and did not answer (the run keeps the app path's exit)."""
+
+
+def api_body(text, model):
+    """The request body file's bytes: UTF-8 JSON of exactly the gate-passed text."""
+    return json.dumps({"input": text, "model": model, "stream": False, "store": False},
+                      ensure_ascii=False).encode("utf-8")
+
+
+def api_argv(cli):
+    return [cli, "generate", "--output-format", "json", "--body", "@" + API_BODY]
+
+
+_created = lanew_log.pid_created  # a live process's creation time (FILETIME ticks) or None; tests replace
+
+
+def _kill_direct(proc):
+    """The direct CLI child, through its own Popen handle (never by pid)."""
+    with contextlib.suppress(Exception):
+        proc.kill()
+
+
+def _dead(proc):
+    try:
+        return proc.poll() is not None
+    except Exception:
+        return False
+
+
+def _kill_tree(proc, created=None):
+    """Timeout / interrupt path. Windows (no taskkill): ONE process snapshot while the root is
+    still alive, the verified descendants from it (_descendants, `created` = the root's
+    creation time recorded at start), then the root through its own handle (proc.kill, so it
+    starts nothing new), then each descendant through its own handle after its creation time
+    is re-checked (_kill_verified). With the root's creation time unknown only the root is
+    killed. POSIX: the process group, then the root. The root is killed again in a finally,
+    so an interrupted or failed descendant step never leaves it running; when that step did
+    not finish, the verified walk (_kill_descendants) on the now dead root takes the rest."""
+    done = False
+    try:
+        try:
+            if os.name == "nt":
+                kids = _descendants(proc.pid, created, _snapshot()) if created else []
+                _kill_direct(proc)
+                for pid, c in kids:
+                    _kill_verified(pid, c)
+            else:
+                os.killpg(proc.pid, signal.SIGKILL)
+            done = True
+        except Exception:
+            pass
+    finally:
+        _kill_direct(proc)
+        if not done:
+            with contextlib.suppress(Exception):
+                _kill_descendants(proc, created)
+
+
+def _snapshot():
+    """Windows: every process as (pid, recorded parent pid, creation time) from ONE
+    NtQuerySystemInformation(SystemProcessInformation) call - the parent ids and creation
+    times come from the same instant, so a reused pid is told apart. [] on any error."""
+    if os.name != "nt":
+        return []
+    import ctypes
+    from ctypes import wintypes as wt
+
+    class Entry(ctypes.Structure):  # SYSTEM_PROCESS_INFORMATION, the fields up to the parent id
+        _fields_ = [("NextEntryOffset", wt.ULONG), ("NumberOfThreads", wt.ULONG),
+                    ("WorkingSetPrivateSize", ctypes.c_int64), ("HardFaultCount", wt.ULONG),
+                    ("NumberOfThreadsHighWatermark", wt.ULONG), ("CycleTime", ctypes.c_uint64),
+                    ("CreateTime", ctypes.c_int64), ("UserTime", ctypes.c_int64),
+                    ("KernelTime", ctypes.c_int64), ("NameLength", wt.USHORT),
+                    ("NameMaximumLength", wt.USHORT), ("NameBuffer", ctypes.c_void_p),
+                    ("BasePriority", wt.LONG), ("UniqueProcessId", ctypes.c_void_p),
+                    ("InheritedFromUniqueProcessId", ctypes.c_void_p)]
+
+    try:
+        nt = ctypes.WinDLL("ntdll")
+        nt.NtQuerySystemInformation.restype = ctypes.c_long
+        nt.NtQuerySystemInformation.argtypes = [wt.ULONG, ctypes.c_void_p, wt.ULONG,
+                                                ctypes.POINTER(wt.ULONG)]
+        size = 1 << 20
+        for _ in range(6):
+            buf = ctypes.create_string_buffer(size)
+            need = wt.ULONG(0)
+            status = nt.NtQuerySystemInformation(5, buf, size, ctypes.byref(need)) & 0xFFFFFFFF
+            if status == 0:
+                break
+            if status != 0xC0000004:  # STATUS_INFO_LENGTH_MISMATCH: retry with a bigger buffer
+                return []
+            size = max(size * 2, need.value + (1 << 16))
+        else:
+            return []
+        out, off = [], 0
+        while off + ctypes.sizeof(Entry) <= size:
+            e = Entry.from_buffer(buf, off)
+            out.append((int(e.UniqueProcessId or 0), int(e.InheritedFromUniqueProcessId or 0),
+                        int(e.CreateTime)))
+            if not e.NextEntryOffset:
+                break
+            off += e.NextEntryOffset
+        return out
+    except Exception:
+        return []
+
+
+def _descendants(root_pid, root_created, snapshot):
+    """The verified tree under the root, parents first, as (pid, creation time): a process
+    counts only when its recorded parent is the root or a verified descendant AND it was
+    created at or after that parent (so at or after the root). An older process whose
+    recorded parent pid is a reused pid is never in it, nor one whose creation time is
+    unknown; with the root's own time unknown nothing is verifiable (empty)."""
+    if not root_created:
+        return []
+    out, frontier, seen = [], [(root_pid, root_created)], {root_pid}
+    while frontier:
+        parent, parent_created = frontier.pop(0)
+        for pid, ppid, created in snapshot:
+            if ppid == parent and pid not in seen and created and created >= parent_created:
+                seen.add(pid)
+                out.append((pid, created))
+                frontier.append((pid, created))
+    return out
+
+
+def _kill_verified(pid, created):
+    """Windows: force-kill pid only through a handle whose own creation time equals created
+    (never by pid alone: a reused pid has another creation time). True when terminated."""
+    import ctypes
+    from ctypes import wintypes as wt
+    try:
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.OpenProcess.restype = wt.HANDLE
+        k.OpenProcess.argtypes = [wt.DWORD, wt.BOOL, wt.DWORD]
+        k.GetProcessTimes.argtypes = [wt.HANDLE] + [ctypes.POINTER(ctypes.c_uint64)] * 4
+        k.TerminateProcess.argtypes = [wt.HANDLE, wt.UINT]
+        k.CloseHandle.argtypes = [wt.HANDLE]
+        h = k.OpenProcess(0x0001 | 0x1000, False, int(pid))  # TERMINATE | QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        try:
+            t = [ctypes.c_uint64() for _ in range(4)]
+            if not k.GetProcessTimes(h, *[ctypes.byref(x) for x in t]) or not t[0].value:
+                return False
+            if int(t[0].value) != int(created):
+                return False
+            return bool(k.TerminateProcess(h, 1))
+        finally:
+            k.CloseHandle(h)
+    except Exception:
+        return False
+
+
+def _kill_descendants(proc, created):
+    """The verified tree step, run after the direct child was killed (the backstop; the
+    timeout path when its tree step did not finish; finish()): on Windows every verified
+    descendant of the root (_descendants over one _snapshot, `created` = the root's creation
+    time recorded at start) is killed through its own handle (_kill_verified), parents first;
+    on POSIX the child's process group."""
+    if os.name == "nt":
+        for pid, c in _descendants(proc.pid, created, _snapshot()):
+            _kill_verified(pid, c)
+    else:
+        with contextlib.suppress(Exception):
+            os.killpg(proc.pid, signal.SIGKILL)
+
+
+def _reap(proc, holder):
+    """Every path out of _run_api: a child still running is killed (its own handle); it leaves
+    the holder only once it is confirmed dead, so the backstop and finish() can still reach it."""
+    try:
+        if not _dead(proc):
+            _kill_direct(proc)
+            with contextlib.suppress(Exception):
+                proc.wait(timeout=5)
+    finally:
+        if _dead(proc) and holder.get("proc") is proc:
+            holder.pop("proc", None)
+            holder.pop("created", None)
+
+
+def _run_api(argv, cwd, env, timeout, stdin, holder):
+    """Run the CLI once (no shell); the live child sits in holder["proc"] and its creation
+    time, read at start while it is alive, in holder["created"] (for the backstop's verified
+    tree step). A timeout or interrupt kills the child tree before re-raising; every path out
+    kills a child still running and drops it from holder only when it is dead. Tests replace this."""
+    extra = {} if os.name == "nt" else {"start_new_session": True}
+    holder["proc"] = proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=stdin,
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                             shell=False, **extra)
+    try:
+        holder["created"] = _created(proc.pid)
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except BaseException:
+            _kill_tree(proc, holder.get("created"))
+            with contextlib.suppress(Exception):
+                proc.communicate(timeout=5)
+            raise
+    finally:
+        _reap(proc, holder)
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+def _json_tail(data):
+    """The CLI's JSON object: the whole text, else the last line that starts with '{'."""
+    text = data.decode("utf-8", "replace") if isinstance(data, bytes) else str(data or "")
+    with contextlib.suppress(ValueError):
+        obj = json.loads(text.strip())
+        if isinstance(obj, dict):
+            return obj
+    for line in reversed(text.splitlines()):
+        if line.strip().startswith("{"):
+            with contextlib.suppress(ValueError):
+                obj = json.loads(line.strip())
+                if isinstance(obj, dict):
+                    return obj
+    return None
+
+
+def api_server_error(obj):
+    """A retryable CLI error: error_type server_error or error.code service_unavailable."""
+    if not isinstance(obj, dict):
+        return False
+    err = obj.get("error")
+    return obj.get("error_type") == "server_error" or (
+        isinstance(err, dict) and err.get("code") == "service_unavailable")
+
+
+def api_error_text(rc, stderr):
+    """A short description of a failed CLI call (the caller scrubs and truncates it)."""
+    obj = _json_tail(stderr)
+    if isinstance(obj, dict) and (obj.get("error") or obj.get("error_type")):
+        err = obj.get("error") if isinstance(obj.get("error"), dict) else {}
+        kinds = ", ".join(str(x) for x in (err.get("code"), obj.get("error_type")) if x)
+        return "CLI exit %d (%s): %s" % (rc, scrub(kinds)[:80] or "error",
+                                         scrub(str(err.get("message") or ""))[:400])
+    text = scrub(" ".join((stderr or b"").decode("utf-8", "replace").split()))[:400]
+    return "CLI exit %d%s" % (rc, (": " + text) if text else " with no error text")
+
+
+def api_answer(stdout):
+    """The answer text from the CLI's JSON: status completed; the text items of the
+    model_output steps, in order (thought steps ignored)."""
+    try:
+        obj = json.loads((stdout or b"").decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        obj = None
+    if not isinstance(obj, dict):
+        raise ApiFailure("the CLI output was not the expected JSON (not echoed)")
+    if obj.get("status") != "completed":
+        raise ApiFailure("the interaction status is %s, not completed"
+                         % scrub(str(obj.get("status")))[:40])
+    texts = []
+    for step in obj.get("steps") or []:
+        if isinstance(step, dict) and step.get("type") == "model_output":
+            for item in step.get("content") or []:
+                if isinstance(item, dict) and item.get("type") == "text" and isinstance(
+                        item.get("text"), str):
+                    texts.append(item["text"])
+    return "".join(texts)
+
+
 def credits(usage, key):
     w = (usage or {}).get(key) or {}
     if not w:
@@ -1115,6 +1509,14 @@ def credits(usage, key):
 
 class Wrapper:
     def __init__(self, argv, env):
+        # the API key is a secret from the first line on: before argument parsing and before
+        # any output, in every mode (a value under SECRET_MIN is not a key: not registered)
+        key = env.get("GEMINI_API_KEY")
+        self.api_keys = ()          # the registered key spellings (raw, stripped)
+        if isinstance(key, str) and len(key) >= SECRET_MIN:
+            remember_secret(key)
+            remember_secret(key.strip())
+            self.api_keys = tuple(v for v in {key, key.strip()} if len(v) >= SECRET_MIN)
         self.argv, self.env = list(argv), env
         self.t0 = time.monotonic()
         try:  # the one deadline; config() validates the value (exit 64 if malformed)
@@ -1143,6 +1545,14 @@ class Wrapper:
         self.notes = []
         self.emitted = False
         self.emit_lock = threading.Lock()
+        self.via = "app"            # "api" from the start of the API admission (back to "app" if no job id)
+        self.trigger = None         # the status-line keys when the backup trigger fired
+        self.primary = None         # the app path's Exit that fired the trigger
+        self.api_model = API_MODEL
+        self.api_timeout = float(API_TIMEOUT)
+        self.api_holder = {}        # the live CLI child ("proc"), for the backstop
+        self.api_dir = None         # the body file's directory while it exists
+        self.api_started = False    # a CLI child was started (the brief may have gone out)
 
     # ---- config -----------------------------------------------------------------
     def parse_args(self):
@@ -1174,6 +1584,8 @@ class Wrapper:
                 usage("unknown option %s" % t)
             else:
                 pos.append(t)
+        if any(self.key_in(v) for v in pos):  # every mode; the value is never echoed
+            usage("run/name contains the API key")
         self.model = self.model or self.env.get("GEMINIPRO_MODEL") or DEFAULT_MODEL
         if self.status_mode:
             if pos or self.brief_file:
@@ -1213,11 +1625,22 @@ class Wrapper:
         self.slot_wait = num("GEMINIPRO_SLOT_WAIT", 300, 0)
         self.ceiling = int(num("GEMINIPRO_RUN_JOB_CEILING", 12, 1))
         self.daily_cap = int(num("GEMINIPRO_DAILY_CAP", 80, 1))
+        self.api_timeout = num("GEMINIPRO_API_TIMEOUT", API_TIMEOUT, 1)
+        self.api_model = (e.get("GEMINIPRO_API_MODEL") or "").strip() or API_MODEL
         home = os.path.expanduser("~")
         self.cliproxy = e.get("CLIPROXY_DIR") or os.path.join(home, ".cli-proxy-api")
         self.usage_log = e.get("GEMINIPRO_LOG") or os.path.join(self.cliproxy, "geminipro-usage.jsonl")
+        if not self.status_mode:  # job mode creates files under both roots (names persisted)
+            for var, root in (("CLIPROXY_DIR", self.cliproxy), ("GEMINIPRO_LOG", self.usage_log)):
+                if self.key_in(root):
+                    raise Exit(64, "usage_error", "%s contains the API key" % var)
         self.out_dir = os.path.join(self.cliproxy, "geminipro-out")
         self.state_dir = os.path.join(self.cliproxy, "geminipro.d")
+
+    def key_in(self, *texts):
+        """The registered API key occurs in any of texts: the one check every persistence and
+        process boundary uses (metadata carrying the key is refused, never scrubbed)."""
+        return any(isinstance(t, str) and any(k in t for k in self.api_keys) for t in texts)
 
     def left(self):
         return self.deadline - time.monotonic()
@@ -1348,28 +1771,39 @@ class Wrapper:
         stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.report = os.path.join(self.out_dir, "%s-%s-%s-%d.md"
                                    % (stamp, self.run, self.name, os.getpid())).replace("\\", "/")
-        try:
-            status, reason, entry = lanew_log.admit(
-                self.run, self.name, self.model, None, self.report, owner_pid=os.getpid(),
-                log_path=self.usage_log, ceiling=self.ceiling,
-                owner_created=lanew_log.pid_created(os.getpid()))
+        # every string the started and terminal records carry (the report path is also the
+        # report's file name); the model may be a name from the app's own registry
+        if self.key_in(self.run, self.name, self.model, self.report, self.usage_log):
+            self.report = None
+            raise Exit(3, "log_failure", "the usage record would carry the API key - nothing admitted")
+        args = (self.run, self.name, self.model, None, self.report)
+        kw = {"owner_pid": os.getpid(), "log_path": self.usage_log, "ceiling": self.ceiling,
+              "owner_created": lanew_log.pid_created(os.getpid())}
+        try:  # the handoff: job_id is taken from the returned entry in the very next statement
+            status, reason, entry = lanew_log.admit(*args, **kw)
+            if status == "admitted":
+                self.job_id, self.ts_start = entry["job_id"], entry["ts_start"]
         except Exception as exc:
             status, reason, entry = "log_error", fmt_exc(exc), None
         if status == "refused":
             raise Exit(1, "run_refused", reason)
         if status != "admitted":
             raise Exit(3, "log_failure", "record start failed: %s" % reason)
-        self.job_id, self.ts_start = entry["job_id"], entry["ts_start"]
         log("admitted job_id=%s (run %s)." % (self.job_id, self.run))
 
-    def record_terminal(self, status, code):
+    def record_terminal(self, status, code, latch=None):
         """The terminal record, shaped like lanew_log's (check() counts it), Codex
         diagnostics null; written with lanew_log's own lock + verified append. At most
-        once per job (the backstop thread may race the main thread here)."""
+        once per job (the backstop thread may race the main thread here). latch: the
+        stop_latch value (default: any non-ok status latches). An API-backup job's record
+        carries via "api" and primary_exit and NEVER latches, whatever ended it (failure,
+        interrupt, cancellation, any exception, the backstop): this is the one choke point."""
         with self.term_lock:
             if not self.job_id or self.job_ended:
                 return True
             self.job_ended = True
+        if self.via == "api":
+            latch = False
         ts_end = _now_iso()
         a, b = _parse_iso(self.ts_start), _parse_iso(ts_end)
         entry = {
@@ -1378,9 +1812,11 @@ class Wrapper:
             "duration_s": round((b - a).total_seconds(), 3) if a and b else None,
             "assistant_message_markers": None, "tokens_used": None, "web_messages": None,
             "usage_complete": True, "status": status, "out_path": None,
-            "report_path": self.report, "stop_latch": status != "ok",
+            "report_path": self.report, "stop_latch": (status != "ok") if latch is None else latch,
             "tool": TOOL, "exit": code, "submissions": STATE.policy.submissions,
         }
+        if self.via == "api":
+            entry.update(via="api", primary_exit=self.primary.code)
         ok = lanew_log.append_line_verified(self.usage_log, json.dumps(entry, sort_keys=True) + "\n")
         self.term_ok = bool(ok)
         if not ok:
@@ -1389,6 +1825,10 @@ class Wrapper:
 
     # ---- candidates and context memory ------------------------------------------
     def candidates(self):
+        exe = shutil.which("browser-harness", path=self.env.get("PATH"))
+        if self.key_in(exe):  # it would be the harness child's argv[0]
+            raise Exit(2, "preflight_refused", "the browser-harness path contains the API key - "
+                       "nothing read")
         cands = read_candidates(self.env, min(HARNESS_TIMEOUT, max(1, int(self.left()))),
                                 self.test_context)
         remembered = load_remembered(self.state_dir)
@@ -1401,6 +1841,9 @@ class Wrapper:
     def remember_context(self):
         if self.test or STATE.expected != self.account or not self.ctx.get("key"):
             return  # test runs never write (or clear) the memory
+        if self.key_in(self.state_dir, self.ctx["key"]):  # the memory's path or its content
+            log("context memory not updated: the context id or the state dir contains the API key.")
+            return
         save_remembered(self.state_dir, self.ctx["key"])
 
     # ---- the job ----------------------------------------------------------------
@@ -1486,6 +1929,174 @@ class Wrapper:
         finally:
             await safe_close(client)
 
+    # ---- the API backup (module docstring, "API backup") --------------------------
+    def sent(self):
+        """Something may have left with the brief: an app-path POST or a started CLI child."""
+        return bool(STATE.policy.submissions or self.api_started)
+
+    def backup_applies(self, exc):
+        """The trigger: exit 2 / 8 in job mode before admission, nothing dispatched, no answer."""
+        return (exc.code in (2, 8) and not self.status_mode and self.job_id is None
+                and not STATE.policy.submissions and self.answer is None)
+
+    def api_ready(self, prompt):
+        """The preconditions in contract order: (cli, None) or (None, why not)."""
+        e = self.env
+        if (e.get("GEMINIPRO_API_BACKUP") or "").strip() == "0":
+            return None, "GEMINIPRO_API_BACKUP=0"
+        key = e.get("GEMINI_API_KEY")
+        if key is None:
+            return None, "GEMINI_API_KEY is not set"
+        if not key.strip():
+            return None, "GEMINI_API_KEY is blank"
+        if len(key) < SECRET_MIN:
+            return None, "GEMINI_API_KEY is too short to be a key"
+        if self.key_in(self.api_model):
+            return None, "GEMINIPRO_API_MODEL contains the API key"
+        explicit = (e.get("GEMINIPRO_API_CLI") or "").strip()
+        if explicit:
+            if self.key_in(explicit):
+                return None, "the CLI path contains the API key"
+            if not os.path.isfile(explicit):
+                return None, "GEMINIPRO_API_CLI (%s) was not found" % explicit
+            cli = explicit
+        else:
+            cli = shutil.which(API_CLI_NAME, path=e.get("PATH"))
+            if not cli:
+                return None, "%s is not on PATH" % API_CLI_NAME
+            if self.key_in(cli):
+                return None, "the CLI path contains the API key"
+        if self.left() < JOB_MIN:
+            return None, "only %.0fs left before the total deadline (needs %ds)" % (
+                max(0.0, self.left()), JOB_MIN)
+        if key in prompt or key.strip() in prompt:
+            return None, "the brief contains the API key"
+        return cli, None
+
+    def api_backup(self, prompt, primary):
+        """The app path ended with exit 2 / 8 before admission: send the same gate-passed
+        brief once through the CLI. Returns with the answer held, or raises the app path's
+        own exit (code and status) with the reason extended."""
+        self.primary = primary
+        self.trigger = {"backup": "not_run", "primary_exit": primary.code,
+                        "primary_reason": primary.reason, "requested_model": self.model}
+        if primary.code == 8:
+            self.account_ok = False
+
+        def not_run(why):
+            log("API backup not run: %s." % why)
+            raise Exit(primary.code, primary.status, "%s; API backup not run: %s"
+                       % (primary.reason, why))
+
+        cli, why = self.api_ready(prompt)
+        if why:
+            not_run(why)
+        requested = self.model
+        try:
+            # the policy is chosen before admission: once admit() hands over a job id, every
+            # terminal record of this job is unlatched and the status line says api (backup
+            # failed until an answer is held)
+            self.via, self.trigger["backup"], self.model = "api", "failed", self.api_model
+            self.admit()   # the same per-run ceiling and daily cap; the record names the API model
+        except BaseException as exc:
+            # no job id handed over: fail closed like the app path - no terminal record is
+            # written (never for a job id this wrapper was not handed); back to the app path's state
+            if self.job_id is None:
+                self.via, self.trigger["backup"] = "app", "not_run"
+                self.model, self.report = requested, None
+                if isinstance(exc, Exit):
+                    not_run("admission %s (%s)" % ("refused" if exc.code == 1 else "failed",
+                                                  exc.reason))
+                if isinstance(exc, Exception):  # any other admission error (interrupts stay)
+                    not_run("admission failed (%s)" % fmt_exc(exc)[:200])
+            raise
+        try:
+            try:
+                self.api_call(cli, prompt)  # holds a valid answer before any cleanup
+            except Exit as exc:      # hold(): an empty answer or an error card
+                self.api_fail(exc.reason)
+            except ApiFailure as exc:
+                self.api_fail(str(exc))
+            except Exception as exc:  # anything else after admission is an API failure too
+                self.api_fail(fmt_exc(exc))
+        finally:
+            # housekeeping, after the answer is held, contained: it never changes the result
+            # (a failed or interrupted removal leaves api_dir set; finish() tries once more)
+            self.housekeeping(self.remove_api_dir)
+        log("API backup answered (%d chars) with %s." % (len(self.answer), self.model))
+
+    def housekeeping(self, fn):
+        """One cleanup step: whatever it raises - an interrupt included - is contained, so
+        housekeeping never changes the result (the original exit code, status and reason
+        stand; what is left is noted by the caller). Returns fn()'s value, None if it raised."""
+        try:
+            return fn()
+        except BaseException as exc:  # noqa: B902 - containment is the point
+            with contextlib.suppress(BaseException):
+                log("cleanup step raised %s - contained; the result stands." % type(exc).__name__)
+            return None
+
+    def api_fail(self, text):
+        """An API failure after admission: terminal record failed, never latched; the run
+        keeps the app path's exit code and status."""
+        p = self.primary
+        msg = scrub(text)[:API_REASON_MAX]
+        self.record_terminal("failed", p.code, latch=False)
+        log("API backup failed: %s" % msg)
+        raise Exit(p.code, p.status, "%s; API backup failed: %s" % (p.reason, msg))
+
+    def api_call(self, cli, prompt):
+        """Write body.json into a new empty directory under the state dir, run the CLI there
+        (at most 2 attempts) and hold the answer (hold(): Exit 6 when empty or an error card)
+        and set backup ok - all before any cleanup; the caller removes the directory."""
+        argv = api_argv(cli)
+        self.api_dir = tempfile.mkdtemp(prefix="api-", dir=self.state_dir)
+        with open(os.path.join(self.api_dir, API_BODY), "wb") as f:
+            f.write(api_body(prompt, self.model))
+        log("API backup: the app path ended with exit %d; sending the brief (%d chars) to %s "
+            "through %s." % (self.primary.code, len(prompt), self.model, API_CLI_NAME))
+        attempt = 0
+        while True:
+            attempt += 1
+            timeout = min(self.api_timeout, self.left() - API_MARGIN)
+            if timeout <= 0:
+                raise ApiFailure("the total deadline left no time for attempt %d" % attempt)
+            self.api_started = True
+            try:
+                proc = _run_api(argv, cwd=self.api_dir, env=dict(self.env), timeout=timeout,
+                                stdin=subprocess.DEVNULL, holder=self.api_holder)
+            except subprocess.TimeoutExpired:
+                raise ApiFailure("the CLI did not answer within %.0fs (killed)" % timeout)
+            except OSError as exc:
+                raise ApiFailure("the CLI could not be started (%s)" % fmt_exc(exc))
+            if proc.returncode == 0:
+                self.hold(api_answer(proc.stdout))
+                self.trigger["backup"] = "ok"
+                return
+            text = api_error_text(proc.returncode, proc.stderr)
+            if (attempt < 2 and api_server_error(_json_tail(proc.stderr))
+                    and self.left() - API_RETRY_PAUSE >= JOB_MIN):
+                log("API backup: attempt 1 hit a server error (%s); one retry in %ds."
+                    % (scrub(text)[:200], API_RETRY_PAUSE))
+                time.sleep(API_RETRY_PAUSE)
+                continue
+            raise ApiFailure(text if attempt == 1 else "attempt %d: %s" % (attempt, text))
+
+    def remove_api_dir(self):
+        """Remove the body directory (3 tries). api_dir stays set until it is gone, so an
+        interrupted or failed attempt is retried on the way out (finish)."""
+        d = self.api_dir
+        if not d:
+            return True
+        for i in range(3):  # a just-killed grandchild may hold the directory for a moment
+            shutil.rmtree(d, ignore_errors=True)
+            if not os.path.exists(d):
+                self.api_dir = None
+                return True
+            if i < 2:
+                time.sleep(0.2)
+        return False
+
     def abort_exit(self, exc):
         """Exit for a refused or blocked library action (PolicyAbort / Blocked)."""
         sent = STATE.policy.submissions
@@ -1520,11 +2131,15 @@ class Wrapper:
             raise self.abort_exit(exc)
 
     def write_report(self):
-        fields = [scrub(str(v)) for v in (self.run, self.name, self.model, self.job_id,
-                                           self.ctx.get("account"), self.ctx.get("context"))]
+        fields = [scrub(str(v)) for v in (self.run, self.name, self.model, self.job_id)]
+        if self.via == "api":
+            who = "- account: n/a (API key)\n- via: api (backup; app path exit %d)\n" % self.primary.code
+        else:
+            who = "- account: %s (context %s)\n" % tuple(
+                scrub(str(v)) for v in (self.ctx.get("account"), self.ctx.get("context")))
         body = ("# geminipro report\n\n- run: %s\n- name: %s\n- model: %s\n- job_id: %s\n"
-                "- account: %s (context %s)\n- written: %s\n\n---\n\n%s\n"
-                % tuple(fields + [_now_iso(), scrub(self.answer)]))  # each value scrubbed once
+                "%s- written: %s\n\n---\n\n%s\n"
+                % tuple(fields + [who, _now_iso(), scrub(self.answer)]))  # each value scrubbed once
         fd = os.open(self.report, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0),
                      0o600)
         with os.fdopen(fd, "wb") as f:
@@ -1547,8 +2162,7 @@ class Wrapper:
         if self.answer is not None:
             return self.held_exit("interrupted%s" % during)
         return Exit(130, "interrupted", "interrupted%s%s" % (
-            during, " after dispatch - outcome unknown" if STATE.policy.submissions
-            else " - nothing sent"))
+            during, " after dispatch - outcome unknown" if self.sent() else " - nothing sent"))
 
     def main(self):
         self.parse_args()
@@ -1562,15 +2176,26 @@ class Wrapper:
         log("brief gate passed (%d chars)." % len(prompt))
         self.take_slot()
         self.precheck()
-        harden()
-        cands = self.candidates()
         try:
-            self.run_async(self.job_async(cands, prompt))
-        except BaseException as exc:  # an Exit / abort / interrupt after the answer arrived
-            if self.answer is None:
+            harden()
+            cands = self.candidates()
+            try:
+                self.run_async(self.job_async(cands, prompt))
+            except BaseException as exc:  # an Exit / abort / interrupt after the answer arrived
+                if self.answer is None:
+                    raise
+                self.notes.append("%s after the answer arrived - answer kept" % (
+                    exc.status if isinstance(exc, Exit) else type(exc).__name__))
+        except Exit as exc:
+            if not self.backup_applies(exc):
                 raise
-            self.notes.append("%s after the answer arrived - answer kept" % (
-                exc.status if isinstance(exc, Exit) else type(exc).__name__))
+            try:
+                self.api_backup(prompt, exc)  # returns with the answer held, or raises
+            except BaseException as late:  # an interrupt / error in cleanup after the answer
+                if self.answer is None:
+                    raise
+                self.notes.append("%s after the API answer arrived - answer kept" % (
+                    late.status if isinstance(late, Exit) else type(late).__name__))
         try:
             self.write_report()
         except OSError as exc:
@@ -1580,27 +2205,51 @@ class Wrapper:
         if not self.record_terminal("ok", 0):
             raise Exit(3, "log_failure", "answer received (report %s) but the terminal record "
                        "could not be verified" % self.report)
+        if self.via == "api":
+            raise Exit(0, "ok", "answer received through the API backup (app path exit %d: %s)"
+                       % (self.primary.code, self.primary.reason))
         raise Exit(0, "ok", "answer received")
 
     # ---- every exit -------------------------------------------------------------
+    def reap_api_child(self):
+        """A CLI child still in the holder (its _run_api exit was interrupted before the child
+        was confirmed dead) is killed here with its verified descendants: no child outlives
+        the wrapper (main() cancels the backstop on the way out)."""
+        proc = self.api_holder.get("proc")
+        if proc is None:
+            return
+        _kill_direct(proc)
+        _kill_descendants(proc, self.api_holder.get("created"))
+        if not _dead(proc):
+            with contextlib.suppress(Exception):
+                proc.wait(timeout=5)
+        if _dead(proc):
+            self.api_holder.pop("proc", None)
+            self.api_holder.pop("created", None)
+
     def finish(self, r):
         if r.code == 8:
             self.account_ok = False
+        self.housekeeping(self.reap_api_child)
         if self.job_id and not self.job_ended:
             if self.answer is not None:  # an answer in hand is an ok job, whatever came after
                 status = "ok"
             elif r.status in ("ok", "failed", "outcome_unknown"):
                 status = r.status
             else:
-                status = "outcome_unknown" if STATE.policy.submissions else "failed"
+                status = "outcome_unknown" if self.sent() else "failed"
             if not self.record_terminal(status, r.code) and r.code == 0:
                 r = Exit(3, "log_failure", "terminal record could not be verified")
-        leftover = _HARDENED.get("nocache")
-        if leftover is not None and os.path.exists(str(leftover)):
+        if self.api_dir:  # an earlier removal was interrupted or failed: one more try, contained
+            gone = self.housekeeping(self.remove_api_dir)
+            if not gone and self.housekeeping(lambda: os.path.exists(self.api_dir)) is not False:
+                self.notes.append("the API body directory could not be removed")
+        leftover = _HARDENED.get("nocache")  # the check itself is housekeeping too (R3-2)
+        if leftover is not None and self.housekeeping(lambda: os.path.exists(str(leftover))):
             self.notes.append("INVARIANT: the no-cache dir was created")
-            shutil.rmtree(str(leftover), ignore_errors=True)
+            self.housekeeping(lambda: shutil.rmtree(str(leftover), ignore_errors=True))
         if any(STATE.spy.values()):
-            log("library cache/rotation calls neutralized: %s" % STATE.spy)
+            self.housekeeping(lambda: log("library cache/rotation calls neutralized: %s" % STATE.spy))
         return r
 
     def status_line(self, r):
@@ -1611,7 +2260,10 @@ class Wrapper:
              "run": n(self.run), "name": n(self.name), "model": n(self.model),
              "job_id": n(self.job_id), "report": n(self.report), "account_ok": self.account_ok,
              "duration_s": round(time.monotonic() - self.t0, 3),
-             "submissions": STATE.policy.submissions, "context": self.ctx.get("context")}
+             "submissions": STATE.policy.submissions,
+             "context": None if self.via == "api" else self.ctx.get("context"), "via": self.via}
+        if self.trigger:
+            d.update(self.trigger)
         if self.status_mode:
             d.update({"account": self.ctx.get("account")})
             d.update(self.extra)
@@ -1695,12 +2347,31 @@ class Wrapper:
 
     def backstop(self):
         """Fires at deadline + BACKSTOP_GRACE: terminal record and status line on side
-        threads (bounded waits, no lock held), then a hard exit."""
-        sent = STATE.policy.submissions
+        threads (bounded waits, no lock held), then a hard exit. A live API child is killed
+        first - the direct child synchronously, then its verified descendants (_kill_descendants
+        with the creation time recorded at start, waited KILL_WAIT; the kill step is bounded by
+        about KILL_WAIT) -
+        and only then the body directory is removed: no child outlives the wrapper. An
+        admitted API job with no answer exits with the app path's code and status, unlatched."""
+        proc, created = self.api_holder.get("proc"), self.api_holder.get("created")
+        if proc is not None:
+            with contextlib.suppress(Exception):
+                proc.kill()  # the direct child, synchronously, before anything else
+            with contextlib.suppress(Exception):  # cleanup: never skips the line or the hard exit
+                _side(lambda: _kill_descendants(proc, created), KILL_WAIT)
+        if self.api_dir:
+            with contextlib.suppress(Exception):
+                shutil.rmtree(self.api_dir, ignore_errors=True)
+        sent = self.sent()
         if self.answer is not None:  # an answer in hand is printed and recorded ok
             code, status, term = 3, "log_failure", "ok"
             why = ("hard backstop: answer received (printed here) but finalization overran the "
                    "total deadline")
+        elif self.via == "api":  # never latched (record_terminal), the app path's own exit
+            p = self.primary
+            code, status, term = p.code, p.status, "failed"
+            why = "%s; API backup failed: hard backstop: the process overran the total deadline" % (
+                p.reason)
         else:
             code = 6 if sent else 5
             status = "outcome_unknown" if sent else "deadline"

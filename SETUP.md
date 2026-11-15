@@ -268,6 +268,17 @@ is set up. With a single login:
      through it; it never opens or switches tabs and never stores the cookies.
   5. Check the setup with `geminipro --status`: it reads the account, plan,
      models and remaining credits, and sends no brief.
+  6. Optional API backup. When the app path cannot run for a Chrome or account
+     reason (exit 2 or 8), `geminipro` sends the same brief once to the Gemini
+     API instead and returns that answer. It is never the primary path, and
+     steps 1 to 3 are still required: the exit 2 for an unset account in step 3
+     never triggers it. It needs the `gemini-api` CLI (from Google's
+     gemini-api-cli GitHub releases) on PATH and your Gemini API key in
+     `GEMINI_API_KEY`; without a key or the CLI the backup simply does not run.
+     `GEMINIPRO_API_MODEL` picks the API model (default `gemini-4-hydrogen`).
+     On a free-tier key Google may use what you send to improve its models, so
+     abstract anything sensitive or leave the backup off.
+     `GEMINIPRO_API_BACKUP=0` turns it off.
   Risk: `gemini_webapi` is an unofficial client of gemini.google.com, not a
   Google API. Automated use of the consumer app may breach Google's terms of
   service, and Google can limit or suspend the account. Use it at your own risk

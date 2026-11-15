@@ -354,7 +354,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   budget-crew ask runs Lane A, and the report says the budget crew is
   retired (2026-11-15).
 - Pro consult (pro-consult.md), advisory, under its cap and unless JC said "no pro": launch it for a research or audit run whose report makes claims,
-  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan (pro-consult.md).
+  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan, and in three advisory review modes - the Carbon review beside Phase 3 round 1 of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), the Carbon report check of a research or audit report, the Hydrogen fix check after each code-changing fix round (pro-consult.md).
 - A brief that already states the goal and what done looks like needs no
   question round: restate done in one line and go to the plan. Otherwise
   open with one batched round aimed at the real gaps - scope, constraints,
@@ -559,6 +559,13 @@ discovering what a build command finds for free. Log the result.
   same isolation condition, one Bash call) after every fix round that changed code, whether or not a re-review
   follows; individually verified fixes are where integration regressions
   hide, and the reviewer is not the smoke gate. Log the result.
+- Hydrogen fix check (pro-consult.md, "Gemini consult - the build-sheet
+  seat"): before each fix round's delegations launch, snapshot the build's
+  files to `<scratch>/fabstra-fix-r<N>/`; once that round changed code and
+  its smoke-gate re-run passed, launch `fix-r<N>` (Hydrogen) on the round's
+  diff and the findings it fixed, in parallel with any re-review and never
+  delaying it. Its items are `G<n>` leads you verify; it never counts as a
+  reviewer, never passes or fails the round, never blocks.
 - Advisor off: on an `advisor=fable|opus` run logged `advisor-wrote=yes`,
   once the last builder has landed, run the switch-off and its status read
   (advisor.md, Lifecycle), log the result and `advisor-phase=post-build`
@@ -577,8 +584,9 @@ discovering what a build command finds for free. Log the result.
   observed, not what you intended; never soften a real problem), design
   review verdict (findings accepted/rejected), review verdict with findings
   fixed/rejected, which reviewer seats ran and why, anything left open.
-  Research or audit claims mark what could not be confirmed and say where
-  the lead looked.
+  Research or audit claims pass the Carbon report check first (pro-consult.md;
+  advisory, never blocks), then mark what could not be confirmed and say
+  where the lead looked.
 
 ## Old patterns
 

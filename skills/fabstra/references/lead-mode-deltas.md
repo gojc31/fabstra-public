@@ -1,6 +1,6 @@
-# Lead mode deltas - Lane B, transports
+# Lead mode deltas - Lane B, transports, Gemini seats
 
-Reached from: lead-mode.md - the seat rubric row for Lane B, and the first Codex launch, and the model notes before Gate 1
+Reached from: lead-mode.md - the seat rubric row for Lane B, the Gemini seats line under the seat rubric, the first Codex launch, and the model notes before Gate 1
 
 ## Lead mode delta - Lane B (Astra solo)
 
@@ -35,6 +35,30 @@ differs.
   rules, the parent-thread clause, status line) opening "Fix task. You are the parent
   thread, implement the fix it specifies, delegating by tier, and report the
   status line.", sent with `--write --prompt-file`.
+
+## Lead mode delta - Gemini seats
+
+pro-consult.md, "Gemini consult - the build-sheet seat", is the text; in
+Lead mode the lead launches and verifies each one.
+
+- Hydrogen quick check: small change -> on the diff after the build;
+  contained change -> on its RUN.md plan before the build; advisory, never
+  replaces the contained change's Sol review.
+- Carbon review: every real build, in the same message as the round-1
+  review gate seat(s); never on a contained or small change or a re-review.
+  It never closes the review gate. A git repo sends the diff against the
+  pre-build commit plus the build's new untracked files
+  (`git ls-files --others --exclude-standard`); a non-git project copies the
+  plan's files to `<scratch>/fabstra-prebuild/` before the first build starts.
+- Carbon report check: a research or audit run whose report makes claims
+  gets one, after the draft and before the report file and the chat report;
+  each item is checked against a primary source and logged in RUN.md's
+  "Pro consult" section.
+- Hydrogen fix check: after each code-changing fix round's smoke-gate
+  re-run passes, on that round's diff (snapshot before the fixes launch),
+  beside any re-review, never delaying it.
+- Their items are `G<n>` leads you verify before they become findings;
+  never Reviewer A/B/C, never a pass/fail, never a blocker.
 
 ## Model notes (for the model running this session)
 

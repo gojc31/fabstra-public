@@ -52,7 +52,7 @@ move up after empty review on doubt.
 Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a
 re-review after a P1, unless pinned ("sol high"/"quick review" = high). Astra and Sol share pools (quota.md);
 Sol row is time/fit not budget: spend Astra on hard plans (fast pin: quota.md).
-Hydrogen quick check (pro-consult.md, "Hydrogen quick check"): small change -> on the diff after the build; contained change -> on its RUN.md plan before the build; advisory, never replaces the contained change's Sol review.
+Gemini seats (Hydrogen quick check, Carbon review, Carbon report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
 
 ## The five gates
 
@@ -176,7 +176,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   such as commits, pushes, uploads), with the questions asked via AskUserQuestion
   (decision-page.md). Everything below goes into the run's report file (decision-page.md,
   "Report file").
-- Separate verified from assumed, out loud; mark any research or audit claim
+- Separate verified from assumed, out loud; after the Carbon report check, mark any research or audit claim
   you could not confirm and say where you looked. Cite file paths, line numbers,
   commands, the numbers you saw. Report what you observed, not what you
   intended. Never soften a real problem.

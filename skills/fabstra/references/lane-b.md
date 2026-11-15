@@ -168,13 +168,19 @@ Sol-authored code. Wherever parts 5 and 6 say "the reviewers" or "the active
 set", they mean this set as it stands, recomputed after every round. Two
 reviewers cost twice the review time and quota; that is the user's choice
 (2026-09-05) for this lane, do not skip one to save time. Log the seats,
-their durations, and why any seat was skipped.
+their durations, and why any seat was skipped. In round 1 only, launch the
+Carbon review (pro-consult.md, "Gemini consult - the build-sheet seat") in
+the same message as Reviewers B and C; it sits outside the active set, its
+items are `G<n>` leads you verify (never B or C; a verified one is tagged
+`G`, part 5), and it never blocks.
 
 **5. Fix rounds and agreement (the solo builder fixes its own design).** The
 SOLO BUILDER is Astra, or Sol once Astra is out under the quota rule. The
 logbook's findings ledger - not any model's report - is the record of
 agreement. (a) Merge: collapse duplicates (same file and defect), tag every
-finding B, C, or B+C, and enter each in the ledger as OPEN. Do not
+finding by source - B, C, `G` (a Gemini `G<n>` lead you verified;
+pro-consult.md, "Review-mode answers"), or a combination such as B+C or
+B+G - and enter each in the ledger as OPEN. Do not
 pre-filter: the lead may WITHDRAW a finding at any stage with one logged line of reason; unanimity is not required. (b) Send
 every open finding to the solo builder, verbatim, tagged, and with its bug class, in a new brief:
 "these findings are against your design at `.fabstra/DESIGN-<name>.md`;
@@ -187,8 +193,12 @@ REBUTTED without evidence and stays OPEN. (c) Close the ledger: FIXED stays
 OPEN until the re-review in (e) confirms it, then FIXED. REBUTTED on a B+C
 finding is real unless the rebuttal shows a fact both reviewers got wrong -
 you rule and log why: WITHDRAWN ("ruled by orchestrator") or OPEN for the
-next brief. REBUTTED on a single-source finding earns one re-check: send the finding, the rebuttal, and its evidence to the reviewer that raised it - or, if that seat has since left the active set (Sol, once Sol built or continued the build or a delegation landed), to the fresh Fable in its place - on that seat's own transport, read-only, asking for WITHDRAWN or HELD with a reason; WITHDRAWN closes it; HELD means you rule and log why: WITHDRAWN or
-OPEN. Each finding gets at most one re-check and at most two fix briefs;
+next brief. REBUTTED on a single-source B or C finding earns one re-check: send the finding, the rebuttal, and its evidence to the reviewer that raised it - or, if that seat has since left the active set (Sol, once Sol built or continued the build or a delegation landed), to the fresh Fable in its place - on that seat's own transport, read-only, asking for WITHDRAWN or HELD with a reason; WITHDRAWN closes it; HELD means you rule and log why: WITHDRAWN or
+OPEN. A combined B+G or C+G finding is re-checked by its B or C seat the
+same way; a B+C+G finding is ruled like B+C. REBUTTED on a `G`-only finding
+has no reviewer to re-check it: you rule on your own re-check of the
+evidence, with one logged line - WITHDRAWN or OPEN. Its FIXED is confirmed
+by the active set's re-review in (e), as for every finding. Each finding gets at most one re-check and at most two fix briefs;
 after that it is ESCALATED - it goes to the user with each party's
 position. You never edit a builder's report: withdrawals live in the
 ledger, and the next fix brief lists them under "withdrawn, no action" so
@@ -198,7 +208,7 @@ with `disable-model-invocation`, a Claude-only MCP tool); log it. It is
 re-reviewed like any other change, by the active set - Sol reviewing
 Claude-written code is a cross-family check, so the set does not shrink for
 it. (e) Re-run the smoke gate after every code-changing round, then re-run
-the ACTIVE REVIEWER SET (part 4, recomputed) on the changed files; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation (c) and (f) wait for. (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed by the re-review), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; both reviewer seats still run, and every code-changing round is still re-reviewed by the active set. A taste-only finding against the Design block is WITHDRAWN by the
+the ACTIVE REVIEWER SET (part 4, recomputed) on the changed files; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation (c) and (f) wait for. Once the smoke gate passes on a code-changing round, launch the Hydrogen fix check (pro-consult.md; snapshot before the fix brief launches) beside the re-review, never delaying it; its `G<n>` leads never confirm a fix. (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed by the re-review), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; both reviewer seats still run, and every code-changing round is still re-reviewed by the active set. A taste-only finding against the Design block is WITHDRAWN by the
 orchestrator with one line (the arbitration rule in phases.md) and never goes
 back to the solo builder; a feasibility finding against it is handled like
 any other. An ESCALATED finding blocks shipping until the user rules.
@@ -210,6 +220,6 @@ still-open item is ESCALATED.
 **6. Report and log.** The report names the lane, the builder model
 and effort, the smoke-gate result, both reviewer seats and their durations
 (or why one was skipped), agreement reached yes/no, findings by source (B,
-C, B+C) with each marked FIXED, WITHDRAWN, or ESCALATED, whether the proxy pin
+C, `G`, or a combination such as B+C or B+G) with each marked FIXED, WITHDRAWN, or ESCALATED, whether the proxy pin
 was restored, and anything open.
 

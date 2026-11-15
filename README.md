@@ -55,8 +55,8 @@ review findings that the lead accepts or rejects with a logged line, a miss
 ladder that moves a task one seat up after its second miss, and a short
 report that separates verified from assumed. Lanes beyond the default: B
 ("astra solo" - Astra designs and builds, Sol xhigh and a fresh Fable
-review), C (an explicit budget ask - a cheap OpenRouter crew through the
-proxy, never for an excluded category), and D (a proxy session model leads).
+review) and D (a proxy session model leads). Lane C (the OpenRouter budget
+crew) retired 2026-11-15; archive/2026-11-15-lane-c/.
 
 Invoke it as `/model-router:fabstra <brief>` (plugin install) or `/fabstra <brief>`
 (manual install). `/model-router:fabsol` and the `fable-mode` skill are retired
@@ -75,7 +75,7 @@ normal direct login and REACHES OUT to the other models. Keep it that way.
 
 | Folder | What it is |
 |---|---|
-| `skills/fabstra/` | **the FabStra flow** (the flagship) - the session switch (Fable 5.2 orchestrates; Opus 5.5 orchestrates or leads; Sonnet 5.5 / Haiku 5.5 lead), the routing rubric, the Claude seats, the Astra / Sol gate seat, and Lanes B ("astra solo": Astra designs and builds, Sol xhigh and a fresh Fable both review, the lead rules on every finding), C (budget crew) and D (routed orchestrator); `references/` holds the long form |
+| `skills/fabstra/` | **the FabStra flow** (the flagship) - the session switch (Fable 5.2 orchestrates; Opus 5.5 orchestrates or leads; Sonnet 5.5 / Haiku 5.5 lead), the routing rubric, the Claude seats, the Astra / Sol gate seat, and Lanes B ("astra solo": Astra designs and builds, Sol xhigh and a fresh Fable both review, the lead rules on every finding) and D (routed orchestrator; Lane C retired 2026-11-15); `references/` holds the long form |
 | `skills/fabsol/` | retired alias - run `/model-router:fabstra` and name Sol in the brief |
 | `skills/fable-mode/` | retired alias - run `/model-router:fabstra`; Sonnet 5.5 / Haiku 5.5 sessions run fabstra's Lead mode, and Opus 5.5 sessions orchestrate at 2+ independent tasks or an excluded category, else lead |
 | `bin/` | `codex`, `codex-pro`, `codex-fast`, `proxy-key`, `proxy-pin` shims - copy to `~/bin` (see SETUP.md) |

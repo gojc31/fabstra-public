@@ -42,7 +42,7 @@ Astra holds the Astra-row gates by the user's choice (2026-09-05, Sol row added 
 | Standard feature with tests (multi-file included), integration surface, refactor with a clear before/after, contained bug fix in known code that fails any contained-change criterion, 3+ steps of a known shape | **Sol** (same protocol, `--model gpt-6.1-sol`, rubric effort: high; xhigh re-review after a P1) | yes | Sol; on an xhigh row plus a fresh Fable in parallel |
 | Contained change: all of - at most 3 files; an existing repo pattern cited file:line; an existing test or named check proves it; no excluded category; no architecture or data-model decision; no user-facing surface. Doubt -> a higher row. You build it, smoke gate, one review (phases.md, Phase 1) | **Sol high** | no | Sol high (Codex-built: fresh Fable) |
 | Small change: trivial single-file, low-stakes - the user called it so, or nothing a user or client runs depends on it | none - you make the change | no | no - say so in the report |
-| `budget`, `cheap crew`, `openrouter`, `deepseek`; or Claude and every ChatGPT login spent | **Lane C** (lane-c.md plus its delta in lead-mode-deltas.md) | multi-file only | Lane C seats |
+| A budget-crew ask (budget, cheap crew) | the row the work fits; the report says the budget crew is retired (Lane C retired 2026-11-15; archive/2026-11-15-lane-c/) | per that row | per that row |
 
 Taste findings against Design block: reject with one line. The lead picks
 the row from the brief; an excluded category forces the Astra row; mixed or
@@ -52,6 +52,7 @@ move up after empty review on doubt.
 Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a
 re-review after a P1, unless pinned ("sol high"/"quick review" = high). Astra and Sol share pools (quota.md);
 Sol row is time/fit not budget: spend Astra on hard plans (fast pin: quota.md).
+Hydrogen quick check (pro-consult.md, "Hydrogen quick check"): small change -> on the diff after the build; contained change -> on its RUN.md plan before the build; advisory, never replaces the contained change's Sol review.
 
 ## The five gates
 
@@ -63,111 +64,41 @@ of them, stop and go back to that gate.
 
 ### Gate 1 - Scope before work
 
-- Define done in one or two sentences: what artifact exists at the end, what
-  must be true of it, and how you will check that it is true. If you cannot
-  write the check, you do not understand the task yet.
-- Written report, analysis, audit, strategy or decision brief, a fix of a
-  recurring problem, scoping a new feature or a goal-only brief (the four
-  lines shape your one question), or "go deeper": run the depth pass (phases.md, Phase 1,
-  "Depth pass"); its outside check is your done check, and its options ride
-  in the OPEN FOR THE USER bundle. Small, quick, or "keep it simple" work
-  skips it (same section).
-- A new or materially changed client automation (n8n, Make, GHL, VAPI),
-  however small or well-specified: get the governance verdict (phases.md,
-  Phase 1, "Governance verdict") before the plan is final. It holds even when
-  the depth pass is skipped.
-- Check standing rules first (CLAUDE.md, skills, memory). Do not invent an
-  approach the project already has a rule for.
+- Define done in one or two sentences: what artifact exists at the end, what must be true of it, and how you will check that it is true. If you cannot write the check, you do not understand the task yet.
+- Written report, analysis, audit, strategy or decision brief, a fix of a recurring problem, scoping a new feature or a goal-only brief (the four lines shape your one question), or "go deeper": run the depth pass (phases.md, Phase 1, "Depth pass"); its outside check is your done check, and its options ride in the OPEN FOR THE USER bundle. Small, quick, or "keep it simple" work skips it (same section).
+- A new or materially changed client automation (n8n, Make, GHL, VAPI), however small or well-specified: get the governance verdict (phases.md, Phase 1, "Governance verdict") before the plan is final. It holds even when the depth pass is skipped.
+- Check standing rules first (CLAUDE.md, skills, memory). Do not invent an approach the project already has a rule for.
 - Separate known from assumed. Name the one to three load-bearing unknowns.
-- Ambiguous in a way that changes what you would build: ask one question,
-  aimed at the biggest gap. Otherwise pick the sensible default, say so in
-  one line, and proceed.
-- Right-size the process and the effort; pick the seat-rubric row and say it
-  in one line.
+- Ambiguous in a way that changes what you would build: ask one question, aimed at the biggest gap. Otherwise pick the sensible default, say so in one line, and proceed.
+- Right-size the process and the effort; pick the seat-rubric row and say it in one line.
 - Smell: you cannot say in one sentence what done looks like.
 
 ### Gate 2 - Evidence before reasoning
 
-- On Opus 5.5 the mode is settled when the draft plan exists: 2+ independent
-  tasks (defined at the top of this file) or an excluded category -> switch to Orchestrate mode now (phases.md, from
-  Phase 1, with this draft as the plan); fewer -> stay here. Log `mode=` in
-  RUN.md; never switch after a builder has launched.
-- Real build: write the draft plan to `<scratch>/fabstra-plan-<name>.md`
-  before the plan gate - numbered tasks per specs.md "Builder spec contract",
-  each with a proposed owner (BUILDER = you and your subagents; CODEX = the
-  gate seat's thread) and a DEPENDS ON line naming any task whose output it
-  consumes at run time, or "none". Group the tasks into waves of 3-4 parallel builders (fanout.md, "Build waves"). No `codex-write=` line in `.fabstra/RUN*.md` -> run the Codex write probe (transport.md) before tagging owners; its line goes into RUN.md. Owner default: CODEX for a self-contained,
-  well-specified task (a written contract, no Claude-only MCP tool or skill,
-  no CLAUDE.md-context dependence) in a folder that has passed the probe; BUILDER for the rest. Lane B replaces the draft plan with the brief.
-- Smell: you are building and have not opened the real data, file, or API
-  response it depends on.
+- On Opus 5.5 the mode is settled when the draft plan exists: 2+ independent tasks (defined at the top of this file) or an excluded category -> switch to Orchestrate mode now (phases.md, from Phase 1, with this draft as the plan); fewer -> stay here. Log `mode=` in RUN.md; never switch after a builder has launched.
+- Real build: write the draft plan to `<scratch>/fabstra-plan-<name>.md` before the plan gate - numbered tasks per specs.md "Builder spec contract", each with a proposed owner (BUILDER = you and your subagents; CODEX = the gate seat's thread) and a DEPENDS ON line naming any task whose output it consumes at run time, or "none". Group the tasks into waves of 3-4 parallel builders (fanout.md, "Build waves"). No `codex-write=` line in `.fabstra/RUN*.md` -> run the Codex write probe (transport.md) before tagging owners; its line goes into RUN.md. Owner default: CODEX for a self-contained, well-specified task (a written contract, no Claude-only MCP tool or skill, no CLAUDE.md-context dependence) in a folder that has passed the probe; BUILDER for the rest. Lane B replaces the draft plan with the brief.
+- Smell: you are building and have not opened the real data, file, or API response it depends on.
 
 ### The plan gate - the gate seat tries to break the plan
 
 Send the draft plan and the repository to the gate seat, read-only. While it
 runs, do not build; prepare test names and the review-spec skeleton.
 
-- **Spec:** the design-review template in specs.md, with the draft plan
-  verbatim (owners and DEPENDS ON lines included) as `<blueprints>`, and three
-  additions. (a) The project's CLAUDE.md verbatim plus two paragraphs of the
-  global CLAUDE.md pasted verbatim - the browser-automation section and the
-  "Always:" line - because `--bare` drops them and an abbreviated list is not
-  the rule. (b) A `<review_scope>` item (7): "ownership - is each task's
-  owner right (CODEX for self-contained, well-specified work; BUILDER for
-  work that needs the Claude-side tooling, MCP servers, or CLAUDE.md
-  context), and does every DEPENDS ON line hold". (c) An OPEN FOR THE USER
-  section in the output contract, for questions no evidence in the
-  repository can settle, each naming the task numbers it blocks.
-- **Command:** transport.md "Phase 1b launch" (Sol seat: `--model gpt-6.1-sol`,
-  `--effort` per the rubric), with that section's fallbacks.
-- **After the gate:** arbitrate every finding into RUN.md - accepted by
-  revising the plan, rejected with one logged line. OPEN FOR THE USER items
-  go to the user now, bundled into one AskUserQuestion call (max 4
-  questions; decision-page.md), and block only the tasks they name; write each
-  answer into the plan under its task as "user decision <date>". The revised
-  plan is the AUTHORITATIVE PLAN: save it as
-  `<scratch>/fabstra-plan-<name>-authoritative.md` and build from it. Then
-  hand the user one line to paste: `/goal <the plan's acceptance criteria as
-  one measurable end state, the check that proves it (build and test
-  commands exit 0, a smoke-gate PASS line in .fabstra/RUN.md, this run's report file
-  (its resolved path, decision-page.md "Report file") written), and "or stop after N turns">`; in a headless run skip the hand-off (the launch prompt already carries the goal). To hear
-  the seat before you rule, send one second call with the same spec plus a
-  `<builder_objection>` block (the task, your evidence, your proposed
-  alternative); its answer is advice, and you rule and log why.
-- **Log:** seat, effort, wall time, findings accepted and rejected,
-  objections raised and how you ruled.
-- Smells: you are writing code for a real build and the plan never went
-  through the gate; you changed the authoritative plan without a logged
-  reason or a user decision.
+- **Spec:** the design-review template in specs.md, with the draft plan verbatim (owners and DEPENDS ON lines included) as `<blueprints>`, and three additions. (a) The project's CLAUDE.md verbatim plus two paragraphs of the global CLAUDE.md pasted verbatim - the browser-automation section and the "Always:" line - because `--bare` drops them and an abbreviated list is not the rule. (b) A `<review_scope>` item (7): "ownership - is each task's owner right (CODEX for self-contained, well-specified work; BUILDER for work that needs the Claude-side tooling, MCP servers, or CLAUDE.md context), and does every DEPENDS ON line hold". (c) An OPEN FOR THE USER section in the output contract, for questions no evidence in the repository can settle, each naming the task numbers it blocks.
+- **Command:** transport.md "Phase 1b launch" (Sol seat: `--model gpt-6.1-sol`, `--effort` per the rubric), with that section's fallbacks.
+- **After the gate:** arbitrate every finding into RUN.md - accepted by revising the plan, rejected with one logged line. OPEN FOR THE USER items go to the user now, bundled into one AskUserQuestion call (max 4 questions; decision-page.md), and block only the tasks they name; write each answer into the plan under its task as "user decision <date>". The revised plan is the AUTHORITATIVE PLAN: save it as `<scratch>/fabstra-plan-<name>-authoritative.md` and build from it. Then hand the user one line to paste: `/goal <the plan's acceptance criteria as one measurable end state, the check that proves it (build and test commands exit 0, a smoke-gate PASS line in .fabstra/RUN.md, this run's report file (its resolved path, decision-page.md "Report file") written), and "or stop after N turns">`; in a headless run skip the hand-off (the launch prompt already carries the goal). To hear the seat before you rule, send one second call with the same spec plus a `<builder_objection>` block (the task, your evidence, your proposed alternative); its answer is advice, and you rule and log why.
+- **Log:** seat, effort, wall time, findings accepted and rejected, objections raised and how you ruled.
+- Smells: you are writing code for a real build and the plan never went through the gate; you changed the authoritative plan without a logged reason or a user decision.
 
 ### Gate 3 - Reason adversarially
 
 ### Build - executing the authoritative plan
 
-- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on
-  the seat phases.md, "Claude seat efforts", picks - mechanical
-  `model-router:builder-low`, contract `model-router:builder-medium`, hard
-  `model-router:builder-high`, with that section's excluded-category floor,
-  miss ladder and pins (a "sonnet max" pin: `model-router:sonnet-max`); log
-  `seat=`. Every delegation carries a spec per specs.md "Builder spec contract".
-- **Design block:** a UI surface gets its `## Design (from design-pass)`
-  block first - on an Opus 5.5 session you run the `design-pass` skill; a
-  Sonnet or Haiku session makes one `model-router:designer` call stating
-  `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E
-  included (JC 2026-10-31; no marker = BLOCKED). It goes into the builder spec; its Gates and Verify
-  sub-blocks go into the review spec.
-- **CODEX tasks** go out as one job for the gate seat's thread:
-  `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, the stack
-  rules, and the parent-thread clause from specs.md "Astra delegates by
-  tier"; launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
-- **Schedule by READINESS, not by owner:** a task is ready when its whole
-  DEPENDS ON chain has landed and none of it is blocked on the user. The
-  first message launches every ready CODEX task as one job beside your first
-  ready BUILDER work; the rest go out as their chains complete (later CODEX
-  tasks as their own jobs). Disjoint files are not the same as no run-time
-  dependency.
-- **Reports:** handle the status per phases.md "Phase 2 - status handling";
-  verify with targeted slices - DONE is a claim until you have seen the
+- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on the seat phases.md, "Claude seat efforts", picks - mechanical `model-router:builder-low`, contract `model-router:builder-medium`, hard `model-router:builder-high`, with that section's excluded-category floor, miss ladder and pins (a "sonnet max" pin: `model-router:sonnet-max`); log `seat=`. Every delegation carries a spec per specs.md "Builder spec contract".
+- **Design block:** a UI surface gets its `## Design (from design-pass)` block first - on an Opus 5.5 session you run the `design-pass` skill; a Sonnet or Haiku session makes one `model-router:designer` call stating `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E included (JC 2026-10-31; no marker = BLOCKED). It goes into the builder spec; its Gates and Verify sub-blocks go into the review spec.
+- **CODEX tasks** go out as one job for the gate seat's thread: `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, the stack rules, and the parent-thread clause from specs.md "Astra delegates by tier"; launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
+- **Schedule by READINESS, not by owner:** a task is ready when its whole DEPENDS ON chain has landed and none of it is blocked on the user. The first message launches every ready CODEX task as one job beside your first ready BUILDER work; the rest go out as their chains complete (later CODEX tasks as their own jobs). Disjoint files are not the same as no run-time dependency.
+- **Reports:** handle the status per phases.md "Phase 2 - status handling"; verify with targeted slices - DONE is a claim until you have seen the
   output; NEEDS_CONTEXT gets a REVISED spec as a fresh job.
 - **Smoke gate:** when every task has landed, run the project's real build
   and test suite once (one Bash call) where the plan states they are local
@@ -222,7 +153,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   default, the Claude column when Codex is blocked or the fix needs the
   Claude harness; the Claude column takes its seat from that table and the rules in "Claude seat efforts". A multi-file fix goes to a fresh subagent even on an Opus session. A Codex-column fix
   is its own launch (lead-mode-deltas.md, "Lead mode delta - transports"). The `claude -p` transport
-  never carries fixes outside Lanes B and C. Independent fixes launch in
+  never carries fixes outside Lane B. Independent fixes launch in
   parallel. In-session only: a one-line P3 you can see whole; a P1 or P2
   never.
 - **Re-review seat: never the model that parented the fixes.** Claude-column
@@ -275,6 +206,6 @@ runs, do not build; prepare test names and the review-spec skeleton.
 - Stacks with task skills: `/code-review`, and `grilling` for settling a
   design with the user before the plan gate.
 
-Lane B, Lane C, and transport deltas for Lead mode: lead-mode-deltas.md (read the section when you reach that lane or launch).
+Lane B and transport deltas for Lead mode: lead-mode-deltas.md (read the section when you reach that lane or launch).
 
 Model notes (Fable / Opus 5.5 / Sonnet 5.5 / Haiku 5.5 behaviors): lead-mode-deltas.md, "Model notes" - read yours before Gate 1.

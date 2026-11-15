@@ -38,7 +38,8 @@ status notes are one line each.
 
 The report file carries everything else the report rules ask for
 (lead-mode.md Gate 5; phases.md Phase 4): verified versus assumed, citations,
-the crew lines, the finding ledger, the fast-pin note.
+the crew lines, the finding ledger, the fast-pin note, and the count of
+Gemini consults run (0 is stated, with the skip reason).
 
 ## Ask in chat (lead's job, Orchestrate mode included)
 

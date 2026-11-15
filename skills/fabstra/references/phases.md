@@ -14,7 +14,7 @@ Related:
 normal login - never through the proxy (Anthropic's terms ban subscription
 OAuth in third-party tools). Astra and Sol reach this machine only through
 every ChatGPT login in the local proxy (CLIProxyAPI, port 8317, serving
-`gpt-6-astra`, `gpt-6-sol`, `gpt-6.1-sol` and `gpt-6-luna`; native Codex
+`gpt-6-astra`, `gpt-6.1-sol` and `gpt-6-luna`; native Codex
 needs CLI 0.159.2+). The
 `codex` shims in `~/bin` add `-c model_provider=router`, so the
 Codex CLI's model calls also go through that proxy as a plain OpenAI
@@ -34,18 +34,13 @@ the session model builds, the gate seat (Astra or Sol) gates the plan and review
 delegated by tier; do not ask for a switch. Any other Claude model (a newer
 or older Fable, Opus, Sonnet or Haiku) runs the mode of its family's row in
 the SKILL.md session switch; no Claude session is asked to switch. Only a
-non-Claude session model outside the Lane C and Lane D exceptions below
+non-Claude session model outside the Lane D exception below
 stops before Phase 1 and asks the user to switch with `/model claude-opus-5-5`.
-**Lane C exception:** a session already running
-on a routed OpenRouter model (`scripts/session.ps1 glm-5.3-flash` - the
-`budget` shim's default - or any other lane alias: `deepseek-v4-pro` for a
-`pro` ask) is how JC starts work once the Claude
-limit is hit - accept that session model instead of asking for the switch,
-but only for Lane C, and say so in the logbook. **Lane D exception:** a session
-running on `gpt-6-astra` or `glm-5.3-flash` (or another proxy alias except
-`deepseek-v4.1-flash`, which hangs as a lead - 0/5 on 2026-09-11)
-that the user wants to LEAD the run is Lane D - accept it, and run the Lane D
-seats in lane-d.md instead of this crew.
+**Lane D exception:** a session running on `gpt-6-astra` (or another proxy
+alias the user names) that the user wants to LEAD the run is Lane D - accept
+it, and run the Lane D seats in lane-d.md instead of this crew. Lane C
+(OpenRouter budget crew: DeepSeek builds, GLM reviews/leads) retired
+2026-11-15; archive/2026-11-15-lane-c/.
 
 **Pairing rule:** Claude built -> the gate seat reviews
 (Reviewer A: Astra on the Astra row, Sol on the Sol row - gate seat
@@ -68,10 +63,7 @@ orchestrator never builds under any pairing; Fable 5.2 never builds at all.
 Lane B (Astra solo) built -> Sol xhigh
 (Reviewer B) and a fresh Fable (Reviewer C) review in parallel,
 independently, and the lead rules on every finding before the work ships
-(Lane B parts 4-5); Astra never reviews its own solo build. Lane
-C (budget crew) built -> Reviewer A (Lane C, `glm-5.3-flash`) alone on
-single-file work, plus Reviewer B (Lane C, `deepseek-v4-pro`) on multi-file
-work; the
+(Lane B parts 4-5); Astra never reviews its own solo build; the
 orchestrator never reviews its own lane.
 
 **Arbitration rule:** when Astra's design review and the plan disagree, the
@@ -123,11 +115,10 @@ like any other.
   `Pass: CLIENT`; otherwise state `Pass: INTERNAL`. The block goes into the builder spec's Conventions and
   its Gates / Verify sub-blocks into the review spec (specs.md). Opus 5.5
   owns visual direction; Astra and every other reviewer
-  report only what will not work, never taste. Lane C and Lane D sessions
+  report only what will not work, never taste. Lane D sessions
   cannot use the Agent tool for Claude seats: reach the designer by the
   stripped-env headless command in lane-d.md (no `--bare`) with `--model claude-opus-5-5
-  --effort xhigh`, never through the proxy; a Lane C run with the Claude
-  login spent skips the design lead and logs it.
+  --effort xhigh`, never through the proxy.
 - **Browser or desktop surface** - browser QA, dashboard testing, form
   filling, anything the user says "use computer use" about: Codex side on
   the Pro home, per surfaces.md. Not a Claude
@@ -358,14 +349,12 @@ keeps every run's record; the orchestrator never deletes a logbook.
   lead rules on every finding. Write the lane in the plan, the
   logbook, and the report. Never mix Lane B with Claude builders in the
   initial build.
-- **Pick the lane yourself.** From the brief and bcost, pick Lane A (default),
-  Lane B (the user names Astra), or Lane C (`budget`/cheap crew), and log the
-  choice and reason in RUN.md. Excluded work (SKILL.md, Excluded categories) never takes Lane C
-  whatever bcost says - the lead judges it from that list;
-  Lane C's own `jev excluded` gate in lane-c.md stays as the budget lane's
-  own check.
+- **Pick the lane yourself.** From the brief, pick Lane A (default) or
+  Lane B (the user names Astra), and log the choice and reason in RUN.md. A
+  budget-crew ask runs Lane A, and the report says the budget crew is
+  retired (2026-11-15).
 - Pro consult (pro-consult.md), advisory, under its cap and unless JC said "no pro": launch it for a research or audit run whose report makes claims,
-  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult".
+  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan (pro-consult.md).
 - A brief that already states the goal and what done looks like needs no
   question round: restate done in one line and go to the plan. Otherwise
   open with one batched round aimed at the real gaps - scope, constraints,
@@ -435,7 +424,10 @@ keeps every run's record; the orchestrator never deletes a logbook.
   data-model decision; (6) no new or changed user-facing surface (that keeps
   the design-pass path). Any doubt -> real build. Real builds get Phase 1b
   and Phase 3; a contained change skips Phase 1b and the `/goal` hand-off
-  and gets one Phase 3 review; small changes skip both. Write the class in
+  and gets one Phase 3 review; small changes skip both. Contained and small changes take the
+  Hydrogen quick check instead of plan mode (pro-consult.md, "Gemini
+  consult - the build-sheet seat"): a contained change on its RUN.md plan
+  before the build, a small change on its diff after. Write the class in
   the plan and in the report, with why; never skip silently. A small change
   is still built by a subagent - one Agent call to
   `model-router:builder-low` (`model-router:builder-medium` when it needs

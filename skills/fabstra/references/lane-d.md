@@ -1,26 +1,26 @@
 # FabStra Lane D - Routed orchestrator
 
-Contents: Lane D - Routed orchestrator (one section: trigger; the hard boundary; seats; reviewer rule; deepseek-v4.1-flash is not an orchestrator; what does not change)
+Contents: Lane D - Routed orchestrator (one section: trigger; the hard boundary; seats; reviewer rule; what does not change)
 
 Reached from: fabstra SKILL.md - the session model is itself a proxy model and leads the run
 
 Related:
 > The crew table that names this lane is in transport.md.
 > the Phase 3 spec verbatim -> specs.md
-> Lane C already accepted a routed session as the orchestrator -> lane-c.md
 ## Lane D - Routed orchestrator (the session model is a proxy model and leads)
 
-JC (2026-09-11): "allowing astra gpt 6 and deepseek v4.1 to orchestrate other
-models." Lane C already accepted a routed session as the orchestrator, but only
-as the budget crew. Lane D is the general case: whatever proxy alias the session
-runs on plans, routes, arbitrates, and reports, exactly as Fable does in the main
-flow, and spawns the routed seats through the Agent tool.
+JC (2026-09-11): "allowing astra gpt 6 ... to orchestrate other models."
+Lane D: the proxy alias the session runs on plans, routes, arbitrates, and
+reports, exactly as Fable does in the main flow, and spawns the routed seats
+through the Agent tool. History: the 2026-09-11 lead test measured
+`deepseek-v4.1-flash` 0/5 as a lead (it delegated, then never returned); the
+OpenRouter seats and GLM lead left with Lane C, retired 2026-11-15
+(archive/2026-11-15-lane-c/).
 
-**Trigger.** The session model is a proxy alias that may lead (`gpt-6-astra` or
-`glm-5.3-flash`, as in the seats table - never `deepseek-v4.1-flash`) and the user wants
-that model to lead rather than to be delegated to. Launch: `bcode <folder>
-astra` / `bcode <folder> glm` for a VSCode window, `scripts/session.ps1
-gpt-6-astra` for a terminal session. Never `budget 41` / `bcode <folder> 41` for this lane - DeepSeek v4.1 does not lead.
+**Trigger.** The session model is `gpt-6-astra` (or another proxy alias the
+user names - not an OpenRouter model) and the user wants that model to lead
+rather than to be delegated to. Launch: `bcode <folder> astra` for a VSCode
+window, `scripts/session.ps1 gpt-6-astra` for a terminal session.
 
 **The hard boundary - VERIFIED 2026-09-11.** A routed session can spawn any
 model the proxy serves and no Claude model at all. Measured both ways from a
@@ -55,7 +55,8 @@ follows the task's tier as in phases.md, "Claude seat efforts". The designer rou
 uses this same command with `--model claude-opus-5-5 --effort xhigh`.
 
 Reviewer the same way, read-only: `--model claude-fable-5-2 --effort high --permission-mode
-default --allowedTools "Read,Grep,Glob,Bash"` with the Phase 3 spec verbatim, and `--effort xhigh` for a build in an excluded category.
+default --allowedTools "Read,Grep,Glob,Bash"` with the Phase 3 spec verbatim, and `--effort xhigh` for a build in an excluded category
+(the Lane D review seat - reviewer rule below).
 Spend it knowingly - it draws on the Claude window the routed session was
 chosen to protect - and log every such call as `login: claude`. Do not plan a
 seat you cannot fill otherwise: if a run needs Claude seats and the Claude
@@ -65,47 +66,23 @@ window is the problem, say so instead of burning it.
 
 | Seat | Agent | Model |
 |---|---|---|
-| ORCHESTRATOR | the session itself | `gpt-6-astra` (default) or `glm-5.3-flash`; never `deepseek-v4.1-flash` |
+| ORCHESTRATOR | the session itself | `gpt-6-astra` (default) or another proxy alias the user names |
 | BUILDER - complex implementation | `model-router:worker` | `gpt-6.1-sol` |
 | SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-6.1-terra` |
 | MECHANIC - trivial, fully specified | `model-router:mechanic-routed` | `gpt-6-luna` |
-| BUILDER (OpenRouter default) - all coding on the cheap lane; empty-200 retry, see Lane C | `model-router:deepseek41-routed` | `deepseek-v4.1-flash` |
-| BUILDER (cheapest fallback) - three empty-200s on one task, or cost is the constraint | `model-router:builder-budget` | `glm-5.3-flash` |
-| REVIEWER - fresh context, read-only, GPT or GLM builder | `model-router:reviewer-routed` | `deepseek-v4-flash` |
-| REVIEWER - fresh context, read-only, DeepSeek builder | `model-router:reviewer-glm` | `glm-5.3-flash` |
-| ASTRA as a seat (design gate / review / hardest slice) when GLM or DeepSeek leads | `model-router:astra-routed` | `gpt-6-astra` |
-| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | stripped-env headless `claude -p`, see below | the user's Claude login |
+| ASTRA as a fresh-context seat (design gate / review fallback / hardest slice) | `model-router:astra-routed` | `gpt-6-astra` |
+| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | stripped-env headless `claude -p`, see above | the user's Claude login |
 
-The prompt of every OpenRouter seat (`deepseek41-routed`, `builder-budget`, `reviewer-glm`, `reviewer-routed`) carries `excluded: no - <reason>` as a line of its own (a hook denies the Agent call otherwise; lane-c.md, The excluded marker).
-
-**Reviewer rule, unchanged in spirit:** the reviewer is never the orchestrator's
-own alias and never the builder's family. Pick it from the BUILDER:
-`reviewer-routed` (`deepseek-v4-flash`) for a GPT or GLM builder;
-`reviewer-glm` (`glm-5.3-flash`) whenever the builder is DeepSeek, which is
-now the OpenRouter default (`deepseek41-routed`). Two collisions and their
-outs: a GLM orchestrator with a DeepSeek builder puts `reviewer-glm` on the
-orchestrator's own alias - accept it as Lane C does (fresh context,
-cross-family to the builder wins) and say so, or lead on `gpt-6-astra`
-instead, which clears it; a DeepSeek orchestrator with a DeepSeek builder
-leaves `reviewer-glm` clean on both counts. Log any swap. A run that reviewed
-on the builder's own family is a same-family review - say so in the report.
-
-**`deepseek-v4.1-flash` is not an orchestrator - measured 2026-09-11.** Ten
-interleaved runs on the same proxy, same minute, same task (delegate a file
-write to a `gpt-5.6-luna` subagent, verify with Bash, report in a fixed 3-line
-format, hard 120 s cap): `glm-5.3-flash` 5/5 PASS in 20-35 s, 3 turns each;
-`deepseek-v4.1-flash` 0/5 - every run delegated correctly (the file appeared)
-and then never returned, killed at 120 s. That is the worst failure mode a lead
-seat can have: the plan stalls silently. That is why the 2026-09-12 change
-seats it as the default BUILDER and as a reviewer
-(`model-router:deepseek41-routed`, empty-200 retry) and never as the
-session model; `bcode <folder> 41` exists for that lane but a fabstra run on it
-must stop at the Session check and say so. Lead seats: `gpt-6-astra` (quality)
-or `glm-5.3-flash` (cost; Lane C's default).
+**Reviewer rule (2026-11-15).** Every proxy seat is GPT, so no cross-family
+proxy reviewer exists. The reviewer is the stripped-env headless Fable
+command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
+a build in an excluded category), logged `login: claude`. If the Claude
+window is the problem: a fresh-context `model-router:astra-routed` review
+(same family - say so in the report) plus the Hydrogen quick check on the
+diff (pro-consult.md, "Gemini consult - the build-sheet seat"). Excluded
+work with no Claude window -> stop and tell the user rather than ship
+unreviewed.
 
 **What does not change.** All five gates still apply, the logbook is still
 `.fabstra/RUN.md`, and the excluded categories (SKILL.md, Excluded categories)
-still never take an OpenRouter seat - on this lane that means
-`deepseek41-routed`, `builder-budget`, `reviewer-glm` and `reviewer-routed` are
-all out for that work, leaving the GPT seats; if the review seat cannot be filled without OpenRouter, stop and tell the
-user rather than shipping unreviewed.
+keep their rules.

@@ -1,5 +1,5 @@
 ---
-description: Run the FabStra flow - Fable 5.2 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ independent tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 5.5 lead and build or delegate by tier. The gate seat (GPT-6 Astra or GPT-6.1 Sol, per the skill's gate seat rubric) gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, C, D as the skill says
+description: Run the FabStra flow - Fable 5.2 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ independent tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 5.5 lead and build or delegate by tier. The gate seat (GPT-6 Astra or GPT-6.1 Sol, per the skill's gate seat rubric) gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, D as the skill says
 argument-hint: "<brief> [xhigh|high|medium] [fast]"
 ---
 
@@ -32,14 +32,11 @@ skill's fast pin: Codex Fast mode on the `.codex-pro` native launches only
 (`codex-fast on` / `off`), 2.5x usage, no effect on reviews or Lane B.
 Every Claude session model runs: Fable 5.2 takes Orchestrate mode; Opus 5.5 takes Orchestrate mode at 2+ independent tasks (defined above) or an excluded category, else Lead mode; Sonnet 5.5 and Haiku 5.5 take Lead mode (references/lead-mode.md); a newer or other Claude model takes its family's row in the skill's session switch. Never stop a Claude session or ask it to switch model.
 A routed proxy session is accepted as the skill's Session check allows
-(references/phases.md): Lane C for a session already routed to an OpenRouter
-lane alias via `scripts\session.ps1` (`glm-5.3-flash`, the `budget` shim's
-default, or `deepseek-v4-pro` for a `pro` run), Lane D for any proxy model
-the user wants to LEAD the run - never `deepseek-v4.1-flash`, a builder and
-reviewer seat only (0/5 as a lead, see the skill's Lane D). A non-Claude
-session model outside those Lane C and Lane D cases stops and asks the user
+(references/phases.md): Lane D for a proxy model the user wants to LEAD the
+run (`gpt-6-astra`, or another proxy alias the user names). A non-Claude
+session model outside that Lane D case stops and asks the user
 to switch with `/model claude-opus-5-5`. If the brief names Astra as the builder ("astra solo",
 "let Astra design and build") or asks for a count of Astras ("spawn 3 astra
 subagents" = Lane B fan-out, N solo Astras on disjoint slices), run the skill's Lane B: Fable writes a brief,
 Astra designs and builds through the proxy, Sol at xhigh and a fresh Fable both review, and the lead rules on every finding.
-An explicit ask for the cheap crew in the brief (`/fabstra budget`, "use the budget crew", "run this on OpenRouter"; a mere mention of a model or of budgets is not an ask), or a session already routed to `glm-5.3-flash` (the `budget` shim's default) or `deepseek-v4-pro` for a `pro` run, runs the skill's full Lane C: a cheap OpenRouter crew through the proxy - `deepseek-v4.1-flash` builds every coding task (mandatory empty-200 retry, `glm-5.3-flash` fallback), `glm-5.3-flash` is Reviewer A, `deepseek-v4-pro` is Reviewer B on multi-file work, and `deepseek-v4-flash` takes the design gate and mechanic - excluded for money, auth, PII, permissions, migration, concurrency, or a client-facing release. Astra AND Sol both cooling down on every login does NOT by itself pull in Lane C: the Claude builders keep building, and only the review seat and the Phase 1b design gate swap to Lane C (Reviewer A on `glm-5.3-flash`, the design gate on `deepseek-v4-flash`).
+Lane C (OpenRouter budget crew: DeepSeek builds, GLM reviews/leads) retired 2026-11-15; archive/2026-11-15-lane-c/. A budget ask (`/fabstra budget`, "use the budget crew", "run this on OpenRouter") runs Lane A, and the report says the budget crew is retired. Astra AND Sol both cooling down on every login: the Claude builders keep building, and the review seat and the Phase 1b design gate take a fresh Fable (the skill's Reviewer fallback).

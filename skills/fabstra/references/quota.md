@@ -106,7 +106,7 @@ probe the other logins directly, restart the proxy so it re-probes, and if
 only the proxy binary is old upgrade it; do not fall back. A 502 from the
 proxy on `gpt-6-astra` is usually a proxy binary that predates the model -
 check `cli-proxy-api.exe --version` (7.3.12 is the verified version for
-`gpt-6-astra`, `gpt-6-sol` and `gpt-6-luna`; 7.2.157 lacked Sol and Luna)
+`gpt-6-astra` and `gpt-6-luna`; 7.2.157 lacked Sol and Luna)
 before concluding that; a current proxy can also
 relay an upstream 502, which a retry a minute later tells apart. `gpt-6.1-sol` verified served 2026-09-30 (proxy 7.3.12; native Codex needs CLI 0.159.2+). A `result`
 that reads "API Error: stream error: stream disconnected before completion"

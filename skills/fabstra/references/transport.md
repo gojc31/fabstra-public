@@ -1,6 +1,6 @@
 # FabStra transport - the crew, the routing policy, and every launch command
 
-Contents: The crew in full (crew table, routing policy); Sol pin; Standing fast window: reviews (always on since 2026-11-01); Codex transport; Codex write probe; Reviewer fallback; Phase 1b launch - DESIGN REVIEW; Phase 3 launch - ADVERSARIAL REVIEW
+Contents: The crew in full (crew table, routing policy); Sol pin; Standing fast window: reviews (always on since 2026-11-01); Codex transport; Codex write probe; Reviewer fallback; Claude on credits seat (pool); Phase 1b launch - DESIGN REVIEW; Phase 3 launch - ADVERSARIAL REVIEW
 
 Reached from: fabstra SKILL.md - before the first proxy or Codex launch of a run
 
@@ -24,10 +24,12 @@ Related:
 | SOLO BUILDER (Lane B) - designs and builds a task end to end from a brief | GPT-6 Astra, xhigh (Sol xhigh when Astra's quota is spent) | `claude -p` through the local proxy, acceptEdits, no `--bare` so CLAUDE.md and skills load; see lane-b.md |
 | REVIEWER A - adversarial review of Claude-built work | GPT-6 Astra on the Astra row, GPT-6.1 Sol on the Sol row (gate seat rubric, SKILL.md), effort per the rubric | `claude -p` through the local proxy, read-only tools, background Bash call (Phase 3); Codex transport read-only is its fallback |
 | REVIEWER B - Astra's quota fallback for Claude-built work | GPT-6.1 Sol, at the same effort the Astra call would have used | same `claude -p` command with `--model gpt-6.1-sol`; Codex transport read-only is its fallback; never reviews Codex-built work (same family) |
-| REVIEWER C - adversarial review of Codex-built work; also the parallel second reviewer on an xhigh row (pairing rule, phases.md); fallback only when the proxy itself is down, or for excluded work when Astra and Sol are both cooling (Astra and Sol both cooling otherwise routes the review seat and the Phase 1b design gate to Lane C instead) | fresh Claude Fable 5.2 context (high; xhigh on a build in an excluded category) | Agent tool, `subagent_type: "model-router:reviewer"`, or `"model-router:reviewer-xhigh"` on a build in an excluded category (phases.md, "Claude seat efforts") (read-only tools enforced), same review spec |
+| REVIEWER C - adversarial review of Codex-built work; also the parallel second reviewer on an xhigh row (pairing rule, phases.md); also the design gate and review fallback when the proxy itself is down or Astra and Sol are both cooling (Reviewer fallback) | fresh Claude Fable 5.2 context (high; xhigh on a build in an excluded category) | Agent tool, `subagent_type: "model-router:reviewer"`, or `"model-router:reviewer-xhigh"` on a build in an excluded category (phases.md, "Claude seat efforts") (read-only tools enforced), same review spec |
 | PRO CONSULT - advisory second opinion, never a gate or review seat | GPT-6 Astra Pro (`chatgpt-web/gpt-6-pro`) on JC's ChatGPT Pro chat allowance | `astrapro` wrapper, background Bash; see pro-consult.md |
-| BUDGET CREW (Lane C) - orchestrator, build, and review when Claude and every ChatGPT login are both spent | `glm-5.3-flash` orchestrates; `deepseek-v4.1-flash` builds all coding (empty-200 retry, `glm-5.3-flash` fallback); `glm-5.3-flash` and `deepseek-v4-pro` review; `deepseek-v4-flash` takes the design gate and mechanic - all OpenRouter, via the proxy | `claude -p` through the local proxy only - no Agent tool, no Codex transport; see lane-c.md |
-| ROUTED ORCHESTRATOR (Lane D) - the session model is itself a proxy model and leads the run | `gpt-6-astra` (default) or `glm-5.3-flash`; not `deepseek-v4.1-flash` (0/5 as lead, see Lane D) | the session; spawns proxy-served seats through the Agent tool (`model-router:worker` / `support-routed` / `mechanic-routed` / `builder-budget` / `reviewer-routed` / `astra-routed` / `deepseek41-routed`). Claude seats only by stripped-env headless `claude -p`, never the Agent tool - see lane-d.md |
+| GEMINI CONSULT - advisory build sheet beside Pro consult (test cases, thresholds, edge cases), never a verdict, gate or review seat | Gemini 4 Carbon (`gemini-carbon`) in the Gemini app on JC's Google AI Pro login | `geminipro` wrapper, background Bash; see pro-consult.md, "Gemini consult" |
+| HYDROGEN - quick check (a small change's diff after its build, a contained change's RUN.md plan before it) and Carbon's fallback (a Carbon launch that exits 4 `model_not_available`); advisory, never blocks, never a verdict, gate or review seat | Gemini Hydrogen (`gemini-4-hydrogen`), same Gemini app login | `geminipro ... --model gemini-4-hydrogen`, background Bash; see pro-consult.md, "Gemini consult" |
+| QUOTA FALLBACK - Claude subscription spent | the Claude on credits seat (pool) builds when usable - terminal or scheduled launch only, see "Claude on credits seat (pool)"; Lane C (OpenRouter budget crew: DeepSeek builds, GLM reviews/leads) retired 2026-11-15; archive/2026-11-15-lane-c/ | otherwise, and whenever every ChatGPT login is spent too, the run waits for quota, logged in RUN.md |
+| ROUTED ORCHESTRATOR (Lane D) - the session model is itself a proxy model and leads the run | `gpt-6-astra` (default) or another proxy alias the user names | the session; spawns proxy-served seats through the Agent tool (`model-router:worker` / `support-routed` / `mechanic-routed` / `astra-routed`). Claude seats, the reviewer included, only by stripped-env headless `claude -p`, never the Agent tool - see lane-d.md |
 
 **Routing policy.**
 Astra is the default senior seat for every Astra-eligible call - design
@@ -50,7 +52,7 @@ CODEX_DIRECT=1` prefix; $CODEX_BIZ_LOGIN Business premium seat, added
 2026-09-10) is opt-in only when JC asks for it by name. **Sol holds the Sol row of the gate seat rubric (SKILL.md) without being named, and stays one word away for every other seat:** a brief that names Sol (`sol`, `gpt-6
 sol`, `gpt-6.1 sol`, `sol xhigh`) pins Sol for that seat instead of Astra, the Sol effort
 rubric and the Sol builder tier are unchanged, and Reviewer A/B seats keep
-their existing rules. Sol cooling on the Sol row with Astra available -> Astra at the Sol row's effort for that seat, logged "Sol quota spent, Astra gated/reviewed". When Astra is spent on every login, or Sol and Astra are both cooling, or the proxy is down, the seat falls back by the table in "Reviewer fallback" below (one table for the design gate and Reviewers A/B/C; excluded work never takes a Lane C seat - SKILL.md, Excluded categories).
+their existing rules. Sol cooling on the Sol row with Astra available -> Astra at the Sol row's effort for that seat, logged "Sol quota spent, Astra gated/reviewed". When Astra is spent on every login, or Sol and Astra are both cooling, or the proxy is down, the seat falls back by the table in "Reviewer fallback" below (one table for the design gate and Reviewers A/B/C).
 `--output-format json` with the spec fed on stdin (`< spec.md`, so stdin
 reaches EOF) is what stops the nested `claude -p` from hanging after it
 prints; the spec is not a command-line argument, so its length is not
@@ -58,7 +60,7 @@ capped (a 40 KB spec has passed); the commands below carry both.
 
 ## Sol pin
 
-**GPT-6.1 Sol (2026-09-30).** Every Sol seat runs `gpt-6.1-sol` (released 2026-09-29; same price as GPT-6 Sol, cached input half). Native Codex launches need Codex CLI 0.159.2 or later: the desktop app's bundled 0.158.0-alpha.2.1 rejects the model, so `%LOCALAPPDATA%\OpenAI\Codex\bin\npm-0.159.2\` holds the npm 0.159.2 binaries and the `codex` shim picks it as the newest folder; delete that folder to roll back. Since 2026-10-13 the model list advertises the fast (`priority`) tier for `gpt-6.1-sol` ("2x speed, increased usage"), and a native fast home sends `tier=priority` for Sol exactly as for Astra (verified by trace on `.codex-pro`), so the fast pin and the standing fast window speed Sol calls too. Sol through the proxy (`claude -p`, `bcode sol`) stays at standard speed: fast reaches only a native home. **500k window (2026-10-13).** OpenAI raised `gpt-6.1-sol`'s default context to 500k on 2026-10-12; Claude Code assumes 200k for a model id it does not know and compacts there. So every proxy `claude -p` launch with `--model gpt-6.1-sol` puts `CLAUDE_CODE_MAX_CONTEXT_TOKENS=500000` in its env prefix next to `ANTHROPIC_BASE_URL` (verified: `modelUsage` contextWindow 200000 -> 500000). Never on `gpt-6-sol` (272k) or an Astra launch. Native Codex picks 500k up from the model list by itself. Fallback pin: a `gpt-6.1-sol` call that fails with a model-not-supported or unknown-model error re-runs once with `--model gpt-6-sol` at the same effort, logged "6.1 unavailable, gpt-6-sol ran".
+**GPT-6.1 Sol (2026-09-30).** Every Sol seat runs `gpt-6.1-sol` (released 2026-09-29; same price as GPT-6 Sol, cached input half). Native Codex launches need Codex CLI 0.159.2 or later: the desktop app's bundled 0.158.0-alpha.2.1 rejects the model, so `%LOCALAPPDATA%\OpenAI\Codex\bin\npm-0.159.2\` holds the npm 0.159.2 binaries and the `codex` shim picks it as the newest folder; delete that folder to roll back. Since 2026-10-13 the model list advertises the fast (`priority`) tier for `gpt-6.1-sol` ("2x speed, increased usage"), and a native fast home sends `tier=priority` for Sol exactly as for Astra (verified by trace on `.codex-pro`), so the fast pin and the standing fast window speed Sol calls too. Sol through the proxy (`claude -p`, `bcode sol`) stays at standard speed: fast reaches only a native home. **Context windows (2026-10-13; 2026-11-15).** OpenAI raised `gpt-6.1-sol`'s default context to 500k on 2026-10-12, so every proxy `claude -p` launch with `--model gpt-6.1-sol` puts `CLAUDE_CODE_MAX_CONTEXT_TOKENS=500000` in its env prefix next to `ANTHROPIC_BASE_URL` (verified: `modelUsage` contextWindow 200000 -> 500000). Since Claude Code 2.1.323 a model id it does not know is assumed to have a 1M window (200k before). That fits `gpt-6-astra` (real window 1.05M), so Astra launches carry no context variable. Every other proxy model (Terra, Luna, any other alias) carries `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` (200k), the credits pool seat too (its section), so it auto-compacts before its real limit instead of failing every turn until `/clear`. The launch scripts (`scripts/session.*`, `worker.*`) set these. Native Codex picks 500k up from the model list by itself. A failed `gpt-6.1-sol` call follows the Astra and Reviewer fallback rules (Routing policy above; Reviewer fallback). Known gap: Lane D Agent-tool seats inherit the lead session's environment, so under an Astra lead (nothing set) Terra and Luna seats assume 1M.
 
 A brief that names Sol (`sol`, `gpt-6 sol`, `gpt-6.1 sol`, `sol xhigh`) pins Sol for the Astra
 seats: builds and reviews run the same commands with `--model gpt-6.1-sol`, at
@@ -118,9 +120,9 @@ After the window closes this section is void.
 directory if the path fails). Every Codex call is two Bash calls from the
 orchestrator; the `codex:rescue` skill is not a fabstra transport.
 The local proxy CLIProxyAPI 7.3.12 (upgraded and verified 2026-09-23;
-7.2.157 did not know them) serves `gpt-6-astra`, `gpt-6-sol` and
-`gpt-6-luna`, so GPT-6 Sol and GPT-6 Luna run both through the proxy and on
-the native Codex homes. `gpt-6.1-sol` verified served 2026-09-30 (proxy 7.3.12; native Codex needs CLI 0.159.2+).
+7.2.157 did not know them) serves `gpt-6-astra`, `gpt-6.1-sol` (verified
+2026-09-30; native Codex needs CLI 0.159.2+) and `gpt-6-luna`, so Sol and
+GPT-6 Luna run both through the proxy and on the native Codex homes.
 
 1. **Launch + wait** - one Bash call with `run_in_background: true`, timeout
    600000, cwd = the project directory. The standing fast window (on since 2026-09-28, no end date; quota.md) covers builds
@@ -210,11 +212,27 @@ One table for the design gate (Phase 1b) and Reviewers A/B/C (Phase 3). Every ro
 | Astra available | Astra (Sol on the Sol row), effort per the rubric | Reviewer A: the gate seat, per the pairing rule (phases.md) |
 | Astra available, Sol cooling (Sol row) | Astra at the Sol row's effort; log "Sol quota spent, Astra gated" | Astra at the Sol row's effort; log "Sol quota spent, Astra reviewed" |
 | Astra spent on every login (proxy 429 "All credentials for model gpt-6-astra are cooling down", or every usage endpoint >= 95%) | Sol through the proxy at the same effort the Astra call would have used (the pin or the rubric row, never a fixed xhigh); log "design review by Sol, Astra quota spent" | Reviewer B: Sol, same effort, only after a Claude build; log "Astra quota spent, Sol reviewed at <effort>" |
-| Astra and Sol both cooling, work not excluded | Lane C gate: the same read-only command with `--model deepseek-v4-flash --effort high --max-turns 30` (lane-c.md; the command ends `# excluded: no - <reason>`); log "design review by Lane C gate, Astra and Sol cooling" | Reviewer A (Lane C), `glm-5.3-flash`, cross-family to the DeepSeek builder (lane-c.md); log why |
-| Astra and Sol both cooling, work excluded (SKILL.md, Excluded categories) | fresh Fable (Reviewer C), `model-router:reviewer-xhigh`; log "same-family review, GPT seats cooling, Lane C excluded" | the same fresh Fable seat and log line - nothing sensitive leaves the Claude login |
+| Astra and Sol both cooling, work not excluded | fresh Fable (Reviewer C), `model-router:reviewer` (high); log "same-family review, GPT seats cooling" | the same fresh Fable seat and log line |
+| Astra and Sol both cooling, work excluded (SKILL.md, Excluded categories) | fresh Fable (Reviewer C), `model-router:reviewer-xhigh`; log "same-family review, GPT seats cooling, excluded work" | the same fresh Fable seat and log line - nothing sensitive leaves the Claude login |
 | Proxy 8317 still dead after one restart (`powershell -NoProfile -File '$MODEL_ROUTER_HOME/scripts/start-proxy.ps1 (start-proxy.sh on Mac/Linux)'`, retry once) | fresh Fable (Reviewer C), logged as a same-family review | fresh Fable (Reviewer C), same log |
 
 Never skip the design review on a real build because the gate seat is down; never run it twice with the same spec. Codex-built work always goes to Reviewer C (pairing rule), whatever this table says for Claude-built work. `--bare` children load no ~/.claude hooks: the excluded-work check runs on the parent's launch command, and the auth-JSON guard does not reach inside the child.
+
+## Claude on credits seat (pool)
+
+JC (2026-10-09): the Max/Team plans grant monthly Claude API credits into a linked Console org, and the pool proxy serves Claude models from those orgs' API keys - `pool/claude-sonnet-5-5`, `pool/claude-haiku-5-5`, `pool/claude-opus-5-5` for JC's own and cross-client work; `client-<slug>/claude-...` only for that client's own work. This seat is headless only: credits cover the API, Batches, Managed Agents and Agent SDK / `claude -p` run yourself with a linked org's key, and do NOT cover interactive Claude Code (terminal, IDE, desktop, web) or runs started by the GitHub Action, an IDE extension or the desktop app - so this seat is `claude -p` and never an interactive session.
+
+**Order.** When the Claude subscription is spent and the run was launched from a plain terminal or a scheduled task and `python scripts/credits-pool.py status` shows a usable pool (it applies the keys, skips and the health probe that `credits.py --json` does not), the Claude build seats run on the pool by the command below: the builder `pool/claude-sonnet-5-5` at the effort the task's tier gets in phases.md, "Claude seat efforts"; the mechanic `pool/claude-haiku-5-5`; `pool/claude-opus-5-5` for hard-tier tasks. The design gate and the reviewers stay on their normal seats and "Reviewer fallback" above (a build with no available review seat waits for one before it ships). The seat is usable only when `status` exits 0 AND prints a line `pool: usable <account>` (for a client's work, `client-<slug>: usable <account>`); a non-zero exit (pool proxy down or not ours, unreadable skip list) or a `dry (...)` line means a dry pool. A dry pool, or a launch from VS Code or the desktop app (the seat is dry there): the run waits for quota, logged in RUN.md.
+
+Excluded work MAY run on `pool/` and `client-<slug>/` seats (JC 2026-10-09: this is Anthropic's own API with JC's own key), and the PreToolUse hook needs no excluded marker on those launches (`scripts/fabstra-guard.py`: a `pool/` or `client-<slug>/` credits seat is never refused, marker or not). The pool has its own proxy instance on 127.0.0.1:8318, started by `credits-pool.py sync` (the main proxy on 8317 is untouched), so this seat's command points at 8318. The haiku mapping rides `--settings` because user-settings env beats a shell variable (lane-b.md, Agent-tool delegation note). The command shows `--effort high`; set the effort the task's tier gets, and a hard-tier task swaps the model for `pool/claude-opus-5-5`:
+
+```bash
+KEY=$(proxy-key) || exit 1; CLAUDE_CODE_DISABLE_1M_CONTEXT=1 ANTHROPIC_BASE_URL=http://127.0.0.1:8318 ANTHROPIC_AUTH_TOKEN="$KEY" timeout 1500 claude -p --model pool/claude-sonnet-5-5 --settings '{"env":{"ANTHROPIC_DEFAULT_HAIKU_MODEL":"pool/claude-haiku-5-5"}}' --effort high --bare --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/fabstra-build-<name>.md > <scratch>/fabstra-build-<name>.md.out 2>&1
+```
+
+`pool/claude-*` ids are unknown to Claude Code, so since 2.1.323 they would get the 1M default (2.1.325's `CLAUDE_CODE_MAX_CONTEXT_TOKENS` fix covers only ids that start with `claude-`); the prefix keeps this seat at 200k, as before 2.1.323 (JC 2026-11-15).
+
+Credits do not cover runs started from an IDE extension, the desktop app or the GitHub Action, even with `claude -p` (https://support.claude.com/en/articles/17154008; verified live 2026-10-09: a `claude -p` child launched from a VS Code session got upstream 400 "Credit balance is too low", $0 spent, while direct Messages API calls through the same pool returned 200). So this seat works only when the session that launches it is a plain terminal or a scheduled task. From VS Code or the desktop app it is dry, and the run waits for quota. `scripts/credits-run.py` refuses (exit 3) in that case. Never strip or fake the entrypoint. Setup requirement: every linked org is credits-only (no purchased credits, auto-reload off, no invoicing), because the org stops at zero only then. The tracker estimates left = grant - cost-report spend; cost data lags and the pool sync runs every 15 min, so spend can overshoot the $5 floor - on a credits-only org the overshoot just fails requests. Setup: accounts in `~/.claude-credits/accounts.json` (example: `scripts/credits-accounts.example.json`; an account may give only its API key - untracked: the pool checks credit with a tiny Haiku call; balances on the Console dashboard), keys in `~/.claude-credits/secrets.env`, `python scripts/credits-pool.py sync` (every 15 min and at logon via `scripts/register-credits-pool.ps1`; it starts the pool proxy if down, `credits-pool.py stop` stops it; `credits-pool.py skip <id>` after a credit-balance 400 (tracked accounts only; untracked accounts are re-probed every sync)), balances in `bcost`.
 
 ## Phase 1b launch - DESIGN REVIEW (the gate seat - Astra or Sol - before any builder launches)
 
@@ -236,14 +254,18 @@ The report is the `result` field of the last JSON line in the `.out` file
 (a warning line precedes it; `--output-format json` with the spec fed on
 stdin (`< spec.md`, so stdin reaches EOF) is what stops the nested
 `claude -p` from hanging after it prints; the spec is not a command-line
-argument, so its length is not capped (a 40 KB spec has passed)). `--bare` skips CLAUDE.md, so the spec carries every stack rule. The
-"unrecognized model, assuming 200k window" line is noise; Astra's real
-window is 1.05M. Keep `--max-turns 30`. **Fallback:** the Codex transport
+argument, so its length is not capped (a 40 KB spec has passed)). `--bare` skips CLAUDE.md, so the spec carries every stack rule. Since
+Claude Code 2.1.323 an unknown model id is assumed to have a 1M window
+(200k before), which fits Astra's real 1.05M, so the command carries no
+context variable. Keep `--max-turns 30`. **Fallback:** the Codex transport
 above without `--write` (read-only sandbox; the report arrives only through
 `result`). **Astra blocked** (quota.md, "Astra blocked, how to read it"), Sol
 cooling too, an excluded category, or a dead proxy: take the design gate
 column of "Reviewer fallback" above. Never skip the design review on a real
 build because the gate seat is down; never run it twice with the same spec.
+
+In the same message as the gate seat, launch the plan-mode Gemini consult
+(pro-consult.md, "Gemini consult - the build-sheet seat").
 
 While the gate seat reviews, do not launch builders. Do prepare: the review-spec
 skeleton for Phase 3, the smoke-gate command, and the logbook entries.
@@ -290,5 +312,6 @@ verbatim. A build in an excluded category takes `subagent_type: "model-router:re
 your session context into it. Run it as the review when the Codex side
 built, and as the fallback "Reviewer fallback" names (log it as a
 same-family review); Astra and Sol both cooling with the proxy still up is
-that table's two "Astra and Sol both cooling" rows, work not excluded (Lane C
-in lane-c.md) and work excluded (fresh Fable); pairing rule in phases.md.
+that table's two "Astra and Sol both cooling" rows: work not excluded
+(`model-router:reviewer`) and work excluded (`model-router:reviewer-xhigh`);
+pairing rule in phases.md.

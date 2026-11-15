@@ -1,6 +1,6 @@
 ---
 name: fabstra
-description: "One build flow for every Claude session: Fable 5.2 orchestrates; Opus 5.5 orchestrates or leads by independent task count; Sonnet 5.5 / Haiku 5.5 lead. Astra or Sol gates and reviews; a fresh Fable second-reviews xhigh rows. Use for hard tasks (multi-step builds, debugging, research or audits with claims, unseen data), a 2+ file feature or fix, a budget ask, /fabstra, or Astra/Sol named; not one-line edits or simple lookups."
+description: "One build flow for every Claude session: Fable 5.2 orchestrates; Opus 5.5 orchestrates or leads by independent task count; Sonnet 5.5 / Haiku 5.5 lead. Astra or Sol gates and reviews; a fresh Fable second-reviews xhigh rows. Use for hard tasks (multi-step builds, debugging, research or audits with claims, unseen data), a 2+ file feature or fix, /fabstra, or Astra/Sol named; not one-line edits or simple lookups."
 ---
 
 # FabStra - Fable + Astra build flow
@@ -12,11 +12,11 @@ description: "One build flow for every Claude session: Fable 5.2 orchestrates; O
 | Fable 5.2 | Orchestrate: plans, specs, routes, arbitrates; never codes | phases.md, specs.md |
 | Opus 5.5 | Orchestrate at the Orchestrate threshold (2+ independent tasks (phases.md) or an excluded category), else Lead | phases.md + specs.md, or lead-mode.md |
 | Sonnet 5.5 / Haiku 5.5 | Lead: plans, builds or delegates by tier, arbitrates | lead-mode.md |
-| routed proxy model (never `deepseek-v4.1-flash`) | Lane C or D: leads its lane | lane-c.md, lane-d.md |
+| routed proxy model (`gpt-6-astra` or another proxy alias the user names) | Lane D: leads the run | lane-d.md |
 
 - Logbook found: phases.md "The run logbook"; leave a live one.
 - **Hard rule:** Claude subagents run on the Agent tool on this login, never the proxy.
-- **Excluded categories**: money, auth, PII or de-identification, permissions, data migration, concurrency, a client-facing release. OpenRouter seats (Lane C glm/deepseek) never build, review, or gate them; their spec or command carries its own line `excluded: no - <reason>`, or a hook denies it. Never edit `~/.cli-proxy-api/*.json` in place; restart the proxy (a hook denies it).
+- **Excluded categories**: money, auth, PII or de-identification, permissions, data migration, concurrency, a client-facing release. Never edit `~/.cli-proxy-api/*.json` in place; restart the proxy (a hook denies it).
 
 ## Rules
 
@@ -48,7 +48,7 @@ Floor high for user- or client-run work; a user effort word pins every Astra/Sol
 - **Contract** - a contained change with a written contract ("sonnet max" pin: `model-router:sonnet-max`).
 - **Mechanical** - exact-text or known-pattern edits, any file count.
 - **Codex side** - owns well-specified hard- and contract-tier tasks once the folder passes the write probe (transport.md); the gate seat parents it (phases.md).
-- **Design and UI** - a user-facing surface gets a Design block from `model-router:designer` (client briefs as given, client-E included - JC 2026-10-31; Pro consult and Lane C keep airlock).
+- **Design and UI** - a user-facing surface gets a Design block from `model-router:designer` (client briefs as given, client-E included - JC 2026-10-31; Pro consult keeps airlock).
 - **Fan-out** - build waves of 3-4; size audit, review, QA, research seats first (fanout.md).
 
 ## Phases
@@ -61,13 +61,13 @@ Floor high for user- or client-run work; a user effort word pins every Astra/Sol
 
 ## Lanes
 
-A (default): the phases above. B: "astra solo" or "astra x3", Astra designs and builds. C: an explicit budget ask, or an OpenRouter-routed session. D: a proxy session model leads.
+A (default): the phases above. B: "astra solo" or "astra x3", Astra designs and builds. D: a proxy session model leads. Lane C (OpenRouter budget crew: DeepSeek builds, GLM reviews/leads) retired 2026-11-15; archive/2026-11-15-lane-c/.
 
 ## References
 
 - `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/lead-mode.md`, `lead-mode-deltas.md` - Lead mode, before Gate 1
 - `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/phases.md` - Orchestrate mode, before planning; `specs.md` - before a spec (small change: Builder spec contract); `fanout.md` - build planning, audits, reviews
 - `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/transport.md` - before a proxy/Codex launch; `quota.md` - proxy error, or "fast"
-- `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/lane-b.md`, `lane-c.md`, `lane-d.md` - the lane named
+- `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/lane-b.md`, `lane-d.md` - the lane named
 - `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/surfaces.md` - browser QA, Computer Use, renders; `decision-page.md` - before any report or ask to JC
-- `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/pro-consult.md` - research claims, xhigh plans, 2 failed fix rounds, "pro consult"; `advisor.md` - every run, before each Claude seat
+- `${CLAUDE_PLUGIN_ROOT}/skills/fabstra/references/pro-consult.md` - research claims, xhigh plans, 2 failed fix rounds, "pro/gemini consult"; `advisor.md` - every run, before each Claude seat

@@ -21,15 +21,10 @@ skill's fast pin: Codex Fast mode on the `.codex-biz` native launches only
 (`codex-fast on` / `off`), 2.5x usage, no effect on reviews or Lane B.
 If this session is not Fable 5, stop and ask the user
 to switch with `/model claude-fable-5[1m]`, or to use `fable5-mode`
-in-session instead - EXCEPT a session already routed to
-`glm-5.3-flash` (the `budget` shim's default), or `deepseek-v4-pro` for a
-`pro` run, via `scripts\session.ps1`, which is accepted for Lane C only
-(below); or a session on `gpt-6-astra` or `glm-5.3-flash` that the user
+in-session instead - EXCEPT a session on `gpt-6-astra` that the user
 wants to LEAD the run, which is accepted for Lane D (below); everything
-else still stops, INCLUDING a session on
-`deepseek-v4.1-flash` - that alias is a builder and reviewer seat, never a
-lead (0/5, see the skill's Lane D). If the brief names Astra as the builder ("astra solo",
+else still stops. If the brief names Astra as the builder ("astra solo",
 "let Astra design and build") or asks for a count of Astras ("spawn 3 astra
 subagents" = Lane B fan-out, N solo Astras on disjoint slices), run the skill's Lane B: Fable writes a brief,
 Astra designs and builds through the proxy, Sol at xhigh and a fresh Fable both review, and the three must agree.
-An explicit ask for the cheap crew in the brief (`/fabstra5 budget`, "use the budget crew", "run this on OpenRouter"; a mere mention of a model or of budgets is not an ask), or a session already routed to `glm-5.3-flash` (the `budget` shim's default) or `deepseek-v4-pro` for a `pro` run, runs the skill's full Lane C: a cheap OpenRouter crew through the proxy - `deepseek-v4.1-flash` builds every coding task (mandatory empty-200 retry, `glm-5.3-flash` fallback), `glm-5.3-flash` is Reviewer A, `deepseek-v4-pro` is Reviewer B on multi-file work, and `deepseek-v4-flash` takes the design gate and mechanic - excluded for money, auth, PII, permissions, migration, concurrency, or a client-facing release. Astra AND Sol both cooling down on every login does NOT by itself pull in Lane C: the Claude builders keep building, and only the review seat and the Phase 1b design gate swap to Lane C (Reviewer A on `glm-5.3-flash`, the design gate on `deepseek-v4-flash`).
+Lane C (OpenRouter budget crew) retired 2026-11-15; archive/2026-11-15-lane-c/. A budget ask runs the default lane and the report says the budget crew is retired.

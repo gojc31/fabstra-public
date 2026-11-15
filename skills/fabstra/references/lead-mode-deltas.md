@@ -1,6 +1,6 @@
-# Lead mode deltas - Lanes B and C, transports
+# Lead mode deltas - Lane B, transports
 
-Reached from: lead-mode.md - the seat rubric rows for Lane B and Lane C, and the first Codex launch, and the model notes before Gate 1
+Reached from: lead-mode.md - the seat rubric row for Lane B, and the first Codex launch, and the model notes before Gate 1
 
 ## Lead mode delta - Lane B (Astra solo)
 
@@ -16,19 +16,6 @@ lane-b.md is the text; on a Lead-mode session only this differs.
 - Part 5(d): you take a fix yourself only when it needs something the solo
   session cannot reach (a plugin skill with `disable-model-invocation`, a
   Claude-only MCP tool); log it, and the active set re-reviews it.
-
-## Lead mode delta - Lane C (budget crew)
-
-lane-c.md is the text; on a Lead-mode session only this differs.
-
-- The session model orchestrates the crew. On an Opus or Sonnet session where
-  the Claude limit is not the problem you may still build the contract and
-  mechanical tiers through the Agent tool as usual, sending only the pieces that need it
-  to the OpenRouter crew; on a routed session every seat runs on the proxy.
-- The reviewer-alias overlap does not arise when an Opus or Sonnet session
-  orchestrates the crew itself.
-- `deepseek-v4-flash` (design gate, mechanic) drifts from the requested
-  headings unless the spec restates them.
 
 ## Lead mode delta - transports
 

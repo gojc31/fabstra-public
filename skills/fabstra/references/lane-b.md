@@ -127,7 +127,7 @@ Astra works; never leave the run in flight when the session ends.
 
 **Astra quota spent** (429 "cooling down" or "usage_limit_reached", per the
 "how to read it" list in quota.md). Before any code landed: the same command
-with `--model gpt-6.1-sol --effort xhigh` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS=500000` added to the env prefix (transport.md, "500k window") - Sol builds solo in the same
+with `--model gpt-6.1-sol --effort xhigh` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS=500000` added to the env prefix (transport.md, Sol pin, "Context windows") - Sol builds solo in the same
 lane - logged "Sol built solo, Astra quota spent". Mid-build: Sol continues
 from the design file with the continuation brief ("continue from
 `.fabstra/DESIGN-<name>.md`; do not redesign"), same log line - never the

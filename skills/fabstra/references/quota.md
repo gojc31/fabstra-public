@@ -35,7 +35,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
 
 - **Standing fast window (builds AND reviews, always on - JC 2026-11-01), on since 2026-09-28, no end date - JC 2026-10-03:
   stays on until JC says stop (opened by JC 2026-09-28 to spend weekly
-  quota before the reset).** `.codex-pro` (gojc31 Pro) and
+  quota before the reset).** `.codex-pro` (the Pro login) and
   `.codex-biz` ($CODEX_BIZ_LOGIN) both hold `service_tier = "fast"` for
   the whole window: no `fast` word needed, and runs do not end with
   `codex-fast off`. Every Codex-transport launch (Codex-side builds,
@@ -57,7 +57,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   the design review and Reviewer A/B run read-only on this fast path
   (transport.md "Standing fast window: reviews"), not on the proxy
   `claude -p` commands, which stay the fallback when every home is skipped
-  or the Codex CLI fails. JC accepted the 2.5x drain on gojc31 Pro that
+  or the Codex CLI fails. JC accepted the 2.5x drain on the Pro login that
   caused the 2026-10-17 retirement. Lane B
   stays on `claude -p`. The scheduled task
   `CodexFastOff-2026-10-04` is disabled (2026-10-03); turning the window off
@@ -68,7 +68,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
 
 - **Fast pin - "astra fast", `/fabstra ... fast`.** The word `fast` in the
   invocation or brief turns on Codex Fast mode (`service_tier = "fast"`)
-  for this run's launches on the `.codex-pro` home (gojc31 Pro; JC's
+  for this run's launches on the `.codex-pro` home (the Pro login; JC's
   standing choice since 2026-09-14, after the Business seat ran out of
   credits): `codex-fast on` before the first launch,
   `codex-fast off` after the run's last native job ends (fix rounds

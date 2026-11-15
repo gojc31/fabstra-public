@@ -36,7 +36,7 @@ Astra is the default senior seat for every Astra-eligible call - design
 review, build parent, adversarial review - and it rides the proxy like every
 other model, rotating over every ChatGPT login in the proxy (`verify-codex-logins`
 lists them; six on 2026-09-12: $CODEX_BIZ_LOGIN premium, $CODEX_BIZ2_LOGIN,
-three $CODEX_TEAM_LOGIN seats, gojc31 Pro).
+three $CODEX_TEAM_LOGIN seats, the Pro login).
 Companion launches for Astra run on the main Codex home with no `CODEX_HOME`
 / `CODEX_DIRECT` prefix (except during the standing fast window in quota.md,
 on since 2026-09-28, no end date: native, round-robin over `.codex-pro` / `.codex-biz` via `codex-fast-home`); the `codex` shim adds `-c model_provider=router`.
@@ -44,7 +44,7 @@ The standing pin is `proxy-pin both`; check `proxy-pin status` at the start
 of a run and log it, and pin `team` only when JC asks by name. Two native
 homes are opt-in, each for what only it can do, and a run that needs one
 launches its Astra parent natively and says so in the logbook: `.codex-pro`
-(`codex-pro` shim, gojc31 Pro) is the FAST-PIN home (JC's standing choice
+(`codex-pro` shim, the Pro login) is the FAST-PIN home (JC's standing choice
 since 2026-09-14, after the Business seat ran out of credits) and keeps the
 Browser / Computer Use / image_gen surfaces and `spark`; `.codex-biz`
 (`codex-biz` shim, or the `CODEX_HOME="${CODEX_BIZ_HOME:-$HOME/.codex-biz}"
@@ -88,7 +88,7 @@ in the run, build and review.
 
 JC 2026-11-01 restored this after the 2026-10-17 retirement: gates and
 reviews always run fast on the native homes, accepting the 2.5x drain on
-gojc31 Pro. A skipped home (`~/.codex-fast-skip`) stays out of the
+the Pro login. A skipped home (`~/.codex-fast-skip`) stays out of the
 round-robin, so with `biz` skipped every review lands on `.codex-pro`.
 
 While the window is open, the design review (Phase 1b) and Reviewer A/B

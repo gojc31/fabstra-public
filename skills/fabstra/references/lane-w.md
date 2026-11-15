@@ -50,7 +50,7 @@ the bridge; `[features] multi_agent = true`, `multi_agent_v2 = false`;
 `[model_providers.router]` survived.
 
 Models `chatgpt-web/light|medium|high|extra-high|pro` = GPT-5.6 Sol on the
-web; single account gojc31 (chat allowance, invisible to `bcost`); 2-6 chat
+web; single ChatGPT account (chat allowance, invisible to `bcost`); 2-6 chat
 messages per Codex turn.
 
 ## When to use it

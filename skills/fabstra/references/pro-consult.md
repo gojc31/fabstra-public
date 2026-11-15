@@ -14,7 +14,7 @@ An advisory seat: GPT-6 Astra Pro (`chatgpt-web/gpt-6-pro`) reached through the
 `astrapro` wrapper (`~/bin/astrapro`; `astrapro.cmd` from cmd or PowerShell).
 It runs on JC's ChatGPT Pro chat allowance, separate from the Codex pool and
 the proxy logins. It is unofficial browser automation of chatgpt.com: an OpenAI
-terms risk on the gojc31 Pro login, accepted by JC on 2026-10-17.
+terms risk on the Pro login, accepted by JC on 2026-10-17.
 
 What the wrapper does, fixed:
 - Starts the Codex Web GPT launcher (home `~/.codex-web`) when it is down, runs
@@ -103,7 +103,7 @@ accepted or rejected, one line why.
 ## Gemini consult - the build-sheet seat
 
 A second advisory seat beside Pro consult: Gemini 4 Carbon (`gemini-carbon`) in
-the consumer Gemini app on JC's Google AI Pro login (gojc31), reached through
+the consumer Gemini app on JC's Google AI Pro login, reached through
 the `geminipro` wrapper (`~/bin/geminipro`; `geminipro.cmd` from cmd or
 PowerShell). It is unofficial access to gemini.google.com: a Google terms risk
 JC accepted on 2026-11-13. Like Pro consult it sees only the brief, and "What
@@ -292,8 +292,8 @@ enforces one job at a time, 12 per run slug and 80 per day (every model
 counts); a launch the cap refuses (exit 1) is skipped and logged. Launches
 can overlap (a review mode beside a pair-mode consult): a second launch
 while one runs waits for the slot (`GEMINIPRO_SLOT_WAIT`, default 300 s). It needs JC's Chrome
-open with the gojc31 profile window and the browser-harness daemon already
-running; it starts neither.
+open with the profile window signed in to the Google AI Pro account and
+the browser-harness daemon already running; it starts neither.
 
 **The brief** (every mode) follows "The brief" above: the wrapper applies the
 same gate (the `brief-check:` line, 20,000 characters, the secret scan), and an
@@ -322,9 +322,9 @@ modes handle their items as "Review-mode answers" above.
 
 **Failures.** A Gemini consult never blocks a run.
 - Exit 7 (brief gate): fix the brief and relaunch, as for Pro consult.
-- Exit 2 (Chrome, the harness daemon or the gojc31 window is not available, or
-  the library version is not 2.1.1) or 8 (the signed-in account is not gojc31):
-  skip, log, and tell JC in the report; these are JC's steps.
+- Exit 2 (Chrome, the harness daemon or the profile window is not available,
+  or the library version is not 2.1.1) or 8 (the signed-in account is not
+  the configured account): skip, log, and tell JC in the report; these are JC's steps.
 - Exit 4 `model_not_available` on a Carbon launch: the Carbon fallback
   above, once. Any other launch exiting 4 (Hydrogen itself included): skip
   and log.
@@ -334,7 +334,7 @@ modes handle their items as "Review-mode answers" above.
 - A run slug latched by an earlier exit 6 skips every later Gemini launch of
   the run (the review modes included), logged
   `seat=<gemini|hydrogen> mode=<mode> skipped: slug latched leads=0 real=0` - never a new slug.
-- JC renewed Google AI Pro on 2026-11-15 for 4 years. A lapse or a removed
+- The Gemini seats need an active Google AI Pro plan. A lapse or a removed
   model makes the seat fail; it is skipped the same way.
 
 ## Failures

@@ -85,13 +85,13 @@ like any other.
   clear before/after.
 - **Mechanical** - exact-text or known-pattern edits in any number of files:
   renames, config edits, format conversions, doc touch-ups, boilerplate
-  (`subagent_type: "model-router:builder-low"`, whatever the file count).
+  (`subagent_type: "model-router:builder"` at `effort: "low"`, whatever the file count).
 - **Sonnet max pin** (the one rule; other sites point here) - a user pin of
   Sonnet max ("sonnet max", "sonnet 5.5 max", "sonnet max thinking") sends
   that run's contract-tier tasks, builds and fixes, to
   `subagent_type: "model-router:sonnet-max"` (Claude Sonnet 5.5 at max; it
   pins its own model and effort, so no `model:` field) instead of
-  `model-router:builder-medium`; nothing routes there unpinned. The
+  `model-router:builder` at `effort: "medium"`; nothing routes there unpinned. The
   pin reaches only the Claude Sonnet seat: it is not an Astra or Sol effort
   pin (the Codex transport rejects `max`), so their effort follows the
   effort rubric unless an effort word pins it separately. Log the pin in RUN.md.
@@ -172,7 +172,7 @@ Rules:
   is for changes whose worst failure is cosmetic.
 - Log the chosen effort and the one-line reason (rubric row, or "user said
   xhigh") in `RUN.md` beside the task.
-- Hard-tier builder: `model-router:builder-high` (Opus 5.5 high). Every Claude seat and its effort: "Claude seat efforts" below; evidence: effort-trial.md.
+- Hard-tier builder: `model-router:builder` at `effort: "high"` (Opus 5.5 high). Every Claude seat and its effort: "Claude seat efforts" below; evidence: effort-trial.md.
 - The effort row comes from this rubric alone, picked per task and logged
   beside the pick. The floor still applies: never below high for anything a
   user or client runs.
@@ -183,26 +183,27 @@ Rules:
 ## Claude seat efforts - set by tier
 
 Every Claude build seat is Opus 5.5, and Reviewer C is a fresh Fable 5.2. The
-tier picks the seat and the seat pins the effort, so an Agent call to one of
-these seats passes no `model` field and no `effort` field.
+tier picks the seat and the effort, so an Agent call to one of these seats
+passes no `model` field and always passes `effort` by tier.
 
 | Tier | Seat | Effort | Why this level |
 |---|---|---|---|
-| mechanical | `model-router:builder-low` | low | the spec is exact text or a known pattern and names the check that proves it |
-| contract | `model-router:builder-medium` | medium | Opus 5.5's own default; a written contract leaves little to discover |
-| hard | `model-router:builder-high` | high | verification and edge cases decide the result |
+| mechanical | `model-router:builder` | low | the spec is exact text or a known pattern and names the check that proves it |
+| contract | `model-router:builder` | medium | Opus 5.5's own default; a written contract leaves little to discover |
+| hard | `model-router:builder` | high | verification and edge cases decide the result |
 | hard in an excluded category; any task after its second miss at high | `model-router:builder` | xhigh | there a missed edge case costs more than the tokens |
 | Reviewer C | `model-router:reviewer` (Fable 5.2, fresh context) | high | the starting level for Fable 5.2 and the review floor |
-| Reviewer C, on a build in an excluded category | `model-router:reviewer-xhigh` (Fable 5.2, fresh context) | xhigh | JC's decision, 2026-11-10: there a missed defect costs more than the tokens |
+| Reviewer C, on a build in an excluded category | `model-router:reviewer` (Fable 5.2, fresh context) | xhigh | JC's decision, 2026-11-10: there a missed defect costs more than the tokens |
 | Design block | `model-router:designer` | xhigh | carried over, not yet measured |
 
-- **Excluded-category floor.** A task in an excluded category (SKILL.md) builds on `model-router:builder` when it is hard tier and on `model-router:builder-high` when it is contract or mechanical tier.
-- **Reviewer C seat.** Reviewer C is `model-router:reviewer`. When the reviewed build is in an excluded category (SKILL.md) it is `model-router:reviewer-xhigh`, wherever Reviewer C runs: the review of Codex-built work, the parallel second review, the fallback rows of transport.md, Lane B, and the Lane D headless command (`--effort xhigh`). A review that covers several tasks takes the xhigh seat when any of them is in an excluded category.
-- **Miss ladder.** A miss is a task that fails its check, or that comes back from a review round with an accepted finding; one round is one miss for that task, however many findings it holds. First miss: the work goes back with the evidence - a failed build to the seat that built it, a review fix to the seat the Phase 4 fix table picks from what the fix looks like. Second miss on the same task: the next attempt goes one seat up from the seat that last worked on it - Claude seats `builder-low` -> `builder-medium` -> `builder-high` -> `builder`; Codex children `spark` / `luna` -> `terra` -> `sol` -> `model-router:builder`. A second miss at `model-router:builder`, or an open-finding count that did not go down after a round, means the approach is wrong: re-diagnose and re-spec first (Phase 4), because more effort fixes a missed edge case, not a wrong approach; the corrected spec then goes one seat up, or starts again at its tier's seat when there is no seat above. A pinned seat keeps its first miss too; its second miss releases the pin for that task - a pinned Sonnet or Haiku seat hands it to `model-router:builder-high`, a pinned Opus seat hands it one seat up - and the release is logged and named in the report.
-- **Pins.** "sonnet max" sends the run's contract-tier tasks to `model-router:sonnet-max` (routing rubric). A Claude model the user names for builds ("use sonnet", "haiku for the mechanical work") sends that tier's tasks to `general-purpose` with `model: "sonnet"` / `"haiku"` for that run. A seat or effort the user names ("opus xhigh", "builder-medium") pins that seat for the tasks the user names. Log every pin in RUN.md. The excluded-category floor outranks a pin that sits below it: that task takes the floor seat, and the plan JC sees says so in one line, so JC can restate the pin for that task by name.
+- **Excluded-category floor.** A task in an excluded category (SKILL.md) builds on `model-router:builder` at effort xhigh when it is hard tier and at effort high when it is contract or mechanical tier.
+- **Reviewer C seat.** Reviewer C is `model-router:reviewer`. When the reviewed build is in an excluded category (SKILL.md) it runs at `effort: "xhigh"`, wherever Reviewer C runs: the review of Codex-built work, the parallel second review, the fallback rows of transport.md, Lane B, and the Lane D headless command (`--effort xhigh`). A review that covers several tasks takes effort xhigh when any of them is in an excluded category.
+- **Miss ladder.** A miss is a task that fails its check, or that comes back from a review round with an accepted finding; one round is one miss for that task, however many findings it holds. First miss: the work goes back with the evidence - a failed build to the seat that built it, a review fix to the seat the Phase 4 fix table picks from what the fix looks like. Second miss on the same task: the next attempt goes one step up from the seat and effort that last worked on it - on `model-router:builder` an effort ladder low -> medium -> high -> xhigh; Codex children `spark` / `luna` -> `terra` -> `sol` -> `model-router:builder` at xhigh. A second miss at `model-router:builder` at xhigh, or an open-finding count that did not go down after a round, means the approach is wrong: re-diagnose and re-spec first (Phase 4), because more effort fixes a missed edge case, not a wrong approach; the corrected spec then goes one step up, or starts again at its tier's effort when there is no step above. A pinned seat keeps its first miss too; its second miss releases the pin for that task - a pinned Sonnet or Haiku seat hands it to `model-router:builder` at effort high, a pinned Opus seat hands it one effort up - and the release is logged and named in the report.
+- **Pins.** "sonnet max" sends the run's contract-tier tasks to `model-router:sonnet-max` (routing rubric). A Claude model the user names for builds ("use sonnet", "haiku for the mechanical work") sends that tier's tasks to `general-purpose` with `model: "sonnet"` / `"haiku"` for that run. A seat or effort the user names ("opus xhigh", "builder at medium") pins that effort on `model-router:builder` for the tasks the user names. Log every pin in RUN.md. The excluded-category floor outranks a pin that sits below it: that task takes the floor effort, and the plan JC sees says so in one line, so JC can restate the pin for that task by name.
 - **Any other Claude seat** (a research or audit seat in fanout.md that is none of the agents above): `general-purpose`, `model: "opus"`, `effort: "medium"`; `effort: "high"` when its findings decide the plan of an excluded-category build.
 - **The lead's own effort** is the session setting, which JC owns. The design point is `high` on Fable 5.2 and on Opus 5.5: on Fable 5.2 most of the gain is in by `high`, and `xhigh` or `max` add tokens and self-review subagents with no gain measured on this flow.
 - Evidence and dates: effort-trial.md.
+- **Retired seat names (historical - never call)**, for reading old logbooks: `builder-low` = `model-router:builder` at low; `builder-medium` = builder at medium; `builder-high` = builder at high; the old `builder` with no effort = builder at xhigh; `reviewer-xhigh` = `model-router:reviewer` at xhigh; the old `reviewer` with no effort = reviewer at high.
 
 ## Orchestrator rules (non-negotiable)
 
@@ -298,7 +299,7 @@ builders and reviewers never touch it. (In a git repo, add `.fabstra/` to
 
 Each task line carries `tier` (hard, contract or mechanical), `seat` (the
 `subagent_type` or the Codex child that built it, for example
-`model-router:builder-high` or `terra`), `effort`, `elapsed` (minutes from
+`model-router:builder effort=high` or `terra`), `effort`, `elapsed` (minutes from
 launch to accepted), and
 `first_pass` (yes/no - accepted with no fix round), plus `consults=<n>` on an
 advisor run (advisor.md). Each review finding
@@ -430,7 +431,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   before the build, a small change on its diff after. Write the class in
   the plan and in the report, with why; never skip silently. A small change
   is still built by a subagent - one Agent call to
-  `model-router:builder-low` (`model-router:builder-medium` when it needs
+  `model-router:builder` at effort low (effort medium when it needs
   judgement, or `model-router:sonnet-max` under a Sonnet max pin), no gates;
   you never make the edit yourself.
 - A contained change: before building, in both modes, write its plan into
@@ -443,7 +444,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   gate as for a real build, then
   exactly one review - Claude-built -> Sol at `--effort high` through the
   Sol review command (transport.md, same transport as the Sol row, only the
-  effort differs); Codex-built -> a fresh Fable (`model-router:reviewer`),
+  effort differs); Codex-built -> a fresh Fable (`model-router:reviewer`, effort high; xhigh on an excluded-category build),
   per the pairing rule. No parallel second reviewer. Phase 4 rules apply
   unchanged. A P1 in the review, or the change growing past any criterion
   mid-run, makes it a real build from that point: log the reclassification
@@ -493,7 +494,7 @@ that is genuinely disjoint: different files, no run-time dependency.
 When the reports land, verify them in one batched Bash call of targeted
 slices (`ls`, `grep -c` for acceptance markers, `head` slices). Misses
 follow the miss ladder ("Claude seat efforts"): the first goes back to the
-same seat, the second goes one seat up, each with the evidence attached.
+same seat, the second goes one step up, each with the evidence attached.
 
 **Smoke gate:** when every task has landed (DONE, or DONE_WITH_CONCERNS
 whose concern you judged acceptable and logged), run the project's real
@@ -527,13 +528,13 @@ discovering what a build command finds for free. Log the result.
 
   | Fix looks like | Claude subagent | Codex side (the gate seat as parent, `--write`; a Sol parent does the multi-file row itself) |
   |---|---|---|
-  | Mechanical: rename, config, doc, one obvious line | `model-router:builder-low`, in any number of files | Astra delegating to `spark` (native on Pro) or `luna` (proxy) |
-  | Contained, with a written contract: one function, one test, one component | `model-router:builder-medium` (`model-router:sonnet-max` under a Sonnet max pin, routing rubric) | Astra delegating to `terra` |
-  | Multi-file, design-level, or the reviewer disagreed with the approach | `model-router:builder-high` | the gate seat delegating by tier (Astra to `sol`; Sol does it itself) (agent-file xhigh), or Astra itself at the pinned effort (else xhigh) |
+  | Mechanical: rename, config, doc, one obvious line | `model-router:builder` at effort low, in any number of files | Astra delegating to `spark` (native on Pro) or `luna` (proxy) |
+  | Contained, with a written contract: one function, one test, one component | `model-router:builder` at effort medium (`model-router:sonnet-max` under a Sonnet max pin, routing rubric) | Astra delegating to `terra` |
+  | Multi-file, design-level, or the reviewer disagreed with the approach | `model-router:builder` at effort high | the gate seat delegating by tier (Astra to `sol`; Sol does it itself) (agent-file xhigh), or Astra itself at the pinned effort (else xhigh) |
 
 - After each fix round, recount open findings in the logbook. Count did not
   go down? The approach is wrong - stop immediately, re-diagnose with the
-  full history, correct the spec, and only then send it one seat up (miss
+  full history, correct the spec, and only then send it one step up (miss
   ladder); do not spend another round on the same theory.
   Two rounds on the same finding is the hard ceiling either way.
 - On that ceiling, before re-diagnosing, launch one Pro consult on the failure

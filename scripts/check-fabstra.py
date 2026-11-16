@@ -51,7 +51,7 @@ EXPLORE_LINE = ("Before taking any action, explore broadly with tool calls: list
                 "documents, spreadsheet tabs and records across the available apps that could be relevant "
                 "to this task, including ones the task does not explicitly mention, and use what you find.")
 TRIAL_FIRST = "Opus 5.5 builder effort trial, 2026-09-24 to 2026-10-08."
-TRIAL_POINTER = "Hard-tier builder: `model-router:builder-high`"  # phases.md names the hard-tier seat (2026-11-10)
+TRIAL_POINTER = 'Hard-tier builder: `model-router:builder` at `effort: "high"`'  # phases.md names the hard-tier seat (2026-11-16)
 NOTHING_WRONG = "Finding nothing wrong is a legitimate result"
 SEPARATE = "Separate verified from assumed"
 ARCHIVE = "RUN-<YYYY-MM-DD-HHMMSS>"
@@ -71,15 +71,14 @@ FABLE_MODE_ALLOWED = ("retired", "alias", "lead-mode.md")
 REF_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/([A-Za-z0-9_.-]+\.md)")
 # a backticked reference name in the SKILL.md References section, with or without the path prefix
 REF_SHORT_RE = re.compile(r"`(?:\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/)?([A-Za-z0-9_.-]+\.md)`")
-# each Claude seat file and the frontmatter lines it must hold (contract D2, 2026-11-10)
+# each Claude seat file and the frontmatter lines it must hold (contract D2, 2026-11-10;
+# merged roster 2026-11-16: one builder and one reviewer, effort passed per call, fallback high)
 SEAT_PINS = {
-    "builder-low.md": {"model": "claude-opus-5-5", "effort": "low"},
-    "builder-medium.md": {"model": "claude-opus-5-5", "effort": "medium"},
-    "builder-high.md": {"model": "claude-opus-5-5", "effort": "high"},
-    "builder.md": {"model": "claude-opus-5-5", "effort": "xhigh"},
+    "builder.md": {"model": "claude-opus-5-5", "effort": "high"},
     "reviewer.md": {"model": "claude-fable-5-2", "effort": "high"},
-    "reviewer-xhigh.md": {"model": "claude-fable-5-2", "effort": "xhigh"},
 }
+# retired by the 2026-11-16 roster merge (effort now passed per call to builder.md / reviewer.md)
+RETIRED_AGENTS = ("builder-low.md", "builder-medium.md", "builder-high.md", "reviewer-xhigh.md")
 SONNET_MAX_PINS = {"model": "claude-sonnet-5-5", "effort": "max"}
 TOP_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(.*)$")  # a frontmatter key at column 0
 # wording retired by 1.11.0; allowed only inside an "## Old patterns" section
@@ -286,8 +285,8 @@ def main() -> int:
     else:
         r.fail("fable-mode folder", f"missing: {fable_dir}")
 
-    # 8. builder agents carry the time-matters line
-    for name in ("builder.md", "builder-high.md", "builder-medium.md", "builder-low.md"):
+    # 8. the builder agent carries the time-matters line
+    for name in ("builder.md",):
         p = root / "agents" / name
         text = read(p)
         if text is None:
@@ -332,6 +331,11 @@ def main() -> int:
         bad_pins += pin_problems(name, read(root / "agents" / name), want)
     r.check(not bad_pins, "seat pins", "; ".join(bad_pins) if bad_pins
             else f"{len(SEAT_PINS)} seat files pin model and effort")
+
+    # 12b. the four agent files the 2026-11-16 roster merge retired stay out of agents/
+    retired_present = [f"agents/{n} present" for n in RETIRED_AGENTS if (root / "agents" / n).exists()]
+    r.check(not retired_present, "retired agents", ", ".join(retired_present) if retired_present
+            else f"none of {len(RETIRED_AGENTS)} retired agent files present")
 
     # 13. the SKILL.md session switch table names Fable 5.2 (2026-11-10)
     has_fable = any("Fable 5.2" in first_cell_parts(ln) for ln in rows)

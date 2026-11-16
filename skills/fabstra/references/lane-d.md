@@ -30,8 +30,7 @@ returned clean with both aliases in `modelUsage`; an Agent call on a
 claude-sonnet-5`. The proxy serves no Anthropic models by design (routing a
 Claude subscription login through it is banned), so in Lane D `model: "opus"`,
 `"sonnet"`, `"haiku"` and the Claude-pinned agents
-(`model-router:builder-low`, `model-router:builder-medium`,
-`model-router:builder-high`, `model-router:builder`, `model-router:reviewer`, `model-router:reviewer-xhigh`,
+(`model-router:builder`, `model-router:reviewer`,
 `model-router:designer`) are all unreachable through the Agent tool. The one legitimate way to a Claude seat
 from a routed session is headless delegation on the user's own Claude login -
 Claude Code calling Claude Code, which is not a third-party tool - by stripping

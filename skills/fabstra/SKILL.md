@@ -40,7 +40,7 @@ Floor high for user- or client-run work; a user effort word pins every Astra/Sol
 
 **Gate seat (both modes):** Astra for an excluded category, an architecture or data-model decision, or a plan whose check you cannot state; Sol for every other real build. Naming a seat pins it; Astra spent: Sol; unsure: Astra. Rubric: lead-mode.md.
 
-**Claude seats** pin effort; Opus 5.5 builds (`model-router:`): mechanical `builder-low`, contract `builder-medium`, hard `builder-high`; hard excluded-category or second miss at high: `builder` (xhigh); Reviewer C `reviewer` (fresh Fable 5.2, high; excluded: `reviewer-xhigh`). Rules: phases.md "Claude seat efforts"; evidence: effort-trial.md.
+**Claude seats**: Opus 5.5 builds on `model-router:builder`, effort by tier on every call - mechanical low, contract medium, hard high, hard excluded-category or second miss at high xhigh; Reviewer C `model-router:reviewer` (fresh Fable 5.2, effort high; excluded: xhigh). Rules: phases.md "Claude seat efforts"; evidence: effort-trial.md.
 
 ## Routing rubric
 

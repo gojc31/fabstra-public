@@ -98,7 +98,7 @@ You are running HEADLESS with no user available. Rules for this run:
 - Never ask the user anything. Where the skill says to ask, take the sensible default, log it in .fabstra/RUN.md as "default taken: ...", and continue.
 - This is a REAL BUILD (four tasks). Run the plan gate and the review gate; never skip either.
 - Plan gate seat: Astra (`--model gpt-6-astra --effort high`). If Astra is cooling, use Sol (`--model gpt-6-sol --effort high`) and log it.
-- Builders: delegate by tier exactly as the skill says (model-router:builder / builder-medium for Opus-tier, model "sonnet" / "haiku" otherwise).
+- Builders: delegate by tier exactly as the skill says (model-router:builder with effort by tier for Opus-tier, model "sonnet" / "haiku" otherwise).
 - Fix rounds: at most two per finding, as the skill says; then stop and log.
 - Ownership override for this run: every task is BUILDER-owned (Claude side, Agent tool). Skip the Codex write probe and log "default taken: probe skipped, eval pins Claude builders".
 - Skip the /goal hand-off (headless; this prompt is the goal). Skip the run-recipe step of the smoke gate (no recipe in this repo); run the test suite.

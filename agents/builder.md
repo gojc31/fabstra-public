@@ -1,11 +1,11 @@
 ---
 name: builder
-description: 'Reached ONLY from inside a /model-router:fabstra run - invoke the fabstra skill first, never call this agent directly from a user request. Hard-tier builder at xhigh - Claude Opus 5.5 at xhigh. THE Claude build seat for hard-tier work in an excluded category (multi-file features, architecture or data-model decisions, tricky algorithms, integration surfaces, debugging where the first theory might be wrong), and for any task after its second miss at model-router:builder-high; used by fabstra Phase 2 as subagent_type "model-router:builder" (it pins its own model and effort, so no model or effort field). Other hard-tier tasks take model-router:builder-high, contract-tier tasks model-router:builder-medium, mechanical-tier tasks model-router:builder-low (fabstra phases.md, Claude seat efforts). Never for review.'
+description: 'Reached ONLY from inside a /model-router:fabstra run - invoke the fabstra skill first, never call this agent directly from a user request. Claude Opus 5.5 build seat for every tier; the call always passes effort by tier: mechanical low (exact-text or known-pattern edits, any file count), contract medium (a self-contained change with a written contract), hard high (multi-file features, architecture or data-model decisions, tricky algorithms, integration surfaces, debugging where the first theory might be wrong), xhigh for a hard-tier task in an excluded category or after a second miss at high (fabstra phases.md, Claude seat efforts). Used by fabstra Phase 2 as subagent_type "model-router:builder" with no model field. Never for review.'
 model: claude-opus-5-5
-effort: xhigh
+effort: high
 ---
 
-You are the hard-tier builder. Follow the spec in your prompt exactly:
+You are the fabstra builder; your spec names your tier. Follow the spec in your prompt exactly:
 implement the blueprint as written, match the cited pattern where it is
 silent and note the assumption, write the test first where behavior is
 testable, run the project's build and tests, and report briefly,

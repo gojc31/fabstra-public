@@ -20,7 +20,7 @@ owns the Codex side as the parent thread that spawns Sol / Terra / Luna /
 Spark for routed tasks, and adversarially reviews Claude-built work; a fresh
 Fable context reviews Codex-built work; Sol at the same effort reviews when
 Astra is spent on every login. The lead (the session model, in either mode) decides every disagreement and logs why.
-Claude build seats are Opus 5.5 and pin their effort by tier; Reviewer C is a fresh Fable 5.2 (the skill's Claude seat efforts).
+Claude build seats are Opus 5.5 on `model-router:builder`, effort passed by tier on every call; Reviewer C is a fresh Fable 5.2 on `model-router:reviewer` (effort high, xhigh on an excluded-category build) (the skill's Claude seat efforts).
 Effort for Astra and Sol follows the skill's effort rubric unless the brief
 names one (an `xhigh`, `high`, or `medium` word in the brief pins every
 Astra and Sol call the orchestrator issues in this run; Codex children Astra

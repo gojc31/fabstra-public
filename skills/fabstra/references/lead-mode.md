@@ -25,8 +25,8 @@ you reach the gate or lane it covers, not before.
 | USER | you, the person running the session | the brief, the go signal, the final word over the lead |
 | LEAD | you (Opus 5.5 / Sonnet 5.5 / Haiku 5.5) | the plan, BUILDER tasks, the Codex launches, the smoke gate, every verdict, the user, the report |
 | GATE SEAT | GPT-6 Astra (or GPT-6.1 Sol, per the rubric) | the plan gate; parents the Codex side (`sol` / `terra` / `luna` / `spark`); reviews BUILDER-side work; advises, never decides |
-| BUILDERS | Claude Opus 5.5, effort by tier | Agent tool: `model-router:builder-low` (mechanical tier), `model-router:builder-medium` (contract tier), `model-router:builder-high` (hard tier); the excluded-category floor, the miss ladder and the pins in phases.md, "Claude seat efforts", decide every other case |
-| INDEPENDENT REVIEWER | fresh Fable 5.2 (`subagent_type: "model-router:reviewer"`, high; excluded category: `"model-router:reviewer-xhigh"`) | reviews what the gate seat's own thread built or fixed; the fallback seat per transport.md |
+| BUILDERS | Claude Opus 5.5, effort by tier | Agent tool: `model-router:builder` with `effort` passed on every call - low (mechanical tier), medium (contract tier), high (hard tier); the excluded-category floor, the miss ladder and the pins in phases.md, "Claude seat efforts", decide every other case |
+| INDEPENDENT REVIEWER | fresh Fable 5.2 (`subagent_type: "model-router:reviewer"`, effort high; excluded category: effort xhigh) | reviews what the gate seat's own thread built or fixed; the fallback seat per transport.md |
 
 Codex builders, homes and depth limits: transport.md, "The crew in full".
 Astra holds the Astra-row gates by the user's choice (2026-09-05, Sol row added 2026-09-27; evidence in
@@ -94,7 +94,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 ### Build - executing the authoritative plan
 
-- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on the seat phases.md, "Claude seat efforts", picks - mechanical `model-router:builder-low`, contract `model-router:builder-medium`, hard `model-router:builder-high`, with that section's excluded-category floor, miss ladder and pins (a "sonnet max" pin: `model-router:sonnet-max`); log `seat=`. Every delegation carries a spec per specs.md "Builder spec contract".
+- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on the seat phases.md, "Claude seat efforts", picks - `model-router:builder` at effort low (mechanical), medium (contract) or high (hard), with that section's excluded-category floor, miss ladder and pins (a "sonnet max" pin: `model-router:sonnet-max`); log `seat=model-router:builder effort=<x>`. Every delegation carries a spec per specs.md "Builder spec contract".
 - **Design block:** a UI surface gets its `## Design (from design-pass)` block first - on an Opus 5.5 session you run the `design-pass` skill; a Sonnet or Haiku session makes one `model-router:designer` call stating `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E included (JC 2026-10-31; no marker = BLOCKED). It goes into the builder spec; its Gates and Verify sub-blocks go into the review spec.
 - **CODEX tasks** go out as one job for the gate seat's thread: `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, the stack rules, and the parent-thread clause from specs.md "Astra delegates by tier"; launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
 - **Schedule by READINESS, not by owner:** a task is ready when its whole DEPENDS ON chain has landed and none of it is blocked on the user. The first message launches every ready CODEX task as one job beside your first ready BUILDER work; the rest go out as their chains complete (later CODEX tasks as their own jobs). Disjoint files are not the same as no run-time dependency.
@@ -116,7 +116,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
 
 - **Seat by what was built:** BUILDER-side work -> the gate seat (Astra, or
   Sol at the rubric effort; contained change: Sol high); CODEX-side work -> the fresh Fable
-  (`subagent_type: "model-router:reviewer"`; excluded category: `"model-router:reviewer-xhigh"`, phases.md "Claude seat efforts"), because the gate seat's own
+  (`subagent_type: "model-router:reviewer"` at effort high; excluded category: effort xhigh, phases.md "Claude seat efforts"), because the gate seat's own
   thread built it. On an xhigh row (an excluded category, multi-file
   architecture, re-review after a P1) the BUILDER-side review runs twice in
   parallel: the gate seat and a fresh Fable, each with the full BUILDER

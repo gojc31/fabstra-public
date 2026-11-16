@@ -57,9 +57,13 @@ status read.
 
 ## Lifecycle
 
-The orchestrator itself never consults the advisor, though the lead session
-gains the tool while it is on (verified 2026-11-12): it stays a builder's
-tool (Who must not consult). Only auto runs switch. An opt-out run never runs
+An Opus 5.5 orchestrator or lead on an auto run makes one advisor call per
+plan: after drafting the plan and task split, before the plan goes to the
+gate seat (JC 2026-11-16). It weighs the reply under Rule 6 and logs
+`advisor-plan=yes` in RUN.md. A Fable orchestrator skips it, since a Fable 5.2
+advisor adds nothing to a Fable 5.2 lead. Past that call the tool stays a
+builder's (Who must not consult); the lead session holds it while it is on
+(verified 2026-11-12). Only auto runs switch. An opt-out run never runs
 `on` or `off` - not at a mismatch, not when it stops early, not when it
 parks: the shared setting may belong to another live run.
 
@@ -196,7 +200,8 @@ run's seats; the switch-off steps above end that.
 ## Who must not consult
 
 Review seats (Reviewer A/B/C, the design gate, the gate's re-check calls),
-blind graders, experiment and trial seats, and the orchestrator itself. When
+blind graders, experiment and trial seats, and the orchestrator itself past
+its one plan call (Lifecycle). When
 an advisor is effective, their specs carry this line, verbatim:
 
 "Do not consult the advisor tool in this session; this seat's judgment must be its own."

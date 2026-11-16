@@ -70,10 +70,10 @@ Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via Astra.
 
 One Agent tool call per task. The tier picks the seat (phases.md, "Claude
 seat efforts", which also holds the excluded-category floor, the miss ladder
-and the pins): hard tier `subagent_type: "model-router:builder-high"`,
-contract tier `"model-router:builder-medium"`, mechanical tier
-`"model-router:builder-low"`. Each pins its own model and effort, so the call
-passes no `model` field and no `effort` field; log `seat=<subagent_type>`.
+and the pins): `subagent_type: "model-router:builder"` with hard tier
+`effort: "high"`, contract tier `effort: "medium"`, mechanical tier
+`effort: "low"`. It pins its own model, so the call passes no `model` field;
+it always passes `effort` by tier; log `seat=model-router:builder effort=<x>`.
 Under a Sonnet max pin the contract tier takes
 `subagent_type: "model-router:sonnet-max"` instead, no `model:` field
 (phases.md routing rubric, Sonnet max pin). A seat that is not a pinned
@@ -177,7 +177,7 @@ Every spec also carries these lines, verbatim:
 - "Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better."
 - Multi-app specs only (n8n, GHL, Drive, mail, CRM automations): "Before taking any action, explore broadly with tool calls: list and open the emails, documents, spreadsheet tabs and records across the available apps that could be relevant to this task, including ones the task does not explicitly mention, and use what you find."
 - Automation specs (n8n, Make, GHL, VAPI) carry verbatim: "A source that fails to read is reported as unreadable and its cursor does not move; a write is recorded only after the destination confirms it."
-- Contract- and mechanical-tier specs (`model-router:builder-medium`, `model-router:builder-low`, and a pinned Sonnet or Haiku seat): "Keep working until everything this spec asks for is done; stop only when you cannot go on without the user or before a risky step."
+- Contract- and mechanical-tier specs (`model-router:builder` at effort medium or low, and a pinned Sonnet or Haiku seat): "Keep working until everything this spec asks for is done; stop only when you cannot go on without the user or before a risky step."
 - "Before your report, stop every background command you started (dev servers, watchers, tails): a headless run waits for them and can hit its timeout."
 - "Keep the report short, ending with exactly one status: DONE /
   DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED - plus changed paths, each
@@ -295,7 +295,7 @@ A re-review keeps its round facts even as a plain spec: beside
 `<prior_findings>` it still carries the `Build-start base:` line, that
 round's diff, and from round 3 the round-3 `<review_scope>` text.
 
-**Reviewer C (the fresh Fable 5.2 Agent seat, `model-router:reviewer`, high; `model-router:reviewer-xhigh` on a build in an excluded category):**
+**Reviewer C (the fresh Fable 5.2 Agent seat, `model-router:reviewer`, effort high; effort xhigh on a build in an excluded category):**
 drop the `<turn_budget>` block from the spec it receives. The 30-call
 ceiling is the proxy `claude -p` seats' `--max-turns 30` (transport.md); the
 Agent seat has no cap and carries about 2.5x the scope (fanout.md, seat

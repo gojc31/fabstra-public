@@ -99,7 +99,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
 
 **Astra blocked, how to read it:** quota errors are 429 "All credentials
 for model gpt-6-astra are cooling down" (every login spent or cooling) or
-"usage_limit_reached" from the proxy, or a Codex job that fails within
+"usage_limit_reached" from the proxy, or 503 "auth_unavailable: no auth available (providers=codex ...)" (every login refused - seen 2026-11-17 with an upstream 402 deactivated_workspace), or a Codex job that fails within
 seconds with the same text. A 400 "not supported when using Codex with a
 ChatGPT account" means that login has lost or not yet gained the model:
 probe the other logins directly, restart the proxy so it re-probes, and if

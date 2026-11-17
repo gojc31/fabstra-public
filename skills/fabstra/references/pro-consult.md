@@ -2,7 +2,7 @@
 
 Contents: What it is; What it never does; Triggers; Launch; The brief; Handling the answer; Gemini consult - the build-sheet seat; Failures; Setup facts and cost
 
-Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Carbon review, Carbon report check, Hydrogen fix check)
+Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Reviewer G, Carbon report check, Hydrogen fix check)
 
 Related:
 > The crew table rows for this seat and for Gemini consult are in transport.md.
@@ -36,7 +36,10 @@ What the wrapper does, fixed:
 ## What it never does
 
 It never closes Phase 1b or Phase 3, never counts as Reviewer A, B or C, never
-builds, never gates. A run whose gate seat is down follows "Reviewer fallback"
+builds, never gates. The same holds for every Gemini mode except Reviewer G
+(Carbon in a real build's review rounds, "Reviewer G" below): its confirmed
+items are findings, and it stands in for Reviewer A / B when Astra and Sol
+are out. A run whose gate seat is down follows "Reviewer fallback"
 in transport.md as before; Pro consult is not a fallback rung.
 
 ## Triggers
@@ -102,17 +105,18 @@ accepted or rejected, one line why.
 
 ## Gemini consult - the build-sheet seat
 
-A second advisory seat beside Pro consult: Gemini 4 Carbon (`gemini-carbon`) in
+A second seat beside Pro consult, advisory in every mode but Reviewer G (below): Gemini 4 Carbon (`gemini-carbon`) in
 the consumer Gemini app on JC's Google AI Pro login, reached through
 the `geminipro` wrapper (`~/bin/geminipro`; `geminipro.cmd` from cmd or
 PowerShell). It is unofficial access to gemini.google.com: a Google terms risk
 JC accepted on 2026-11-13. Like Pro consult it sees only the brief, and "What
-it never does" applies to it in full.
+it never does" applies to it in full, except as Reviewer G.
 
 What it is for: the build sheet - concrete test cases, thresholds, edge-case
 lists and field names. The verdict on the question stays the lead's. Since
 2026-11-15 it also reads diffs and reports for bugs and weak claims (the
-three review modes below); each item is a lead the lead verifies.
+three review modes below); a report-check or fix-check item is a lead the
+lead verifies, and a Reviewer G item is a finding once the lead confirms it.
 Measured 2026-11-13 on three past consult briefs: Astra Pro named the decisive
 point in 3 of 3 and Carbon in 0 of 3 (1 of 3 with a tuned brief); every Carbon
 answer carried a wrong or mislabelled mechanism claim; Carbon gave the more
@@ -142,29 +146,20 @@ with the question "What in this <diff|plan> will break, and which case is
 untested?" Same wrapper, brief rules, caps and answer handling as every
 Gemini consult (below; the caps are the wrapper's and count every model).
 Advisory: it never blocks and never replaces the contained change's Sol
-review. The diff source is the Carbon review's (below), and client work
+review. The diff source is Reviewer G's (below), and client work
 abstracts the whole brief per "Diff briefs". A diff or plan that cannot be
 abstracted (client data, secrets, an excluded category) skips it with the log line `seat=hydrogen mode=quick skipped: <reason> leads=0 real=0`.
 
-**Carbon review (every real build, Phase 3 round 1).** JC 2026-11-15. On
-round 1 of Phase 3 of every real build, in either mode, launch one Carbon
-review in the same message as the pairing-rule review seat(s) (transport.md,
-"Phase 3 launch"); in Lane B, in the same message as Reviewers B and C,
-round 1 (lane-b.md, part 4). Contained and small changes never get it (they
-keep the Hydrogen quick check), and re-reviews (round 2 on) do not either.
-Launch name `review-r1`, default model (Carbon), the Launch form below:
+**Reviewer G - Carbon as co-reviewer (JC 2026-11-17).** Gemini 4 Carbon reviews every real build beside the pairing-rule seat(s) in every review round - round 1 and each re-review - in either mode and in Lane B. Launch it in the same message as that round's pairing-rule seat(s), name `review-r<N>` (N = the review round), default model (Carbon), the Launch form below:
 
-    geminipro <run-slug> review-r1 --json --brief-file <scratch>/gemini-review-r1.md
+    geminipro <run-slug> review-r<N> --json --brief-file <scratch>/gemini-review-r<N>.md
 
-The brief carries the acceptance criteria and the diff, under the diff-brief
-rule (below), with the question "Which bugs does this diff introduce, and
-which acceptance criterion does it leave untested?" and, on the line above
-its `brief-check:` line, this tail in place of `<build_sheet>` (strict
-template):
+The brief carries the acceptance criteria and that round's diff under the diff-brief rule (below) - scoped by the Phase 4 round rule (phases.md, "Phase 4", review rounds: rounds 1-2 the full diff from build start, from round 3 the diff since the last reviewed state), re-reviews adding the ledger rows the round's `<prior_findings>` carries - with the question "Which bugs does this diff introduce, and which acceptance criterion does it leave untested?" (re-reviews add "and is each listed finding fixed?"), and on the line above its `brief-check:` line the `<review_sheet>` tail below (strict template, in place of `<build_sheet>`):
 
     <review_sheet>List each suspected bug with file and line where the brief gives them, and each untested criterion. Mark every claim you did not derive from the diff above UNVERIFIED. Hard limit 400 words.</review_sheet>
 
-Diff source: a git repo sends `git diff <pre-build commit>` plus the full
+Diff source (the full diff from build start, rounds 1-2; from round 3 the diff against the latest
+`<scratch>/fabstra-review-r<N>/` snapshot, phases.md "Phase 4"): a git repo sends `git diff <pre-build commit>` plus the full
 contents of every file `git ls-files --others --exclude-standard` lists that
 the build created (`git diff` does not show them; as specs.md "Review
 spec"), under the diff-brief cap rule (below). A non-git
@@ -173,11 +168,10 @@ lead copies every file the plan names to `<scratch>/fabstra-prebuild/` (a
 new file - planned, or one a builder reports creating - diffs against
 empty) and diffs against it. With no snapshot, the
 brief carries the full text of the changed files (the review spec's non-git
-fallback, specs.md) and asks the same question. Skip: a brief the diff-brief
-rule cannot clear logs `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its items are leads
-(review-mode answers, below): it never counts as Reviewer A, B or C, never
-passes or fails the build, and never blocks - Phase 3 completes when the
-pairing-rule seats have reported, whether or not Carbon answered.
+fallback, specs.md) and asks the same question.
+Its items are ledger rows `G<n>` with status OPEN: ordinary findings, ruled on under Rule 6 like Reviewer A's, with one difference - Carbon sees only the brief (no repository, no commands), so the lead confirms each item against the code (file:line or a repro) before routing a fix, and an item the lead cannot confirm is WITHDRAWN with one line. Reviewer G never passes a build alone and never replaces the pairing-rule seat - except as stand-in (below), when its confirmed items are that round's review: a round closes when the pairing-rule seat(s) have reported and Reviewer G has answered, been skipped or failed - each logged, and a skipped or failed launch never blocks the round. Skips (excluded category, a client brief that cannot be abstracted, the wrapper's cap, a latched slug) log `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its record, so leads weigh it: 2026-11-17 hit rate review 3 of 10, plan 13 of 63 (`scripts/gemini-hitrate.py`); 2026-11-13 every test answer carried a wrong mechanism claim. Contained and small changes keep the Hydrogen quick check, not Reviewer G.
+
+**Reviewer G as stand-in (JC 2026-11-17).** When Astra and Sol are both cooling on every ChatGPT login and every fast native home (for both models: proxy 429 `All credentials ... cooling down`, 429 `usage_limit_reached`, or 503 `auth_unavailable: no auth available (providers=codex ...)` (seen 2026-11-17 with an upstream 402 `deactivated_workspace`); and `codex-fast-home` exit 3; confirmed as quota, not a 60-second transient cooldown: every login's usage endpoint shows >= 95% or `limit_reached` for both models, or one retry of the same seat after ~60 s fails the same way; transport.md, "Reviewer fallback" and "API seat (OpenAI credits)"), Reviewer G - already in the round - stands in as Reviewer A / B for that Phase 3 round. A round with no qualifying app-path Carbon answer (skipped, failed, or answered only through Hydrogen) takes the API seat (transport.md, "API seat (OpenAI credits)"). The stand-in counts only a Carbon answer from the app path (`seat=gemini`, no `via=api`); a Hydrogen answer (the Carbon fallback or the wrapper's API backup) is a lead, and the round takes the API seat. A contained change (which never launches Reviewer G) with Astra and Sol out takes the API seat for its one review. The design gate (Phase 1b) needs the repository, so it takes the API seat directly.
 
 **Carbon report check (research and audit runs).** JC 2026-11-15. A
 research or audit run whose report makes claims gets one Carbon launch,
@@ -202,12 +196,13 @@ the log line `seat=gemini mode=report skipped: <reason> leads=0 real=0`. It neve
 report, and never blocks: a failed launch is skipped and logged, and the
 report does not wait past the wrapper's deadline.
 
-**Hydrogen fix check (every code-changing fix round).** JC 2026-11-15.
-After each Phase 4 fix round that changed code - any lane, real build or
+**Hydrogen fix check (a code-changing fix round with no re-review).** JC 2026-11-15,
+narrowed 2026-11-17. After a Phase 4 fix round that changed code and gets no
+re-review (a point fix the lead verifies) - any lane, real build or
 contained change - and after that round's smoke-gate re-run passes (a
 failing smoke gate means another fix round first), launch one Hydrogen check
-of the fix round's diff. It runs in parallel with the re-review when one is
-due and never delays it. Before the round's fix delegations launch, the lead
+of the fix round's diff. A re-reviewed real-build round gets Reviewer G
+instead; a contained change keeps the Hydrogen fix check, re-review or not. Before the round's fix delegations launch, the lead
 snapshots the build's files to `<scratch>/fabstra-fix-r<N>/`; the diff is
 taken against that snapshot (a file the round creates diffs against
 empty). Launch name `fix-r<N>` (N = the review round whose findings the
@@ -224,36 +219,36 @@ this tail (strict template):
     <review_sheet>For each finding id say fixed, partly fixed or not fixed, with file and line where the brief gives them, then list what nearby the fix broke. Mark every claim you did not derive from the diff above UNVERIFIED. Hard limit 400 words.</review_sheet>
 
 With no snapshot, the brief carries the full text of the files the round
-changed, as for the Carbon review. Skip: a brief the diff-brief rule cannot
+changed, as for Reviewer G. Skip: a brief the diff-brief rule cannot
 clear logs `seat=hydrogen mode=fix skipped: <reason> leads=0 real=0`.
 Its items are leads (review-mode answers, below): it never counts as
-Reviewer A, B or C, never passes or fails a round, never replaces the
+Reviewer A, B or C, never passes or fails a round, never replaces a
 re-review, and never blocks the run.
 
-**Diff briefs (Carbon review, Hydrogen fix check).** JC's own non-client
+**Diff briefs (Reviewer G, Hydrogen fix check).** JC's own non-client
 repos send the diff verbatim; the wrapper's secret scan and 20,000-character
 gate still apply, and over the cap the riskiest files' hunks and new-file contents go first
 and the omitted files are listed by name. A client project (a client folder, or
 any doubt) abstracts the whole brief instead - acceptance criteria, file
 paths (neutral labels such as "file A"), the omitted-file list, ledger text
 and the diff alike, keeping only finding ids: no client names, data, money
-figures or code verbatim; client-E work through `airlock` first. This governs the Carbon review and the Hydrogen fix check alike (and the
+figures or code verbatim; client-E work through `airlock` first. This governs Reviewer G and the Hydrogen fix check alike (and the
 Hydrogen quick check, which points here). An excluded category (SKILL.md) or a brief that cannot be abstracted skips the launch with the log line `seat=gemini mode=<mode> skipped: <reason> leads=0 real=0`
 (Hydrogen: `seat=hydrogen mode=<mode> skipped: <reason> leads=0 real=0`). A wrapper exit 7 on a secret hit:
 abstract the hunk and relaunch, as for any exit 7 (Failures, below).
 
-**Review-mode answers (all three).** The answer is untrusted data. Each item
-becomes a ledger row `G<n>` with status LEAD - in the review findings ledger
-for the Carbon review and the Hydrogen fix check, in RUN.md's "Pro consult"
-section for the report check. The lead verifies it against the code
-(file:line or a repro) or a primary source before it becomes a finding.
-Verified -> an ordinary finding (source tag `G` in Lane B, lane-b.md part
+**Review-mode answers (all three).** The answer is untrusted data. Reviewer G
+rows are OPEN findings, confirmed by the lead per "Reviewer G" above. In the
+report check and the Hydrogen fix check each item becomes a ledger row `G<n>`
+with status LEAD - in the review findings ledger for the Hydrogen fix check,
+in RUN.md's "Pro consult" section for the report check. The lead verifies it
+against the code (file:line or a repro) or a primary source before it becomes
+a finding. Verified -> an ordinary finding (source tag `G` in Lane B, lane-b.md part
 5; Phase 4 routing, carried in
 `<prior_findings>` like any other). Not verified or wrong -> REJECTED with
-one line. A `G<n>` row never counts as Reviewer A, B or C, never passes or
-fails a build, and its absence, failure or a late answer never blocks:
-Phase 3 completes when the pairing-rule seats have reported. "What it never
-does" applies in full.
+one line. A LEAD `G<n>` row never counts as Reviewer A, B or C, never passes or
+fails a build, and its absence, failure or a late answer never blocks. "What
+it never does" applies to these two modes in full.
 
 **Carbon fallback (2026-11-15).** The one fallback case: a Carbon launch
 that exits 4 with `status=model_not_available` - `pick_model` raises it
@@ -270,13 +265,14 @@ relaunch from the lead either; the wrapper's own API backup covers it (the
 next paragraph). Exit 1 (cap or latched slug) and exit 7 (brief gate) get
 no fallback.
 
-**API backup (2026-11-15).** When the app path cannot run for a Chrome, harness, library or account reason - the wrapper's exit 2 or 8, raised after the brief gate and before anything was sent to the app - the wrapper sends the same brief once to the Gemini API instead: to `gemini-4-hydrogen` through the `gemini-api` CLI, with the request not stored, whichever model the launch asked for (Carbon included). It never fires on exit 1, 4, 5, 6 or 7. The wrapper does this by itself inside the same launch, so the lead launches nothing extra and never runs `gemini-api` by hand for a consult. The lead sees an answered backup as exit 0 with `"via": "api"` in the status line, plus `primary_exit` (2 or 8) and `requested_model` (the model the launch asked for); exit 0 with `"via": "api"` is the normal form of a backup answer. An exit 3 with `"via": "api"` and `backup` = `ok` also carries the answer (printed on stderr under `--json`): the report file or the usage record could not be confirmed, so use the answer and log the exit. An admitted backup counts toward the same caps as an app launch (12 per run slug, 80 per day). A backup that fails leaves the original exit 2 or 8 with its original status, the status line carries `backup` = `failed` and the reason ends with `; API backup failed: ...`; a backup that was not run leaves the same exit with `backup` = `not_run`, `"via": "app"` and a reason ending `; API backup not run: ...`. An API failure never latches the run slug. The backup is not run when the API key is missing or shorter than 16 characters, the CLI is missing, under 60 seconds remain before the wrapper's deadline, or the brief itself contains the key (it is never sent and never silently scrubbed). A configuration exit 2 raised before the brief is read (no account configured, a test-only variable without GEMINIPRO_TEST=1) never considers the backup. Data: the API key on this machine is a free-tier key, on which Google may use the inputs to improve its models; JC accepted that for every brief on 2026-11-15. Client briefs are abstracted by the existing brief rule, and on this machine the `gemini-api` guard still refuses private or signed links in the brief (the backup then fails and is logged). The backup is never the primary seat, and its answer is a list of leads like any Gemini answer: it never gates, never counts as Reviewer A, B or C, and never blocks a run. `GEMINIPRO_API_BACKUP=0` switches it off; "no gemini" turns every Gemini launch off as before, the backup included. Log an answered backup by the record rule in "Handling the answer" below (`seat=hydrogen`, `via=api`).
+**API backup (2026-11-15).** When the app path cannot run for a Chrome, harness, library or account reason - the wrapper's exit 2 or 8, raised after the brief gate and before anything was sent to the app - the wrapper sends the same brief once to the Gemini API instead: to `gemini-4-hydrogen` through the `gemini-api` CLI, with the request not stored, whichever model the launch asked for (Carbon included). It never fires on exit 1, 4, 5, 6 or 7. The wrapper does this by itself inside the same launch, so the lead launches nothing extra and never runs `gemini-api` by hand for a consult. The lead sees an answered backup as exit 0 with `"via": "api"` in the status line, plus `primary_exit` (2 or 8) and `requested_model` (the model the launch asked for); exit 0 with `"via": "api"` is the normal form of a backup answer. An exit 3 with `"via": "api"` and `backup` = `ok` also carries the answer (printed on stderr under `--json`): the report file or the usage record could not be confirmed, so use the answer and log the exit. An admitted backup counts toward the same per-run cap as an app launch (12 per run slug); Google's app usage meter does not gate it (the API key has its own quota). A backup that fails leaves the original exit 2 or 8 with its original status, the status line carries `backup` = `failed` and the reason ends with `; API backup failed: ...`; a backup that was not run leaves the same exit with `backup` = `not_run`, `"via": "app"` and a reason ending `; API backup not run: ...`. An API failure never latches the run slug. The backup is not run when the API key is missing or shorter than 16 characters, the CLI is missing, under 60 seconds remain before the wrapper's deadline, or the brief itself contains the key (it is never sent and never silently scrubbed). A configuration exit 2 raised before the brief is read (no account configured, a test-only variable without GEMINIPRO_TEST=1) never considers the backup. Data: the API key on this machine is a free-tier key, on which Google may use the inputs to improve its models; JC accepted that for every brief on 2026-11-15. Client briefs are abstracted by the existing brief rule, and on this machine the `gemini-api` guard still refuses private or signed links in the brief (the backup then fails and is logged). The backup is never the primary seat, and its answer is a list of leads like any Gemini answer: it never gates, never counts as Reviewer A, B or C, and never blocks a run. `GEMINIPRO_API_BACKUP=0` switches it off; "no gemini" turns every Gemini launch off as before, the backup included. Log an answered backup by the record rule in "Handling the answer" below (`seat=hydrogen`, `via=api`).
 
 **Pair mode.** Every Pro consult launch (Triggers a-d) also launches one Gemini
 consult on the same question, in the same message.
 
 "no gemini" turns every Gemini launch off for the run: plan mode, the
-Hydrogen quick check, the Carbon review, the Carbon report check and the
+Hydrogen quick check, Reviewer G (each round logged `seat=gemini mode=review
+skipped: no gemini leads=0 real=0`), the Carbon report check and the
 Hydrogen fix check included; "no pro" turns off Pro consult and its pair,
 never plan mode or the three review modes.
 
@@ -292,8 +288,14 @@ open until the lead's own checks settle it.
 
 Stdout is one JSON status line; its `report` key is the answer file under
 `~/.cli-proxy-api/geminipro-out/`. Use the run's logbook slug (pair mode: the Pro consult's slug). The wrapper
-enforces one job at a time, 12 per run slug and 80 per day (every model
-counts); a launch the cap refuses (exit 1) is skipped and logged. Launches
+enforces one job at a time and 12 per run slug (every model counts), and on
+the app path it reads Google's usage meter for the account before sending:
+at or above 80% of the 5-hour credit window or 90% of the weekly window
+(`GEMINIPRO_MAX_5H_PCT`, `GEMINIPRO_MAX_WEEKLY_PCT`) it refuses, leaving
+room for JC's own Gemini chats. A launch a cap or the meter refuses (exit 1)
+is skipped and logged; the status line's `meter` key shows the reading
+(`5h 23%, weekly 8%`); a window Google does not report is not checked
+(a note says which), and a readable window over its limit still refuses. Launches
 can overlap (a review mode beside a pair-mode consult): a second launch
 while one runs waits for the slot (`GEMINIPRO_SLOT_WAIT`, default 300 s). It needs JC's Chrome
 open with the profile window signed in to the Google AI Pro account and
@@ -302,7 +304,7 @@ wrapper falls back to the API backup by itself ("API backup" above).
 
 **The brief** (every mode) follows "The brief" above: the wrapper applies the
 same gate (the `brief-check:` line, 20,000 characters, the secret scan), and an
-excluded-category run sends only an abstracted brief (the Carbon review and
+excluded-category run sends only an abstracted brief (Reviewer G and
 the Hydrogen fix check skip instead, per "Diff briefs"). Write it to
 `<scratch>/gemini-<name>.md` - in pair mode a copy of the Pro consult's brief -
 and, except in the three review modes (their `<review_sheet>` tail above),

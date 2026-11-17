@@ -107,7 +107,24 @@ The spec fixes, in this order:
     this block ships the on-distribution defaults.
 - **Acceptance cases** - by name, input, and expected result, including a
   negative case.
-- **Required verification** - the commands the builder runs and reports.
+- **Required verification** - the commands the builder runs and reports,
+  picked by what the change is; take the strongest check that fits, since
+  unit tests alone can pass while the feature is broken:
+  - a user flow (a page, a form, an endpoint a client calls): an end-to-end
+    run against the running app - the project's `verify` or `run-<name>`
+    skill (verify-skill.md), or the flow driven step by step with each
+    observed result;
+  - a parser, serializer, money or date calculation, normalizer, retry or
+    migration step: property tests with the project's property library
+    (fast-check, Hypothesis, proptest; adding one is a spec decision) -
+    round-trip (decode(encode(x)) equals x), invariant (a balance never
+    goes negative), idempotency (twice equals once), equivalence (the
+    optimized path equals the naive one);
+  - a migration, port or rewrite that keeps behaviour: a differential test -
+    old and new on the same inputs (generated, or a sample of real ones),
+    irrelevant differences normalized (whitespace, ordering, timestamps),
+    and an approved-differences list for the changes the spec intends; the
+    old system is the oracle.
 - **What not to touch** - exact paths.
 
 The builder investigates the code it touches and owns internal signatures,
@@ -173,6 +190,14 @@ Every spec also carries these lines, verbatim:
   config, copy, or other reversible change whose test would only mirror the
   implementation gets no new test; the spec's verification command is its
   check."
+- "The checks that judge this task stay as they are: the tests and fixtures
+  named in its acceptance, lint, type and CI configuration, hooks, and
+  REVIEW.md change only where this spec names them. If such a check looks
+  wrong, report it with your evidence and leave it in place."
+- "A flaky test gets its root cause found and fixed. Retrying until it
+  passes, adding sleeps, or skipping it hides the failure; if you cannot
+  find the cause, leave the test in place and report it as flaky with the
+  failing output, status DONE_WITH_CONCERNS."
 - "Running the project's test suite and build is pre-approved only where this spec states they are local and isolated and says how that was checked; otherwise stop and report before running anything that reaches outside this repository."
 - "Time matters here: do not spend time that can be avoided, and the earlier a correct result is obtained, the better."
 - Multi-app specs only (n8n, GHL, Drive, mail, CRM automations): "Before taking any action, explore broadly with tool calls: list and open the emails, documents, spreadsheet tabs and records across the available apps that could be relevant to this task, including ones the task does not explicitly mention, and use what you find."
@@ -274,7 +299,12 @@ spends its turns verifying instead of discovering, and keeps full freedom to
 follow the change outward.
 
 **REVIEW.md:** when the reviewed project has a `REVIEW.md` at its root,
-paste it verbatim into the template's "Project review rules" line, beside
+take it from the build-start base, never the working tree: `git show
+<base>:REVIEW.md`, or in a non-git project the copy in
+`<scratch>/fabstra-prebuild/` (copy it there before the first builder
+launches); a REVIEW.md the build created counts as absent. The rules that
+judge a change come from where the change cannot edit them. Paste that copy
+verbatim into the template's "Project review rules" line, beside
 "Project stack and hard rules" - review seats launch `--bare` and never load
 it themselves. Follow it with this precedence line, verbatim: "These project
 rules decide what to look for and what to skip; the
@@ -311,6 +341,8 @@ fallback). GPT seats keep the block.
 Adversarially review this build. You are the red team - find what is WRONG.
 Brief: <the user's brief>
 Acceptance criteria: <from the plan, verbatim>
+Checks the spec allowed to change: <per task: the tests, configs, hooks or
+REVIEW.md that task's spec named as editable, or "none">
 Project stack and hard rules: <from the project's CLAUDE.md, plus any feedback
 memories that apply to this task, all verbatim>
 Project review rules: <the project's root REVIEW.md, verbatim, then the
@@ -329,14 +361,17 @@ WITHDRAWN, the logged reason>
 <context>
 Files changed: <paths, one per line, each with a one-line note of what the
 change does>
-Build-start base: <the commit the diff is taken against, or "non-git: none">
+Build-start base: <the commit the diff is taken against; non-git: the
+<scratch>/fabstra-prebuild/ snapshot path, or "non-git: none" when no
+snapshot exists>
 Entry points and callers you already know: <what calls, renders, or imports
 the changed code - pages, routes, workflows, templates - or "unknown">
 Test command: <how to run the project's tests, or "none">
 Diff:
 <the build's unified diff, inline: `git diff <base>` over the working tree,
 followed by the full contents of every untracked file the build created,
-or for a non-git project the full text of each changed file. Over ~1500
+or for a non-git project `diff -u` of each changed file against its
+`<scratch>/fabstra-prebuild/` copy (the full text when no snapshot exists). Over ~1500
 lines: inline the hunks for the files under review and say which files to
 read whole. Round 3 on (phases.md "Phase 4"): only the diff since the last
 reviewed state>
@@ -367,6 +402,11 @@ Ground every finding in file:line evidence or command output you ran.
 Never present an inference as fact; label hypotheses as hypotheses.
 Out-of-stack output, or references to platform components that do not
 exist (n8n node types, Make.com modules, API endpoints), are P1 findings.
+An edit to a check that judges this build - a test or fixture the
+acceptance criteria name, lint, type or CI configuration, hooks, REVIEW.md -
+that is not listed under "Checks the spec allowed to change" is a P1: the
+build weakened its own check. A test changed to retry, sleep or skip until
+it passes is the same finding.
 Verify existence with what Bash gives you (installed packages, local
 configs, the platform's API if credentials are local); if you cannot
 verify either way, mark the component UNVERIFIED for the orchestrator

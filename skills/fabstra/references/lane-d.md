@@ -75,12 +75,21 @@ window is the problem, say so instead of burning it.
 **Reviewer rule (2026-11-15).** Every proxy seat is GPT, so no cross-family
 proxy reviewer exists. The reviewer is the stripped-env headless Fable
 command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
-a build in an excluded category), logged `login: claude`. If the Claude
-window is the problem: a fresh-context `model-router:astra-routed` review
-(same family - say so in the report) plus the Hydrogen quick check on the
-diff (pro-consult.md, "Gemini consult - the build-sheet seat"). Excluded
-work with no Claude window -> stop and tell the user rather than ship
-unreviewed.
+a build in an excluded category), logged `login: claude`. Fable unavailable:
+`pool/claude-fable-5-2` (a client's work: `client-<slug>/claude-fable-5-2`
+with its own `client-<slug>: usable` line, haiku mapping on the same prefix)
+headless on the credits pool at the same effort with the read-only flags above
+(8318 is Anthropic's own API on JC's key, not the banned subscription proxy
+route; plain terminal or scheduled launch and a usable pool only;
+transport.md, "Claude on credits seat (pool)"). Otherwise, on a Fable limit:
+the stripped-env headless `claude -p --model claude-opus-5-5` on the Claude
+login (never 8317), same flags, logged `login: claude`; when the Claude window
+is the problem: a fresh-context `model-router:astra-routed` review (same
+family - say so in the report) plus the Hydrogen quick check on the diff
+(pro-consult.md, "Gemini consult - the build-sheet seat"). Excluded work with
+no Claude seat (pool dry and, on a Fable limit, no Opus; or the Claude window
+is the problem) -> stop and tell the user rather than ship unreviewed;
+`astra-routed` never reviews excluded work alone.
 
 **What does not change.** All five gates still apply, the logbook is still
 `.fabstra/RUN.md`, and the excluded categories (SKILL.md, Excluded categories)

@@ -52,7 +52,7 @@ move up after empty review on doubt.
 Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a
 re-review after a P1, unless pinned ("sol high"/"quick review" = high). Astra and Sol share pools (quota.md);
 Sol row is time/fit not budget: spend Astra on hard plans (fast pin: quota.md).
-Gemini seats (Hydrogen quick check, Carbon review, Carbon report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
+Gemini seats (Hydrogen quick check, Reviewer G, Carbon report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
 
 ## The five gates
 
@@ -100,14 +100,12 @@ runs, do not build; prepare test names and the review-spec skeleton.
 - **Schedule by READINESS, not by owner:** a task is ready when its whole DEPENDS ON chain has landed and none of it is blocked on the user. The first message launches every ready CODEX task as one job beside your first ready BUILDER work; the rest go out as their chains complete (later CODEX tasks as their own jobs). Disjoint files are not the same as no run-time dependency.
 - **Reports:** handle the status per phases.md "Phase 2 - status handling"; verify with targeted slices - DONE is a claim until you have seen the
   output; NEEDS_CONTEXT gets a REVISED spec as a fresh job.
-- **Smoke gate:** when every task has landed, run the project's real build
-  and test suite once (one Bash call) where the plan states they are local
-  and isolated; otherwise run only the read-only checks and say so. A change
-  a user or client sees also runs the project's recorded run recipe
-  (`.claude/skills/run-<name>/SKILL.md`, invoked by its own name or through the bundled `run` skill) against
-  the running app, and the report cites what was observed there, not only
-  the test line; no recipe in the folder -> say so and name it as a
-  follow-up. A broken smoke gate means fixes now,
+- **Smoke gate:** when every task has landed, run phases.md "Phase 2"
+  smoke gate in full: the real build and test suite once where the plan
+  states they are local and isolated (else the read-only checks, said so);
+  for a change a user or client sees, the project's `verify` skill or run
+  recipe against the running app, with what you observed; and the diff of
+  the checks that judge the build. A broken smoke gate means fixes now,
   before any review.
 
 ### Gate 4 - Verify before declaring done
@@ -148,7 +146,7 @@ runs, do not build; prepare test names and the review-spec skeleton.
   finding, the command you ran, its output, your reading); its answer is
   advice, and you rule. The report lists every finding as FIXED, WITHDRAWN (by you
   with the logged reason, or by the reviewer), or ESCALATED to the user.
-  Fix-every-instance sweep, PRE-EXISTING routing, and review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line): phases.md "Phase 4".
+  Fix-every-instance sweep, PRE-EXISTING routing, review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line), the commit stamp and the REVIEW.md rule proposals: phases.md "Phase 4".
 - **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by
   default, the Claude column when Codex is blocked or the fix needs the
   Claude harness; the Claude column takes its seat from that table and the rules in "Claude seat efforts". A multi-file fix goes to a fresh subagent even on an Opus session. A Codex-column fix
@@ -165,7 +163,8 @@ runs, do not build; prepare test names and the review-spec skeleton.
 - **Smoke gate after every code-changing fix round**, whether or not a
   re-review follows. Two rounds on the same finding is the ceiling; an open
   count that did not go down means the diagnosis is wrong - back to Gate 3,
-  re-spec, do not re-send.
+  re-spec, do not re-send. A third failed round goes to the user (phases.md
+  "Phase 4").
 - Smells: you dropped a finding without a logged line, or applied one
   unread.
 

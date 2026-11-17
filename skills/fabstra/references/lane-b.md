@@ -66,7 +66,11 @@ first, run it to see it fail, implement until it passes. Do not ask
 questions - decide, and list every assumption in the design file. Return
 NEEDS_CONTEXT only when the brief contradicts the repository. A pre-existing
 bug or an unrequested extension goes in your report as a follow-up, not in
-the change. Report in 8 lines or fewer, ending with exactly one status: DONE
+the change. The checks that judge the build (the tests the brief names,
+lint, type and CI configuration, hooks, REVIEW.md) stay as they are unless
+the brief names them. A flaky test gets its root cause fixed; retrying,
+sleeping or skipping hides the failure, so one you cannot fix stays in place
+and goes in your report. Report in 8 lines or fewer, ending with exactly one status: DONE
 / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED - plus changed paths, the
 verification commands you ran this session, and the tail of their output,
 and one line reading exactly `delegation: none` or `delegation: <N> Agent
@@ -94,6 +98,10 @@ seat (part 4).
 **2. Launch (one Bash call, `run_in_background: true`, timeout 3400000 (above the child's `timeout 3300`; see transport.md, design call), cwd =
 the project directory).** Run `proxy-pin status` and note it in the logbook;
 the standing pin is `both` and this lane never changes it.
+Before the launch, a non-git project copies its judging checks (the tests and
+fixtures, lint, type and CI configuration, hooks) and REVIEW.md to
+`<scratch>/fabstra-prebuild/`: the base for part 3's judging-checks diff and
+part 4's reviewer diff.
 If it reads `team`, log that and continue - every login except the Pro one
 still serves Astra. Then:
 
@@ -142,7 +150,9 @@ reset (each account's `chatgpt.com/backend-api/codex/usage` gives the time).
 **3. Smoke gate (you).** When the report lands, verify it in one batched Bash
 call of targeted slices (rule 3: context budget), confirm
 `.fabstra/DESIGN-<name>.md` exists and names every changed file, then run
-the project's real build and test suite once. A broken gate goes back to
+the project's real build and test suite once, plus phases.md "Phase 2"
+smoke gate's app check (the verify skill, else the run recipe, and the
+verify-skill offer when none exists) and its judging-checks diff. A broken gate goes back to
 the solo builder (Astra, or Sol once Astra is out) as a fix round (part 5),
 not to the reviewer.
 
@@ -156,7 +166,8 @@ findings file: substitute `fabstra-review-findings-sol.md` and
 `fabstra-review-findings-fable.md` for the spec's `fabstra-review-findings.md`
 so parallel saves never overwrite each other. Front-load each spec's
 `<context>` block with the diff (`git diff <base>` plus every untracked
-file's contents, or full file text for a non-git project) and the full text
+file's contents; a non-git project: the diff against `<scratch>/fabstra-prebuild/`
+for the files copied there (part 2) plus the full text of every other changed file) and the full text
 of `.fabstra/DESIGN-<name>.md`, so both grade the code against the design
 the builder committed to. Neither reviewer sees the other's report. Astra
 never reviews its own solo build; Astra's reviewer seat is for Lane A only.
@@ -168,18 +179,19 @@ Sol-authored code. Wherever parts 5 and 6 say "the reviewers" or "the active
 set", they mean this set as it stands, recomputed after every round. Two
 reviewers cost twice the review time and quota; that is the user's choice
 (2026-09-05) for this lane, do not skip one to save time. Log the seats,
-their durations, and why any seat was skipped. In round 1 only, launch the
-Carbon review (pro-consult.md, "Gemini consult - the build-sheet seat") in
-the same message as Reviewers B and C; it sits outside the active set, its
-items are `G<n>` leads you verify (never B or C; a verified one is tagged
-`G`, part 5), and it never blocks.
+their durations, and why any seat was skipped. In every round, launch
+Reviewer G (Carbon; pro-consult.md, "Reviewer G") in the same message as
+Reviewers B and C; it sits outside the active set, its rows are `G<n>`
+findings ruled like B's and C's once you confirm each against the code (an
+unconfirmed one is WITHDRAWN with one line; a confirmed one is tagged `G`,
+part 5), and a skipped or failed launch never blocks.
 
 **5. Fix rounds and agreement (the solo builder fixes its own design).** The
 SOLO BUILDER is Astra, or Sol once Astra is out under the quota rule. The
 logbook's findings ledger - not any model's report - is the record of
 agreement. (a) Merge: collapse duplicates (same file and defect), tag every
-finding by source - B, C, `G` (a Gemini `G<n>` lead you verified;
-pro-consult.md, "Review-mode answers"), or a combination such as B+C or
+finding by source - B, C, `G` (a Reviewer G `G<n>` row you confirmed;
+pro-consult.md, "Reviewer G"), or a combination such as B+C or
 B+G - and enter each in the ledger as OPEN. Do not
 pre-filter: the lead may WITHDRAW a finding at any stage with one logged line of reason; unanimity is not required. (b) Send
 every open finding to the solo builder, verbatim, tagged, and with its bug class, in a new brief:
@@ -208,7 +220,7 @@ with `disable-model-invocation`, a Claude-only MCP tool); log it. It is
 re-reviewed like any other change, by the active set - Sol reviewing
 Claude-written code is a cross-family check, so the set does not shrink for
 it. (e) Re-run the smoke gate after every code-changing round, then re-run
-the ACTIVE REVIEWER SET (part 4, recomputed) on the changed files; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation (c) and (f) wait for. Once the smoke gate passes on a code-changing round, launch the Hydrogen fix check (pro-consult.md; snapshot before the fix brief launches) beside the re-review, never delaying it; its `G<n>` leads never confirm a fix. (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed by the re-review), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; both reviewer seats still run, and every code-changing round is still re-reviewed by the active set. A taste-only finding against the Design block is WITHDRAWN by the
+the ACTIVE REVIEWER SET (part 4, recomputed) on the changed files; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation (c) and (f) wait for. Reviewer G runs in each re-review (part 4); its rows never confirm a fix. A code-changing round with no re-review gets the Hydrogen fix check instead, once its smoke gate passes (pro-consult.md; snapshot before the fix brief launches). (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed by the re-review), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; both reviewer seats still run, and every code-changing round is still re-reviewed by the active set. A taste-only finding against the Design block is WITHDRAWN by the
 orchestrator with one line (the arbitration rule in phases.md) and never goes
 back to the solo builder; a feasibility finding against it is handled like
 any other. An ESCALATED finding blocks shipping until the user rules.
@@ -221,5 +233,6 @@ still-open item is ESCALATED.
 and effort, the smoke-gate result, both reviewer seats and their durations
 (or why one was skipped), agreement reached yes/no, findings by source (B,
 C, `G`, or a combination such as B+C or B+G) with each marked FIXED, WITHDRAWN, or ESCALATED, whether the proxy pin
-was restored, and anything open.
+was restored, and anything open. The commit stamp and the REVIEW.md rule
+proposals of phases.md "Phase 4" apply to Lane B as written there.
 

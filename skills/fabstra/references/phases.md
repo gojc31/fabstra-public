@@ -12,7 +12,8 @@ Related:
 
 **Hard rule:** Claude subagents run through the Agent tool on this session's
 normal login - never through the proxy (Anthropic's terms ban subscription
-OAuth in third-party tools). Astra and Sol reach this machine only through
+OAuth in third-party tools; the credits pool on 8318 is Anthropic's own API on JC's
+key, not that banned route, so its headless `pool/` seats are allowed - transport.md). Astra and Sol reach this machine only through
 every ChatGPT login in the local proxy (CLIProxyAPI, port 8317, serving
 `gpt-6-astra`, `gpt-6.1-sol` and `gpt-6-luna`; native Codex
 needs CLI 0.159.2+). The
@@ -57,6 +58,7 @@ Reviewer C the CODEX tasks and every seam with the BUILDER tasks; each
 acceptance criterion goes to exactly one reviewer (lead-mode.md, the review
 gate, has the wording). A contained change (Phase 1) has no gate seat and
 takes one review: Claude built -> Sol high; Codex side built -> fresh Fable.
+Every real-build review round also runs Reviewer G (Gemini Carbon) beside the pairing-rule seat(s) (pro-consult.md, "Reviewer G").
 Fix rounds are different: the Codex column may fix a Claude build (Phase 4
 default), and the re-review rule there handles the family change. The
 orchestrator never builds under any pairing; Fable 5.2 never builds at all.
@@ -355,7 +357,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   budget-crew ask runs Lane A, and the report says the budget crew is
   retired (2026-11-15).
 - Pro consult (pro-consult.md), advisory, under its cap and unless JC said "no pro": launch it for a research or audit run whose report makes claims,
-  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan, and in three advisory review modes - the Carbon review beside Phase 3 round 1 of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), the Carbon report check of a research or audit report, the Hydrogen fix check after each code-changing fix round (pro-consult.md).
+  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan; Reviewer G (Carbon) reviews in every review round of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), and two advisory review modes run - the Carbon report check of a research or audit report, the Hydrogen fix check after a code-changing fix round that gets no re-review (pro-consult.md).
 - A brief that already states the goal and what done looks like needs no
   question round: restate done in one line and go to the plan. Otherwise
   open with one batched round aimed at the real gaps - scope, constraints,
@@ -500,7 +502,7 @@ same seat, the second goes one step up, each with the evidence attached.
 whose concern you judged acceptable and logged), run the project's real
 build and test suite once (one Bash call) where the plan states they are
 local and isolated and says how that was checked; otherwise run only the
-read-only checks and log that the real suite needs the user's approval. A change a user or client sees also runs the project's recorded run recipe (`.claude/skills/run-<name>/SKILL.md`, invoked by its own name or through the bundled `run` skill) against the running app, and the report cites what was observed there, not only the test line; no recipe in the folder -> log it and name it as a follow-up. Self-checks pass in isolation while
+read-only checks and log that the real suite needs the user's approval. A change a user or client sees also runs the change itself against the running app: the project's `verify` skill (`.claude/skills/verify*/SKILL.md`, the one nearest the changed code), else its recorded run recipe (`.claude/skills/run-<name>/SKILL.md`, invoked by its own name or through the bundled `run` skill); the report cites what was observed there, not only the test line. No `verify` skill in the folder -> log it and offer the durable version as a follow-up option for JC's go: a `verify` skill for that project, built on its run recipe when one exists (verify-skill.md). The gate also diffs the checks that judge the build - the tests and fixtures named in acceptance, lint, type and CI configuration, hooks, REVIEW.md - against the build-start base (non-git: `<scratch>/fabstra-prebuild/`, where the lead copies these checks beside the plan's files before the first builder launches); an edit the spec did not name goes back as a fix delegation before any review (specs.md, "The checks that judge this task" line). Self-checks pass in isolation while
 the merge breaks - the documented failure mode of parallel builds. A broken
 smoke gate means fix delegations now: a reviewer is too expensive to spend
 discovering what a build command finds for free. Log the result.
@@ -539,6 +541,12 @@ discovering what a build command finds for free. Log the result.
   Two rounds on the same finding is the hard ceiling either way.
 - On that ceiling, before re-diagnosing, launch one Pro consult on the failure
   evidence (pro-consult.md); it advises, it does not replace the re-diagnosis.
+- **Third failed round -> JC.** When the re-diagnosed, re-specced attempt
+  also fails its check - a third round on the same finding, or a smoke gate
+  still red after three fix rounds - stop fixing. The failing check, the
+  three attempts with their evidence, and your best theory go to JC as a
+  decision (decision-page.md). A check that survives three rounds is the
+  signal that a person needs to look.
 - Re-run the reviewer when fixes touched more than one file or resolved any
   P1 - the same reviewer seat the pairing rule gave the build, unless the
   fixes moved the build across the pairing line (Codex-column fixes on a
@@ -551,7 +559,7 @@ discovering what a build command finds for free. Log the result.
   Review spec). Rounds 1-2 keep the Phase 3 scope rules (`scope=full`). From
   round 3 (`scope=diff`) the `<context>` carries only the diff since the
   last reviewed state plus `<prior_findings>`, and `<review_scope>` takes
-  its round-3 text from the template. For that diff, snapshot the build's
+  its round-3 text from the template. Reviewer G's brief takes the same scope (pro-consult.md, "Reviewer G"). For that diff, snapshot the build's
   files to `<scratch>/fabstra-review-r<N>/` as each review launches and diff
   the next round against the latest snapshot. A `REOPENED: <id>` line sets
   that FIXED row back to OPEN under its own id; it stays the same finding,
@@ -561,11 +569,11 @@ discovering what a build command finds for free. Log the result.
   follows; individually verified fixes are where integration regressions
   hide, and the reviewer is not the smoke gate. Log the result.
 - Hydrogen fix check (pro-consult.md, "Gemini consult - the build-sheet
-  seat"): before each fix round's delegations launch, snapshot the build's
+  seat"), only on a fix round that gets no re-review (a re-reviewed real-build
+  round gets Reviewer G instead; a contained change keeps the Hydrogen fix check): before its delegations launch, snapshot the build's
   files to `<scratch>/fabstra-fix-r<N>/`; once that round changed code and
   its smoke-gate re-run passed, launch `fix-r<N>` (Hydrogen) on the round's
-  diff and the findings it fixed, in parallel with any re-review and never
-  delaying it. Its items are `G<n>` leads you verify; it never counts as a
+  diff and the findings it fixed. Its items are `G<n>` leads you verify; it never counts as a
   reviewer, never passes or fails the round, never blocks.
 - Advisor off: on an `advisor=fable|opus` run logged `advisor-wrote=yes`,
   once the last builder has landed, run the switch-off and its status read
@@ -575,6 +583,19 @@ discovering what a build command finds for free. Log the result.
   `off` (advisor.md, the ownership re-check). After
   that, seats get the status read only, never `on`; a fix round that needs a
   builder again re-enters the build phase through the switch-on path.
+- **Commit stamp.** A commit JC approves carries one line in its message
+  body naming how it was verified: `Verified: <smoke-gate command and
+  result>; review: <rounds and seats>`, or `Verified: none - <reason>` when
+  nothing ran, so `git log --grep "Verified: none"` finds every unverified
+  commit.
+- **Misses become rules.** For each accepted P1 or P2 whose bug class a
+  reviewer can spot from a diff alone, the report file proposes one
+  candidate REVIEW.md rule: trigger (what in a diff), check (what to
+  verify), source (run slug and finding id). Grep the folder's
+  `.fabstra/REPORT*.md` for the class first: a class an earlier report
+  already proposed is marked as the strong case. JC's go writes the rule
+  (Orchestrator rule 8); a project with no REVIEW.md gets the file
+  proposed.
 - Report briefly, for a reader who did not watch the run: in chat the short
   report in decision-page.md (at most 6 lines, needs-you first: decisions
   left open, approvals, commands only the user can run such as commits,

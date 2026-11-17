@@ -56,8 +56,8 @@ Floor high for user- or client-run work; a user effort word pins every Astra/Sol
 - **1 Plan** - lane, done, tasks with tier and acceptance, real/contained/small, a go (phases.md).
 - **1b Design gate** (real builds) - the gate seat reads plan, specs, repo before build (specs.md, transport.md).
 - **2 Build** - one delegation per task by tier; smoke gate when all land. Smoke gate fails -> fix by tier, re-run; no review until it passes.
-- **3 Review** (real; contained: one) - diff first, then the pairing-rule seat: Claude built -> gate seat; Codex built -> fresh Fable; xhigh row adds a parallel fresh Fable (phases.md; crew, fallbacks: transport.md). Real builds: Carbon review of the diff beside round 1 (advisory, pro-consult.md).
-- **4 Fix and ship** - fix by tier, smoke gate per code round, then the Hydrogen fix check; re-reviews carry prior findings, diff-only from round 3 (phases.md). Open findings not down after a round, or two rounds on one finding -> back to 1: re-diagnose, re-spec, one seat up. Report: short; ask JC via AskUserQuestion, no Artifact page (decision-page.md). Separate verified from assumed, out loud, and say where you looked.
+- **3 Review** (real; contained: one) - diff first, then the pairing-rule seat: Claude built -> gate seat; Codex built -> fresh Fable; xhigh row adds a parallel fresh Fable (phases.md; crew, fallbacks: transport.md). Real builds: Reviewer G (Carbon) reviews every round beside it (pro-consult.md).
+- **4 Fix and ship** - fix by tier, smoke gate per code round, Hydrogen fix check if no re-review; re-reviews carry prior findings, diff-only from round 3 (phases.md). Open findings not down after a round, or two rounds on one finding -> back to 1: re-diagnose, re-spec, one seat up; a third failed round -> JC. Report: short; ask JC via AskUserQuestion, no Artifact page (decision-page.md). Separate verified from assumed, out loud, and say where you looked.
 
 ## Lanes
 

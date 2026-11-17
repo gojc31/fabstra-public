@@ -44,9 +44,11 @@ Lead mode the lead launches and verifies each one.
 - Hydrogen quick check: small change -> on the diff after the build;
   contained change -> on its RUN.md plan before the build; advisory, never
   replaces the contained change's Sol review.
-- Carbon review: every real build, in the same message as the round-1
-  review gate seat(s); never on a contained or small change or a re-review.
-  It never closes the review gate. A git repo sends the diff against the
+- Reviewer G (Carbon): every real build, in the same message as the review
+  gate seat(s) of every review round (round 1 and each re-review); its rows
+  are OPEN findings you confirm against the code; pro-consult.md, "Reviewer G". Round scope: phases.md "Phase 4" (rounds 1-2
+  the full diff from build start, from round 3 the diff since the last reviewed
+  state). The full diff: a git repo sends the diff against the
   pre-build commit plus the build's new untracked files
   (`git ls-files --others --exclude-standard`); a non-git project copies the
   plan's files to `<scratch>/fabstra-prebuild/` before the first build starts.
@@ -54,11 +56,13 @@ Lead mode the lead launches and verifies each one.
   gets one, after the draft and before the report file and the chat report;
   each item is checked against a primary source and logged in RUN.md's
   "Pro consult" section.
-- Hydrogen fix check: after each code-changing fix round's smoke-gate
-  re-run passes, on that round's diff (snapshot before the fixes launch),
-  beside any re-review, never delaying it.
-- Their items are `G<n>` leads you verify before they become findings;
-  never Reviewer A/B/C, never a pass/fail, never a blocker.
+- Hydrogen fix check: only on a code-changing fix round that gets no
+  re-review, after its smoke-gate re-run passes, on that round's diff
+  (snapshot before the fixes launch); a re-reviewed real-build round gets
+  Reviewer G instead; a contained change keeps the Hydrogen fix check.
+- Reviewer G rows are OPEN findings (above). The other seats' items are
+  `G<n>` leads you verify before they become findings; never Reviewer
+  A/B/C, never a pass/fail, never a blocker.
 
 ## Model notes (for the model running this session)
 

@@ -33,9 +33,9 @@ if [ -n "$key" ]; then ok "proxy-key resolves"; else bad "proxy-key cannot find 
 models="$(curl -s -m 5 "$url/v1/models" -H "Authorization: Bearer $key" 2>/dev/null)"
 if [ -n "$models" ]; then
   ok "proxy answering at $url"
-  for m in gpt-6-astra gpt-6.1-sol gpt-6.1-terra gpt-6-luna gpt-5.6-sol; do
+  for m in gpt-6.2-astra gpt-6.2-sol gpt-6.1-terra gpt-6-luna gpt-5.6-sol; do
     if printf '%s' "$models" | grep -q "\"$m\""; then ok "model served: $m"; else
-      if [ "$m" = gpt-6-astra ]; then warn "model not served: $m (needs a Pro plan; skills fall back to Sol)"
+      if [ "$m" = gpt-6.2-astra ]; then warn "model not served: $m (needs a Pro plan; skills fall back to Sol)"
       elif [ "$m" = gpt-5.6-sol ]; then warn "model not served: $m (the worker scripts' default; set MODEL_ROUTER_MODEL to another served model)"
       else bad "model not served: $m"; fi
     fi

@@ -7,13 +7,14 @@ items raised, m items the lead verified and used. Lines that mention seat=
 anywhere else are not records; counts on a following line are not joined.
 This script reads logbooks and writes nothing.
 
-An API-backup launch (the brief went to the Gemini API because the app path
-could not run) carries the whitespace-delimited token `via=api` anywhere after
-the seat token: `seat=hydrogen mode=<m> via=api <free text> leads=<n> real=<m>`.
-A record with no `via=` token, or with any other `via=<x>` token, is an app
-launch. The seat names the model that answered, so an API-backup record is
-`seat=hydrogen` even when Carbon was asked for. App and API launches are
-separate rows (`via` = app | api); the totals cover every row.
+A launch the paid Gemini API answered (Carbon or Hydrogen; geminipro sends
+briefs to the API first since 2026-11-18) carries the whitespace-delimited
+token `via=api` anywhere after the seat token:
+`seat=<gemini|hydrogen> mode=<m> via=api <free text> leads=<n> real=<m>`.
+A record with `via=app`, no `via=` token, or any other `via=<x>` token is an
+app launch. The seat names the model that answered (`seat=gemini` for Carbon,
+`seat=hydrogen` for Hydrogen). App and API launches are separate rows
+(`via` = app | api); the totals cover every row.
 
     python scripts/gemini-hitrate.py [PATH ...] [--json]
 

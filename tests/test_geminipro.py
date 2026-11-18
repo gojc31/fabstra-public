@@ -58,7 +58,7 @@ DECOY = "staff@mail.example.com"        # an unrelated address field on the app 
 CLEAN = (b"brief-check: clean - generic arithmetic question\n"
          b"What is 17*23? Reply with the number only.\n")
 BASE_KEYS = {"tool", "exit", "status", "reason", "run", "name", "model", "job_id", "report",
-             "account_ok", "duration_s", "submissions", "context", "via"}
+             "account_ok", "duration_s", "submissions", "context", "via", "meter"}
 TRIGGER_KEYS = {"backup", "primary_exit", "primary_reason", "requested_model"}
 # a unique 40-character stand-in for GEMINI_API_KEY (never a real key)
 API_KEY = ("FAKEAPIKEY" + uuid.uuid4().hex + uuid.uuid4().hex)[:40]
@@ -88,6 +88,9 @@ class World:
         self.omit_user_status = False
         self.get_cookie = None      # (name, value) the /app GET sets in the session jar
         self.stream_cookie = None   # (name, value) the generate stream sets in the session jar
+        # GetUsageInfo items (remaining, usage_level, window type, [[reset ts]]); None: no part
+        self.usage = [[512, 0.1, 1, [[1893456000]]], [4096, 0.2, 2, [[1893456000]]]]
+        self.rpcids = []            # every batch RPC id the transport saw, in order
 
 
 WORLD = World()
@@ -115,7 +118,7 @@ def _batch_body(rpcid):
             return None
         return [None] * 14 + [WORLD.status_code, [CARBON, FAST], [], []]
     if rpcid == GRPC.GET_USAGE_INFO:
-        return [2, [[512, 0.1, 1, [[1893456000]]], [4096, 0.2, 2, [[1893456000]]]], False]
+        return None if WORLD.usage is None else [2, WORLD.usage, False]
     if rpcid == GRPC.GET_ABUSE_STATUS:
         return [None, None]
     return None
@@ -178,6 +181,7 @@ class FakeSession:
                 return FakeResp(WORLD.batch_fail_armed)
             parts = []
             for rid in (params or {}).get("rpcids", "").split(","):
+                WORLD.rpcids.append(rid)
                 body = _batch_body(rid)
                 if body is not None:
                     parts.append(["wrb.fr", rid, json.dumps(body), None, None, None, "generic"])
@@ -229,12 +233,15 @@ def harness_payload(contexts=None, default="AAAA1111", errors=(), default_jar=No
                        "contexts": contexts, "errors": list(errors)}).encode()
 
 
-def api_ok(text="API-ANSWER-391", status="completed"):
-    """What the gemini-api CLI printed on a good call (shape seen live 2026-11-15)."""
+def api_ok(text="API-ANSWER-391", status="completed", model="gemini-4-hydrogen"):
+    """What the gemini-api CLI printed on a good call (shape seen live 2026-11-15); model None
+    leaves the response's model field out."""
     out = {"status": status, "usage": {}, "created": "x", "updated": "x", "object": "interaction",
-           "model": "gemini-4-hydrogen", "steps": [
+           "model": model, "steps": [
                {"type": "thought", "signature": "THOUGHT-SIG"},
                {"type": "model_output", "content": [{"type": "text", "text": text}]}]}
+    if model is None:
+        del out["model"]
     return (0, json.dumps(out).encode(), b"")
 
 
@@ -316,6 +323,9 @@ def env(tmp_path):
          "GEMINIPRO_LOG": str(cp / "geminipro-usage.jsonl"), "GEMINIPRO_TOTAL_DEADLINE": "120",
          "GEMINIPRO_SLOT_WAIT": "0", "GEMINIPRO_ACCOUNT": RIGHT}
     assert not any(k == "GEMINI_API_KEY" or k.startswith("GEMINIPRO_API_") for k in e)
+    # 2026-11-18 (R8): every test written before the API primary path runs in the legacy
+    # app-first mode; the API primary tests (primary_env) drop the switch
+    e["GEMINIPRO_API_PRIMARY"] = "0"
     return e
 
 
@@ -597,21 +607,211 @@ def test_a5_ceiling_reached_exit1_log_unchanged(world, env, capfd, tmp_path):
     assert WORLD.harness_calls == calls and WORLD.generate_calls == 1
 
 
-def test_daily_cap_counts_all_runs(world, env, capfd, tmp_path):
-    e = dict(env, GEMINIPRO_DAILY_CAP="2")
-    assert run(capfd, tmp_path, e, args=("r1", "a"))[0] == 0
-    assert run(capfd, tmp_path, e, args=("r2", "b"))[0] == 0
-    before = open(env["GEMINIPRO_LOG"], "rb").read()
-    code, st, _, _ = run(capfd, tmp_path, e, args=("r3", "c"))
-    assert code == 1 and "daily cap" in st["reason"]
-    assert open(env["GEMINIPRO_LOG"], "rb").read() == before
+def test_daily_cap_is_ignored(world, env, capfd, tmp_path):
+    """M7: the retired GEMINIPRO_DAILY_CAP no longer refuses anything (3 jobs logged today)."""
+    for r in ("r1", "r2", "r3"):
+        assert run(capfd, tmp_path, env, args=(r, "a"))[0] == 0
+    e = dict(env, GEMINIPRO_DAILY_CAP="1")
+    code, st, _, _ = run(capfd, tmp_path, e, args=("r4", "d"))
+    assert code == 0 and st["status"] == "ok", st
+    assert [r["status"] for r in log_entries(env)].count("started") == 4
 
 
 def test_cap_defaults(world, env):
     assert "GEMINIPRO_DAILY_CAP" not in env and "GEMINIPRO_RUN_JOB_CEILING" not in env
-    w = gp.Wrapper(["t1", "carbon", "--json"], dict(env))
+    assert "GEMINIPRO_MAX_5H_PCT" not in env and "GEMINIPRO_MAX_WEEKLY_PCT" not in env
+    w = gp.Wrapper(["t1", "carbon", "--json"], dict(env, GEMINIPRO_DAILY_CAP="1"))
     w.config()
-    assert w.daily_cap == 80 and w.ceiling == 12
+    assert w.max_5h == 80 and w.max_weekly == 90 and w.ceiling == 12
+    assert not hasattr(w, "daily_cap") and not hasattr(gp.Wrapper, "daily_count")
+
+
+# --------------------------------------------------------------------------
+# Google's usage meter (M1-M10)
+# --------------------------------------------------------------------------
+
+RESET_TS = 1893456000
+
+
+def set_meter(h5=None, weekly=None, h5_level=None, weekly_level=None):
+    """GetUsageInfo items for the fake: percentages (or raw levels); None leaves a window out."""
+    items = []
+    for pct, level, kind, credits in ((h5, h5_level, 1, 512), (weekly, weekly_level, 2, 4096)):
+        if level is None and pct is not None:
+            level = pct / 100
+        if level is not None:
+            items.append([credits, level, kind, [[RESET_TS]]])
+    WORLD.usage = items
+
+
+def _reset_text():
+    import datetime as dt
+    return dt.datetime.fromtimestamp(RESET_TS, tz=dt.timezone.utc).astimezone().isoformat()
+
+
+@pytest.mark.parametrize("h5,weekly", [(79, 50), (5, 89)])
+def test_m1_meter_below_the_limits_runs(world, env, capfd, tmp_path, h5, weekly):
+    set_meter(h5, weekly)
+    code, st, _, _ = run(capfd, tmp_path, env)
+    assert code == 0 and st["status"] == "ok" and WORLD.generate_calls == 1, st
+    assert st["meter"] == "5h %d%%, weekly %d%%" % (h5, weekly), st
+    assert "unreadable" not in st["reason"]
+    # the meter comes from the usage info init already fetched: no second GetUsageInfo RPC
+    assert WORLD.rpcids.count(GRPC.GET_USAGE_INFO) == 1, WORLD.rpcids
+
+
+def test_m2_5h_at_the_limit_refuses_and_latches_nothing(world, env, capfd, tmp_path):
+    set_meter(80, 10)
+    e = api_env(env, tmp_path)  # a ready API backup: exit 1 must never trigger it
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 1 and st["status"] == "run_refused", st
+    assert WORLD.api.calls == [] and set(st) == BASE_KEYS and st["via"] == "app", st
+    assert "Google usage limit: 5h 80% used (stop at 80%)" in st["reason"], st["reason"]
+    assert _reset_text() in st["reason"] and "weekly" not in st["reason"], st["reason"]
+    assert st["meter"] == "5h 80%, weekly 10%" and st["job_id"] is None, st
+    assert WORLD.generate_calls == 0 and st["submissions"] == 0
+    assert not any(r[1].startswith(Endpoint.GENERATE) for r in WORLD.requests)
+    assert log_entries(env) == []
+    ok, why = lanew_log.check("t1", log_path=env["GEMINIPRO_LOG"], ceiling=12)
+    assert ok, why
+    set_meter(10, 10)
+    code, st, _, _ = run(capfd, tmp_path, env, args=("t1", "again"))
+    assert code == 0 and WORLD.generate_calls == 1, st
+
+
+def test_m3_weekly_at_the_limit_and_both_over(world, env, capfd, tmp_path):
+    set_meter(10, 90)
+    code, st, _, _ = run(capfd, tmp_path, env)
+    assert code == 1 and "weekly 90% used (stop at 90%)" in st["reason"], st
+    assert "5h" not in st["reason"].split("Google usage limit:")[1]
+    set_meter(95, 99)
+    code, st, _, _ = run(capfd, tmp_path, env, args=("t1", "both"))
+    assert code == 1 and "5h 95% used (stop at 80%)" in st["reason"], st
+    assert "weekly 99% used (stop at 90%)" in st["reason"], st
+    assert WORLD.generate_calls == 0 and log_entries(env) == []
+
+
+@pytest.mark.parametrize("extra,h5,weekly,want", [
+    ({"GEMINIPRO_MAX_5H_PCT": "50"}, 55, 10, 1),
+    ({"GEMINIPRO_MAX_5H_PCT": "50"}, 49, 10, 0),
+    ({"GEMINIPRO_MAX_WEEKLY_PCT": "100"}, 10, 99, 0),
+    ({"GEMINIPRO_MAX_WEEKLY_PCT": "100"}, 10, 100, 1),
+    ({"GEMINIPRO_MAX_5H_PCT": "0"}, 0, 0, 1),
+])
+def test_m4_custom_limits(world, env, capfd, tmp_path, extra, h5, weekly, want):
+    set_meter(h5, weekly)
+    code, st, _, _ = run(capfd, tmp_path, dict(env, **extra))
+    assert code == want, st
+    assert WORLD.generate_calls == (1 if want == 0 else 0)
+
+
+@pytest.mark.parametrize("var", ["GEMINIPRO_MAX_5H_PCT", "GEMINIPRO_MAX_WEEKLY_PCT"])
+@pytest.mark.parametrize("value", ["abc", "120", "-1", "nan"])
+def test_m5_bad_limit_is_usage_error_before_any_browser_step(world, env, capfd, tmp_path, var,
+                                                             value):
+    code, st, _, _ = run(capfd, tmp_path, dict(env, **{var: value}))
+    assert code == 64 and st["status"] == "usage_error" and var in st["reason"], st
+    assert WORLD.harness_calls == 0 and WORLD.requests == [] and st["meter"] is None
+
+
+@pytest.mark.parametrize("variant", ["no_usage_info", "weekly_missing", "not_a_number"])
+def test_m6_unreadable_meter_does_not_block(world, env, capfd, tmp_path, variant):
+    if variant == "no_usage_info":
+        WORLD.usage = None
+    elif variant == "weekly_missing":
+        set_meter(10, None)
+    else:
+        set_meter(h5_level="high", weekly_level="high")
+    e = dict(env, GEMINIPRO_MAX_5H_PCT="0", GEMINIPRO_MAX_WEEKLY_PCT="0")
+    if variant == "weekly_missing":
+        e = env  # the 5h window was read (10% < 80%); only the weekly one is unreadable
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and WORLD.generate_calls == 1, st
+    note = ("Google usage meter: weekly unreadable - not checked" if variant == "weekly_missing"
+            else "Google usage meter unreadable - not checked")
+    assert note in st["reason"], st["reason"]
+    assert st["meter"] == ("5h 10%" if variant == "weekly_missing" else None), st
+
+
+@pytest.mark.parametrize("h5,weekly,h5_level,weekly_level,over,unread", [
+    (95, None, None, None, "5h 95% used (stop at 80%)", "weekly"),
+    (None, 95, None, None, "weekly 95% used (stop at 90%)", "5h"),
+    (95, None, None, "high", "5h 95% used (stop at 80%)", "weekly"),
+    (None, 95, "high", None, "weekly 95% used (stop at 90%)", "5h"),
+])
+def test_r1_readable_window_over_limit_refuses_when_the_other_is_unreadable(
+        world, env, capfd, tmp_path, h5, weekly, h5_level, weekly_level, over, unread):
+    set_meter(h5, weekly, h5_level=h5_level, weekly_level=weekly_level)
+    code, st, _, _ = run(capfd, tmp_path, env)
+    assert code == 1 and st["status"] == "run_refused", st
+    assert ("Google usage limit: " + over) in st["reason"], st["reason"]
+    assert ("Google usage meter: %s unreadable - not checked" % unread) in st["reason"], st
+    assert "Google usage meter unreadable" not in st["reason"], st["reason"]
+    assert WORLD.generate_calls == 0 and st["submissions"] == 0 and log_entries(env) == []
+
+
+def test_r1_both_windows_unreadable_runs_with_the_whole_meter_note(world, env, capfd, tmp_path):
+    set_meter(h5_level="high", weekly_level=None)  # 5h not a number, weekly missing
+    code, st, _, _ = run(capfd, tmp_path, dict(env, GEMINIPRO_MAX_5H_PCT="0",
+                                               GEMINIPRO_MAX_WEEKLY_PCT="0"))
+    assert code == 0 and WORLD.generate_calls == 1 and st["meter"] is None, st
+    assert "Google usage meter unreadable - not checked" in st["reason"], st["reason"]
+    assert "5h unreadable" not in st["reason"] and "weekly unreadable" not in st["reason"]
+
+
+def test_g2_negative_zero_limit_prints_0(world, env, capfd, tmp_path):
+    set_meter(0, 0)
+    e = dict(env, GEMINIPRO_MAX_5H_PCT="-0", GEMINIPRO_MAX_WEEKLY_PCT="-0.0")
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 1 and "5h 0% used (stop at 0%)" in st["reason"], st["reason"]
+    assert "weekly 0% used (stop at 0%)" in st["reason"] and "-0%" not in st["reason"], st
+    code = gp.main(["--status"], e)
+    out, _ = capfd.readouterr()
+    assert "consults stop at 5h 0% / weekly 0%" in out.splitlines()[0], out
+
+
+def test_m8_one_job_at_a_time_still_holds(world, env, capfd, tmp_path):
+    sd = os.path.join(env["CLIPROXY_DIR"], "geminipro.d")
+    os.makedirs(sd, exist_ok=True)
+    holder = gp.FileLock(os.path.join(sd, "job.lock"))
+    assert holder.try_acquire()
+    try:
+        code, st, _, _ = run(capfd, tmp_path, env)
+    finally:
+        holder.release()
+    assert code == 5 and st["status"] == "no_slot" and WORLD.generate_calls == 0, st
+
+
+def test_m9_api_backup_is_not_gated_by_the_meter(world, env, capfd, tmp_path):
+    _harness_down()
+    set_meter(99, 99)
+    e = api_env(env, tmp_path, GEMINIPRO_MAX_5H_PCT="0", GEMINIPRO_MAX_WEEKLY_PCT="0")
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api" and st["backup"] == "ok", st
+    assert st["meter"] is None and len(WORLD.api.calls) == 1, st
+    # an account mismatch (exit 8, after init read the meter) still sends meter null on the API path
+    _harness_up()
+    WORLD.accounts = {PSID: WRONG, OTHER_PSID: THIRD}
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "again"))
+    assert code == 0 and st["via"] == "api" and st["meter"] is None, st
+
+
+def test_m10_status_summary_and_json_meter(world, env, capfd, tmp_path):
+    set_meter(23, 8)
+    code = gp.main(["--status", "--json"], env)
+    out, _ = capfd.readouterr()
+    st = json.loads(out)
+    assert code == 0 and st["meter"] == "5h 23%, weekly 8%", st
+    code = gp.main(["--status"], dict(env, GEMINIPRO_MAX_5H_PCT="70"))
+    out, err = capfd.readouterr()
+    r = _reset_text()
+    assert code == 0, err
+    assert out.splitlines()[0] == (
+        "Gemini usage: 5h 23%% used (resets %s), weekly 8%% used (resets %s); consults stop at "
+        "5h 70%% / weekly 90%%" % (r, r)), out
+    assert "tier: PRO" in out and json.loads(err.strip().splitlines()[-1])["meter"] == (
+        "5h 23%, weekly 8%")
+    assert WORLD.generate_calls == 0
 
 
 def test_slot_held_exit5(world, env, capfd, tmp_path):
@@ -1944,15 +2144,16 @@ def test_api_a6_non_server_error_not_retried_and_two_server_errors_fail(world, e
     assert "high demand" in st["reason"]
 
 
-def test_api_a7_backup_job_counts_toward_ceiling_and_daily_cap(world, env, capfd, tmp_path):
+def test_api_a7_backup_job_counts_toward_ceiling_daily_cap_ignored(world, env, capfd, tmp_path):
     _harness_down()
     e = api_env(env, tmp_path, GEMINIPRO_RUN_JOB_CEILING="1")
     assert run(capfd, tmp_path, e)[1]["via"] == "api"
     code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "again"))
     assert code == 1 and st["status"] == "run_refused" and len(WORLD.api.calls) == 1, st
+    # the retired GEMINIPRO_DAILY_CAP refuses nothing (one backup job already logged today)
     e = api_env(env, tmp_path, GEMINIPRO_DAILY_CAP="1")
     code, st, _, _ = run(capfd, tmp_path, e, args=("other", "x"))
-    assert code == 1 and "daily cap" in st["reason"] and len(WORLD.api.calls) == 1, st
+    assert code == 0 and st["via"] == "api" and len(WORLD.api.calls) == 2, st
 
 
 def test_api_a8_key_never_in_any_output(world, env, capfd, tmp_path):
@@ -2455,16 +2656,21 @@ def _f2_after_admit_returns(monkeypatch):
     monkeypatch.setattr(gp.Wrapper, "admit", admit)
 
 
+def _in_admit_step(monkeypatch, exc):
+    """Raise exc from Wrapper.admit's own lanew_log.pid_created call: a step inside admission
+    before the started record is appended (lanew_log's internal calls pass through)."""
+    real = gp.lanew_log.pid_created
+
+    def pid_created(pid):
+        if sys._getframe(1).f_code is gp.Wrapper.admit.__code__:
+            raise exc
+        return real(pid)
+
+    monkeypatch.setattr(gp.lanew_log, "pid_created", pid_created)
+
+
 def _f2_before_the_reservation(monkeypatch):
-    real, calls = gp.Wrapper.daily_count, []
-
-    def daily_count(self):
-        calls.append(1)
-        if len(calls) == 2:  # the first call is precheck's, the second the API admission's
-            raise KeyboardInterrupt
-        return real(self)
-
-    monkeypatch.setattr(gp.Wrapper, "daily_count", daily_count)
+    _in_admit_step(monkeypatch, KeyboardInterrupt())
 
 
 # fix round 3: the expectation per point follows the re-specced rule - "job" once the wrapper
@@ -2609,17 +2815,10 @@ def test_r3_second_launch_interrupted_before_its_reservation_writes_nothing(worl
 
 def test_r3_an_admission_error_is_not_run_with_the_original_exit(world, env, capfd, tmp_path,
                                                                  monkeypatch):
-    """An ordinary error inside admission (here the daily-cap read of the usage log) is an
-    admission failure: the original exit (8 here) with "not run", no job, nothing recorded."""
-    real, calls = gp.Wrapper.daily_count, []
-
-    def daily_count(self):
-        calls.append(1)
-        if len(calls) == 2:  # the first call is precheck's, the second the API admission's
-            raise PermissionError(13, "synthetic log read error")
-        return real(self)
-
-    monkeypatch.setattr(gp.Wrapper, "daily_count", daily_count)
+    """An ordinary error inside admission (here the owner-creation read before the started
+    record) is an admission failure: the original exit (8 here) with "not run", no job,
+    nothing recorded."""
+    _in_admit_step(monkeypatch, PermissionError(13, "synthetic log read error"))
     WORLD.accounts = {PSID: WRONG, OTHER_PSID: THIRD}
     e = api_env(env, tmp_path)
     code, st, _, _ = run(capfd, tmp_path, e)
@@ -3231,3 +3430,1103 @@ def test_n1_real_tree_step_kills_the_child_of_a_dead_root(world, monkeypatch):
                 and lanew_log.pid_created(kid) == kid_created):
             REAL["_kill_verified"](kid, kid_created)
         root.stdout.close()
+
+
+# --------------------------------------------------------------------------
+# API primary (2026-11-18): the paid API key first, the Gemini app as the fallback.
+# The CLI error shape below is gemini-api v0.4.4's classified JSON error envelope
+# (internal/output/output.go classifiedErrorEnvelope, MarshalIndent on stderr): the API's own
+# body ({"error": {...}}) plus error_type, exit_code, message, hints, error_reason (when a
+# reason was found) and status_code (the HTTP status, when there was one).
+# --------------------------------------------------------------------------
+
+PRIMARY_KEYS = BASE_KEYS | {"api_attempt", "api_reason", "requested_model"}
+
+
+def primary_env(env, tmp_path, **extra):
+    """api_env without the legacy pin: the default API primary mode (extra applied last)."""
+    e = api_env(env, tmp_path)
+    e.pop("GEMINIPRO_API_PRIMARY", None)
+    e.update(extra)
+    return e
+
+
+def cli_error(rc=1, status_code=None, etype="api_error", reason=None, message="failed",
+              google=None, noise=b"", stdout=b""):
+    """The CLI's classified error envelope on stderr (indented, as the CLI prints it)."""
+    env_ = {"error": google if google is not None else {"message": message},
+            "error_type": etype, "exit_code": rc, "message": message, "hints": ["a hint"]}
+    if reason:
+        env_["error_reason"] = reason
+    if status_code:
+        env_["status_code"] = status_code
+    return (rc, stdout, noise + json.dumps(env_, indent=2).encode())
+
+
+def google_err(code, status, message="failed"):
+    return {"code": code, "message": message, "status": status}
+
+
+QUOTA_MSG = "You exceeded your current quota, please check your plan and billing details."
+Q429 = cli_error(1, 429, "rate_limit_error", "RESOURCE_EXHAUSTED", QUOTA_MSG,
+                 google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG))
+
+
+def _ledger(e):
+    return os.path.splitext(e["GEMINIPRO_LOG"])[0] + "-api-day.jsonl"
+
+
+def _ledger_count(e):
+    return lanew_log.count_reservations(_ledger(e))[0]
+
+
+def _app_untouched():
+    return WORLD.harness_calls == 0 and WORLD.generate_calls == 0 and WORLD.requests == []
+
+
+def test_p1_carbon_api_answers_and_the_app_is_never_touched(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("API-ANSWER-391", model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 0 and st["status"] == "ok" and st["via"] == "api", st
+    assert st["model"] == "gemini-4-carbon" and st["requested_model"] == "gemini-carbon", st
+    assert st["api_attempt"] == "ok" and st["api_reason"] is None and st["model_mismatch"] is False
+    assert set(st) == PRIMARY_KEYS | {"model_mismatch"}, st
+    assert st["context"] is None and st["meter"] is None and st["submissions"] == 0
+    assert _app_untouched()
+    (c,) = WORLD.api.calls
+    # FIX-1 A-F2: primary disables the CLI's own retries (one admitted attempt = at most one
+    # upstream request)
+    assert c["argv"] == [e["GEMINIPRO_API_CLI"], "generate", "--output-format", "json",
+                         "--body", "@body.json", "--no-retries"] and c["stdin"] is subprocess.DEVNULL
+    assert json.loads(c["body_raw"]) == {"input": CLEAN.decode(), "model": "gemini-4-carbon",
+                                         "stream": False, "store": False}
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "ok"], recs
+    assert recs[0]["model"] == "gemini-4-carbon" and recs[1]["via"] == "api"
+    assert recs[1]["stop_latch"] is False and "primary_exit" not in recs[1]
+    report = open(st["report"], encoding="utf-8").read()
+    assert "API-ANSWER-391" in report and "- via: api (primary" in report
+    assert "- account: n/a (API key)" in report
+    assert _ledger_count(e) == 1 and _api_dirs(e) == []
+    assert out.strip().count("\n") == 0  # --json: the status line alone on stdout
+
+
+def test_p1_hydrogen_maps_to_itself_and_default_mode_prints_the_answer(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    code, st, out, err = run(capfd, tmp_path, e, args=("t1", "h", "--model", "gemini-4-hydrogen"),
+                             json_mode=False)
+    assert code == 0 and st["via"] == "api" and st["model"] == "gemini-4-hydrogen", st
+    assert st["model_mismatch"] is False and out.strip() == "API-ANSWER-391"
+    assert json.loads(WORLD.api.calls[0]["body_raw"])["model"] == "gemini-4-hydrogen"
+
+
+LIVE_429_MSG = ("Rate limit exceeded for model gemini-4-carbon (limit: 0 input tokens per minute "
+                "on Free Tier). Please upgrade your tier at https://ai.dev/rate-limit.")
+REJECTIONS = {
+    "429_quota": Q429,
+    # the shape the live smoke got on 2026-11-18 (interactions API: a string error.code)
+    "429_live_shape_2026_11_18": cli_error(1, 429, "rate_limit_error", None, LIVE_429_MSG,
+                                           {"code": "too_many_requests", "message": LIVE_429_MSG}),
+    # FIX-4 N1: only the CLI's own progress text (progress.go's spinner) may precede the
+    # envelope ("429_after_cli_retry_lines", invented retry lines, moved to UNKNOWN)
+    "429_after_the_cli_spinner": cli_error(
+        1, 429, "rate_limit_error", "RESOURCE_EXHAUSTED", QUOTA_MSG,
+        google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG),
+        noise=b"\r\x1b[2K| gemini-api generate\r\x1b[2K/ gemini-api generate\r\x1b[2K"),
+    # FIX-4 N1 condition 5: "resource_exhausted_reason_without_status" moved to UNKNOWN
+    "400": cli_error(2, 400, "validation_error", None, "bad", google_err(400, "INVALID_ARGUMENT")),
+    "401": cli_error(3, 401, "authentication_error", "API_KEY_INVALID", "API key not valid",
+                     google_err(401, "UNAUTHENTICATED")),
+    "403": cli_error(3, 403, "authorization_error", None, "denied",
+                     google_err(403, "PERMISSION_DENIED")),
+    "404": cli_error(1, 404, "not_found", None, "no model", google_err(404, "NOT_FOUND")),
+    # FIX-1 A-F3: "429_envelope_on_stdout_with_exit_0" moved to UNKNOWN (a proven rejection
+    # needs a non-zero CLI exit and an empty stdout)
+}
+
+
+@pytest.mark.parametrize("case", sorted(REJECTIONS))
+def test_p2_a_proven_rejection_falls_back_to_the_app(world, env, capfd, tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [REJECTIONS[case]]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 0 and st["status"] == "ok" and st["via"] == "app", st
+    assert st["api_attempt"] == "failed" and st["api_reason"] and len(st["api_reason"]) <= 300, st
+    assert set(st) == PRIMARY_KEYS and st["model"] == "gemini-carbon", st
+    assert st["requested_model"] == "gemini-carbon" and st["account_ok"] is True
+    assert len(WORLD.api.calls) == 1 and WORLD.generate_calls == 1 and WORLD.harness_calls >= 1
+    if case.startswith("429"):
+        assert "429" in st["api_reason"] or "RESOURCE_EXHAUSTED" in st["api_reason"], st
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "ok"], recs  # one admission per launch
+    assert recs[1]["via"] == "app" and recs[1]["stop_latch"] is False
+    assert _ledger_count(e) == 1 and _api_dirs(e) == []
+
+
+SERVER = {n: cli_error(1, n, "server_error", None, "upstream", google_err(n, "UNAVAILABLE"))
+          for n in (500, 502, 503, 504)}
+UNKNOWN = {
+    "timeout": subprocess.TimeoutExpired(["gemini-api"], 5),
+    "oserror_after_spawn": OSError(32, "Broken pipe"),
+    "http500": SERVER[500], "http502": SERVER[502], "http503": SERVER[503], "http504": SERVER[504],
+    "live_server_error_shape": SERVER_ERR,  # never retried in primary mode
+    "connection_error": cli_error(1, None, "connection_error", "CLI_CONNECTION",
+                                  "error sending request: dial tcp: no such host"),
+    "cli_validation_without_status": cli_error(2, None, "validation_error", "CLI_VALIDATION"),
+    "cli_auth_without_status": cli_error(3, None, "authentication_error", "CLI_AUTHENTICATION"),
+    "partial_stdout_then_429": (Q429[0], b'{"status": "in_progress", "steps": [{"type": "model_o',
+                                Q429[2]),
+    "guard_internal_error": (9, b"", b"gemini-guard: error: cannot start the real CLI: busy\n"),
+    "stderr_not_json": (1, b"", b"panic: runtime error\n"),
+    "not_json": (0, b"hello, not json", b""),
+    "not_completed": api_ok("partial", status="in_progress", model="gemini-4-carbon"),
+    "empty_answer": api_ok("", model="gemini-4-carbon"),
+    "error_card": api_ok("Something went wrong. Please try again.", model="gemini-4-carbon"),
+    "server_envelope_on_stdout_with_exit_0": (0, SERVER[503][2], b""),
+    # FIX-1 A-F3 (was a REJECTIONS case under G1): exit 0 is never a proven rejection
+    "429_envelope_on_stdout_with_exit_0": (0, Q429[2], b""),
+    # FIX-4 N1 (were REJECTIONS cases): stderr lines that are not the CLI's own progress text
+    # before the envelope, and a quota reason without the required outer status_code
+    "429_after_cli_retry_lines": cli_error(
+        1, 429, "rate_limit_error", "RESOURCE_EXHAUSTED", QUOTA_MSG,
+        google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG),
+        noise=b"retrying in 2s (HTTP 429)\nretrying in 4s (HTTP 429)\n"),
+    "resource_exhausted_reason_without_status": cli_error(
+        1, None, "rate_limit_error", "QUOTA_EXCEEDED", QUOTA_MSG),
+}
+
+
+@pytest.mark.parametrize("case", sorted(UNKNOWN))
+def test_p3_anything_else_after_dispatch_is_outcome_unknown_never_the_app(world, env, capfd,
+                                                                          tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [UNKNOWN[case], api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown", st
+    assert st["via"] == "api" and st["api_attempt"] == "failed" and st["api_reason"], st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()  # no retry on either transport
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False and recs[1]["via"] == "api"
+    ok, why = lanew_log.check("t1", log_path=e["GEMINIPRO_LOG"], ceiling=12)
+    assert ok, why  # an API ending never latches the run
+    assert _api_dirs(e) == []
+
+
+NOT_RUN = {
+    "key_unset": ({"GEMINI_API_KEY": None}, "GEMINI_API_KEY is not set"),
+    "key_blank": ({"GEMINI_API_KEY": "   "}, "GEMINI_API_KEY is blank"),
+    "key_short": ({"GEMINI_API_KEY": "Ab3" * 5}, "too short"),
+    "cli_missing": ({"GEMINIPRO_API_CLI": "MISSING"}, "not found"),
+    "cli_not_on_path": ({"GEMINIPRO_API_CLI": None}, "gemini-api is not on PATH"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(NOT_RUN))
+def test_p4_a_missing_precondition_is_not_run_and_the_app_answers(world, env, capfd, tmp_path,
+                                                                  case):
+    change, why = NOT_RUN[case]
+    e = primary_env(env, tmp_path)
+    for k, v in change.items():
+        if v is None:
+            e.pop(k, None)
+        else:
+            e[k] = str(tmp_path / "no-such-cli.exe") if v == "MISSING" else v
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "not_run", st
+    assert why in st["api_reason"] and set(st) == PRIMARY_KEYS, st
+    assert WORLD.api.calls == [] and WORLD.generate_calls == 1
+    assert [r["status"] for r in log_entries(e)] == ["started", "ok"]
+    assert not os.path.exists(_ledger(e))
+
+
+def _reserve_today(e, n=1, run_="other", ts=None):
+    for i in range(n):
+        assert lanew_log.reserve(_ledger(e), {"ts": ts or lanew_log._now_iso(), "run": run_,
+                                              "job_id": "pre%d" % i}, 1000)[0] == "reserved"
+
+
+def test_p5_daily_api_ceiling_reached_skips_the_api(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="2")
+    _reserve_today(e, 2)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "skipped", st
+    assert "2/2" in st["api_reason"] and "local date" in st["api_reason"], st
+    assert WORLD.api.calls == [] and WORLD.generate_calls == 1 and _ledger_count(e) == 2
+
+
+def test_p5_ceiling_zero_is_api_off_in_both_modes(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="0")
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "skipped", st
+    assert "GEMINIPRO_API_DAY_CEILING=0" in st["api_reason"] and WORLD.api.calls == []
+    _harness_down()  # legacy mode: the backup trigger fires but the paid CLI never runs
+    code, st, _, _ = run(capfd, tmp_path, dict(e, GEMINIPRO_API_PRIMARY="0"), args=("t2", "x"))
+    assert code == 2 and st["backup"] == "not_run" and "GEMINIPRO_API_DAY_CEILING=0" in st["reason"]
+    assert WORLD.api.calls == [] and not os.path.exists(_ledger(e))
+
+
+@pytest.mark.parametrize("bad", ["abc", "-1", "1.5", "4 0", "+3", "nan"])
+def test_p5_a_bad_ceiling_is_usage_error_before_anything(world, env, capfd, tmp_path, bad):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING=bad)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 64 and "GEMINIPRO_API_DAY_CEILING" in st["reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    code = gp.main(["--status", "--json"], e)  # --status validates it too (it reports api_day)
+    assert code == 64 and WORLD.harness_calls == 0
+    capfd.readouterr()
+
+
+def test_p6_switch_off_is_the_old_order_and_the_backup_obeys_the_ceiling(world, env, capfd,
+                                                                         tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_PRIMARY="0")
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and set(st) == BASE_KEYS, st  # app first, no API keys
+    assert WORLD.api.calls == [] and WORLD.generate_calls == 1
+    _harness_down()  # the legacy backup still runs - and reserves a day slot first
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "b"))
+    assert code == 0 and st["via"] == "api" and st["backup"] == "ok", st
+    assert _ledger_count(e) == 1
+    code, st, _, _ = run(capfd, tmp_path, dict(e, GEMINIPRO_API_DAY_CEILING="1"), args=("t1", "c"))
+    assert code == 2 and st["backup"] == "not_run" and "daily API ceiling" in st["reason"], st
+    assert len(WORLD.api.calls) == 1
+
+
+def test_p7_a_model_with_no_api_id_is_app_only(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "m", "--model", "gemini-flash-lite"))
+    assert WORLD.api.calls == [] and WORLD.harness_calls >= 1, st  # the app path ran, alone
+    assert st["api_attempt"] == "not_run" and "gemini-flash-lite" in st["api_reason"], st
+    assert code == 4 and st["status"] == "model_not_available" and st["via"] == "app", st
+    assert not os.path.exists(_ledger(e))
+
+
+def _p8_launches(e, capfd, tmp_path):
+    """Cases 1-3 with a CLI that echoes the key on every channel it has."""
+    leak = API_KEY.encode()
+    WORLD.api.script = [
+        (0, api_ok("answer " + API_KEY, model="gemini-4-carbon")[1], b"debug: key=" + leak + b"\n"),
+        cli_error(1, 429, "rate_limit_error", "RESOURCE_EXHAUSTED", "quota for key " + API_KEY,
+                  google_err(429, "RESOURCE_EXHAUSTED", "quota for key " + API_KEY),
+                  noise=b"\r\x1b[2K| gemini-api generate\r\x1b[2K/ gemini-api generate\r\x1b[2K"),  # FIX-4 N1 (key on an unknown line: test_fix4_n1_a_key_...)
+        OSError(32, "broken pipe for " + API_KEY),
+        subprocess.TimeoutExpired(["gemini-api", API_KEY], 5),
+    ]
+    seen = []
+    for name, mode in (("ok", False), ("rej", False), ("err", True), ("tmo", False)):
+        code, st, out, err = run(capfd, tmp_path, e, args=("t1", name), json_mode=mode)
+        seen.append((code, st, out + err))
+    return seen
+
+
+def test_p8_the_key_never_reaches_any_output_or_file(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    seen = _p8_launches(e, capfd, tmp_path)
+    assert [c for c, _, _ in seen] == [0, 0, 6, 6], [s for _, s, _ in seen]
+    assert seen[0][1]["via"] == "api" and seen[1][1]["via"] == "app"
+    assert "answer [redacted]" in seen[0][2] and "[redacted]" in seen[1][1]["api_reason"]
+    assert "[redacted]" in seen[2][1]["reason"]
+    for _, st, text in seen:
+        assert API_KEY not in text and API_KEY not in json.dumps(st)
+    assert _key_leaks(str(tmp_path)) == []
+
+
+def test_p8_negative_without_scrubbing_the_same_launches_leak(world, env, capfd, tmp_path,
+                                                             monkeypatch):
+    """The check above is live: with scrub() disabled the very same launches print the key."""
+    monkeypatch.setattr(gp, "scrub", lambda text: text if isinstance(text, str) else str(text))
+    seen = _p8_launches(primary_env(env, tmp_path), capfd, tmp_path)
+    assert any(API_KEY in text for _, _, text in seen)
+
+
+def test_p9_api_failure_plus_app_answer_counts_once_toward_the_run_ceiling(world, env, capfd,
+                                                                          tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_RUN_JOB_CEILING="2")
+    WORLD.api.script = [Q429, Q429, api_ok(model="gemini-4-carbon")]
+    for name in ("a", "b"):
+        code, st, _, _ = run(capfd, tmp_path, e, args=("t1", name))
+        assert code == 0 and st["via"] == "app" and st["api_attempt"] == "failed", st
+    assert [r["status"] for r in log_entries(e)] == ["started", "ok", "started", "ok"]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "c"))
+    assert code == 1 and st["status"] == "run_refused" and len(WORLD.api.calls) == 2, st
+
+
+def test_g4_a_torn_ledger_line_is_skipped_with_a_note(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    os.makedirs(os.path.dirname(_ledger(e)), exist_ok=True)
+    with open(_ledger(e), "w", encoding="utf-8") as f:
+        f.write('{"kind": "api_reservation", "ts": "2026-11-1')  # a crash mid-append
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api", st
+    assert "unreadable line" in err, err
+    assert lanew_log.count_reservations(_ledger(e)) == (1, 1)
+
+
+def test_r1_a_guard_content_denial_is_terminal_never_the_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [(9, b"", b"gemini-guard: denied: --body: a signed link (sig=) in the "
+                         b"request body\ngemini-guard: client content is not sent to Gemini "
+                         b"while the key tier is unconfirmed (see the gemini-api skill).\n")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 7 and st["status"] == "brief_refused", st
+    assert "signed link" in st["reason"] and "guard" in st["reason"], st
+    assert st["via"] == "api" and st["api_attempt"] == "failed"
+    assert _app_untouched() and len(WORLD.api.calls) == 1
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+    assert lanew_log.check("t1", log_path=e["GEMINIPRO_LOG"], ceiling=12)[0]
+
+
+R2_ROUTES = {
+    "default": ({}, ()),
+    "api_off": ({"GEMINIPRO_API_DAY_CEILING": "0"}, ()),
+    "cli_missing": ({"GEMINIPRO_API_CLI": None}, ()),
+    "unmapped_model": ({}, ("--model", "gemini-flash-lite")),
+}
+
+
+@pytest.mark.parametrize("route", sorted(R2_ROUTES))
+def test_r2_a_brief_carrying_the_key_is_refused_before_any_transport(world, env, capfd, tmp_path,
+                                                                     route):
+    change, extra = R2_ROUTES[route]
+    e = primary_env(env, tmp_path)
+    for k, v in change.items():
+        if v is None:
+            e.pop(k, None)
+        else:
+            e[k] = v
+    brief = CLEAN + b"note " + API_KEY.encode() + b"\n"
+    code, st, out, err = run(capfd, tmp_path, e, args=("t1", "k") + extra, brief=brief)
+    assert code == 7 and st["status"] == "brief_refused" and "API key" in st["reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert API_KEY not in out + err
+
+
+def test_r5_cap_reached_by_an_api_rejection_then_another_run_skips_the_api(world, env, capfd,
+                                                                         tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="1")
+    WORLD.api.script = [Q429]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "failed", st
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t2", "next"))  # a different run slug
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "skipped", st
+    assert len(WORLD.api.calls) == 1
+
+
+def test_r5_an_unterminated_reservation_counts_and_yesterday_does_not(world, env, capfd, tmp_path):
+    import datetime as dt
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="1")
+    midnight = dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    late = (midnight - dt.timedelta(minutes=1)).astimezone(dt.timezone.utc)
+    _reserve_today(e, 1, ts=late.strftime("%Y-%m-%dT%H:%M:%S.000Z"))  # yesterday 23:59 local
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api", st
+    e2 = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="1",
+                     GEMINIPRO_LOG=str(tmp_path / "other" / "geminipro-usage.jsonl"))
+    os.makedirs(os.path.dirname(_ledger(e2)), exist_ok=True)
+    _reserve_today(e2, 1)  # a reservation whose job never got a terminal record (a crash)
+    code, st, _, _ = run(capfd, tmp_path, e2, args=("t3", "x"))
+    assert code == 0 and st["api_attempt"] == "skipped", st
+    assert len(WORLD.api.calls) == 1
+
+
+def _r6_meter(e, capfd, tmp_path):
+    set_meter(90, 10)
+    return run(capfd, tmp_path, e), (1, "run_refused", False)
+
+
+def _r6_model(e, capfd, tmp_path):
+    return (run(capfd, tmp_path, e, args=("t1", "carbon", "--model", "gemini-4-hydrogen")),
+            (4, "model_not_available", False))
+
+
+def _r6_identity(e, capfd, tmp_path):
+    WORLD.accounts = {PSID: WRONG, OTHER_PSID: THIRD}
+    return run(capfd, tmp_path, e), (8, "account_mismatch", False)
+
+
+def _r6_post(e, capfd, tmp_path):
+    WORLD.gen_mode = "http500"
+    return run(capfd, tmp_path, e), (6, "outcome_unknown", True)
+
+
+R6_CASES = {"meter_refusal": _r6_meter, "model_unavailable": _r6_model,
+            "identity_mismatch": _r6_identity, "app_post_failure": _r6_post}
+
+
+@pytest.mark.parametrize("case", sorted(R6_CASES))
+def test_r6_after_an_api_rejection_app_refusals_keep_their_exit_and_latch_only_on_post(
+        world, env, capfd, tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [Q429, Q429]
+    (code, st, _, _), (want, status, latched) = R6_CASES[case](e, capfd, tmp_path)
+    assert code == want and st["status"] == status and st["api_attempt"] == "failed", st
+    assert st["via"] == "app", st
+    if not latched:
+        assert "outcome unknown" not in st["reason"], st
+    recs = log_entries(e)
+    assert [r["status"] for r in recs][0] == "started" and len(recs) == 2, recs
+    assert recs[1]["stop_latch"] is latched and recs[1]["exit"] == want, recs
+    assert WORLD.generate_calls == (1 if latched else 0)
+    # the next launch on the same slug
+    WORLD.accounts = {PSID: RIGHT, OTHER_PSID: WRONG}
+    WORLD.gen_mode = "ok"
+    set_meter(10, 10)
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "next"))
+    if latched:
+        assert code == 1 and st["status"] == "run_refused" and "latched" in st["reason"], st
+    else:
+        assert code == 0 and st["via"] == "app" and st["api_attempt"] == "failed", st
+
+
+R7_CASES = {"other_model": ("gemini-4-hydrogen", "gemini-4-hydrogen", True),
+            "no_model": (None, None, True),
+            "models_prefix": ("models/gemini-4-carbon", "gemini-4-carbon", False)}
+
+
+@pytest.mark.parametrize("case", sorted(R7_CASES))
+def test_r7_the_answering_model_comes_from_the_response(world, env, capfd, tmp_path, case):
+    returned, shown, mismatch = R7_CASES[case]
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("KEPT-391", model=returned)]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api" and st["model"] == shown, st
+    assert st["model_mismatch"] is mismatch and st["requested_model"] == "gemini-carbon", st
+    assert json.loads(WORLD.api.calls[0]["body_raw"])["model"] == "gemini-4-carbon"
+    assert len(WORLD.api.calls) == 1  # kept, never resent
+    assert "KEPT-391" in open(st["report"], encoding="utf-8").read()
+    term = log_entries(e)[-1]
+    assert term["model"] == shown and term.get("model_mismatch", False) is mismatch, term
+
+
+def test_r9_report_failure_on_the_api_path_keeps_the_answer(world, env, capfd, tmp_path,
+                                                           monkeypatch):
+    def boom(self):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(gp.Wrapper, "write_report", boom)
+    WORLD.api.script = [api_ok("KEPT-ANSWER-391", model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, primary_env(env, tmp_path))
+    assert code == 3 and st["status"] == "log_failure" and st["via"] == "api", st
+    assert "KEPT-ANSWER-391" in err and out.strip().count("\n") == 0
+
+
+def test_r9_terminal_append_failure_on_the_api_path_keeps_the_answer(world, env, capfd, tmp_path,
+                                                                    monkeypatch):
+    real = gp.lanew_log.append_line_verified
+    monkeypatch.setattr(gp.lanew_log, "append_line_verified",
+                        lambda path, line: False if '"status": "ok"' in line else real(path, line))
+    WORLD.api.script = [api_ok("KEPT-ANSWER-391", model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, primary_env(env, tmp_path))
+    assert code == 3 and st["status"] == "log_failure" and st["via"] == "api", st
+    assert "KEPT-ANSWER-391" in err and os.path.exists(st["report"])
+
+
+def test_r9_hard_backstop_on_the_api_primary_path(world, env, capfd, tmp_path, monkeypatch):
+    seen = []
+    real_primary = gp.Wrapper.api_primary
+    monkeypatch.setattr(gp.Wrapper, "api_primary",
+                        lambda self, p: seen.append(self) or real_primary(self, p))
+    fake = WORLD.api
+
+    def overrun(*a, **k):
+        fake(*a, **k)
+        seen[0].backstop()  # HARD_EXIT is a no-op here: main goes on afterwards
+        raise subprocess.TimeoutExpired(["gemini-api"], 5)
+
+    monkeypatch.setattr(gp, "_run_api", overrun)
+    bf = tmp_path / "b.md"
+    bf.write_bytes(CLEAN)
+    gp.main(["t1", "carbon", "--brief-file", str(bf), "--json"], primary_env(env, tmp_path))
+    out, _ = capfd.readouterr()
+    lines = [l for l in out.splitlines() if l.startswith("{")]
+    assert WORLD.hard_exits == [6] and len(lines) == 1, (WORLD.hard_exits, lines)
+    hard = json.loads(lines[0])
+    assert hard["status"] == "outcome_unknown" and hard["via"] == "api", hard
+    assert "hard backstop" in hard["reason"]
+    recs = log_entries(env)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False and _app_untouched()
+
+
+def test_r10_a_blank_account_never_blocks_an_api_answer(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_ACCOUNT="  ")
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api" and _app_untouched(), st
+
+
+def test_r10_a_blank_account_after_an_api_rejection_refuses_before_any_app_step(world, env, capfd,
+                                                                               tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_ACCOUNT="  ")
+    WORLD.api.script = [Q429]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 2 and st["status"] == "preflight_refused" and st["api_attempt"] == "failed", st
+    assert "GEMINIPRO_ACCOUNT" in st["reason"] and "app fallback" in st["reason"], st
+    assert _app_untouched()
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+
+
+def test_status_reports_the_api_day_count(world, env, capfd, tmp_path):
+    for e in (primary_env(env, tmp_path), env):
+        os.makedirs(os.path.dirname(_ledger(e)), exist_ok=True)
+        if not os.path.exists(_ledger(e)):
+            _reserve_today(e, 3)
+        code = gp.main(["--status", "--json"], dict(e, GEMINIPRO_API_DAY_CEILING="40"))
+        st = json.loads(capfd.readouterr()[0])
+        assert code == 0 and st["api_day"] == "3/40", st
+        code = gp.main(["--status"], e)
+        out, err = capfd.readouterr()
+        assert code == 0 and "api_day: 3/40" in out.splitlines(), out
+        assert out.splitlines()[0].startswith("Gemini usage:")
+    assert WORLD.api.calls == []
+
+
+# --------------------------------------------------------------------------
+# FIX-1 (review round 1, 2026-11-18): dispatch safety of the API primary path.
+# A-F2 child retries, A-F3/C-5 rejection evidence, A-F8 post-dispatch classification,
+# A-F9 local faults, A-F10 the reservation's clock.
+# --------------------------------------------------------------------------
+
+def _fix1_env_fields(**over):
+    """The CLI's classified 429 envelope as a dict (fields overridable; None-valued kept)."""
+    env_ = {"error": google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG),
+            "error_type": "rate_limit_error", "exit_code": 1, "message": QUOTA_MSG,
+            "hints": ["a hint"], "error_reason": "RESOURCE_EXHAUSTED", "status_code": 429}
+    env_.update(over)
+    return env_
+
+
+def _fix1_err(obj, rc=1, stdout=b"", indent=2, before=b"", after=b""):
+    return (rc, stdout, before + json.dumps(obj, indent=indent).encode() + after)
+
+
+def _fix1_no(key, obj):
+    obj = dict(obj)
+    obj.pop(key)
+    return obj
+
+
+_COMPACT_429 = json.dumps(_fix1_env_fields()).encode()
+_COMPLETED = json.loads(api_ok("PARTIAL-391", model="gemini-4-carbon")[1])
+
+
+def test_fix1_f2_primary_disables_the_cli_retries_and_legacy_does_not(world, env, capfd,
+                                                                      tmp_path):
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, primary_env(env, tmp_path))
+    assert code == 0 and st["via"] == "api", st
+    (c,) = WORLD.api.calls
+    assert c["argv"].count("--no-retries") == 1 and c["argv"][-1] == "--no-retries", c["argv"]
+    WORLD.api.calls.clear()
+    _harness_down()  # the legacy backup: its argv (and its own one retry) are unchanged
+    code, st, _, _ = run(capfd, tmp_path, api_env(env, tmp_path), args=("t2", "legacy"))
+    assert code == 0 and st["backup"] == "ok", st
+    (c,) = WORLD.api.calls
+    assert "--no-retries" not in c["argv"], c["argv"]
+
+
+def test_fix1_f2_the_legacy_retry_predicate_is_the_base_one(world, env, capfd, tmp_path):
+    """Progress text, then a pretty-printed server error: the base parser found no JSON object
+    there, so the legacy backup never retried it - the primary parser must not widen that."""
+    pretty = json.dumps({"error": {"code": "service_unavailable", "message": "high demand"},
+                         "error_type": "server_error", "exit_code": 1, "hints": []}, indent=2)
+    stderr = b"retrying in 2s (HTTP 503)\n" + pretty.encode()
+    assert gp._json_tail(stderr) is None
+    _harness_down()
+    WORLD.api.script = [(1, b"", stderr), api_ok("SECOND-TRY-391")]
+    code, st, _, _ = run(capfd, tmp_path, api_env(env, tmp_path))
+    assert code == 2 and st["backup"] == "failed" and len(WORLD.api.calls) == 1, st
+
+
+FIX1_UNKNOWN = {
+    # C-5: a one-line envelope that is not the end of stderr
+    "c5_one_line_429_then_trailing_text": (1, b"", _COMPACT_429 + b"\nfatal: context deadline "
+                                           b"exceeded while reading the response body\n"),
+    "indented_429_then_trailing_text": _fix1_err(_fix1_env_fields(), after=b"\nfatal: closed\n"),
+    "429_then_another_json_line": (1, b"", _COMPACT_429 + b'\n{"note": "trailing"}\n'),
+    # (d) a malformed outer status is never discarded in favour of a nested quota reason
+    "outer_status_string": _fix1_err(_fix1_env_fields(status_code="429")),
+    "outer_status_null": _fix1_err(_fix1_env_fields(status_code=None)),
+    "outer_status_float": _fix1_err(_fix1_env_fields(status_code=429.0)),
+    "outer_status_bool": _fix1_err(_fix1_env_fields(status_code=True)),
+    "outer_429_but_nested_503": _fix1_err(_fix1_env_fields(
+        error=google_err(503, "UNAVAILABLE"))),
+    "no_outer_status_nested_403_only": _fix1_err(_fix1_no("status_code", _fix1_env_fields(
+        error=google_err(403, "PERMISSION_DENIED"), error_reason=None))),
+    "no_outer_status_quota_reason_nested_500": _fix1_err(_fix1_no("status_code", _fix1_env_fields(
+        error=google_err(500, "RESOURCE_EXHAUSTED")))),
+    # rejection and generation evidence mixed
+    "envelope_with_generation_fields": _fix1_err(_fix1_env_fields(
+        status="completed", steps=_COMPLETED["steps"])),
+    "429_with_whitespace_on_stdout": _fix1_err(_fix1_env_fields(), stdout=b"\n"),
+    "429_exit_0_with_completed_output": (0, json.dumps(dict(
+        _COMPLETED, error_type="rate_limit_error", status_code=429)).encode(), b""),
+    # FIX-4 N1 (were FIX1_REJECTIONS cases): an unknown stderr line before the envelope; no
+    # outer status_code (condition 5 requires it)
+    "one_line_429_as_the_last_line": (1, b"", b"progress\n" + _COMPACT_429 + b"\n\n"),
+    "no_outer_status_quota_reason_nested_429": _fix1_err(_fix1_no("status_code",
+                                                                  _fix1_env_fields())),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX1_UNKNOWN))
+def test_fix1_f3_ambiguous_rejection_evidence_is_outcome_unknown(world, env, capfd, tmp_path,
+                                                                case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FIX1_UNKNOWN[case], api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown", st
+    assert st["via"] == "api" and st["api_attempt"] == "failed" and st["api_reason"], st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False
+
+
+FIX1_REJECTIONS = {
+    # FIX-4 N1: "one_line_429_as_the_last_line" (after an unknown "progress" line) and
+    # "no_outer_status_quota_reason_nested_429" (no outer status_code) moved to FIX1_UNKNOWN
+    "one_line_429_as_the_last_line_after_the_spinner": (1, b"", b"\r\x1b[2K| gemini-api generate\r\x1b[2K/ gemini-api generate\r\x1b[2K" + _COMPACT_429 + b"\n\n"),
+    "outer_429_live_string_code": _fix1_err(_fix1_env_fields(
+        error={"code": "too_many_requests", "message": "slow down"}, error_reason=None)),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX1_REJECTIONS))
+def test_fix1_f3_a_final_unambiguous_rejection_still_falls_back(world, env, capfd, tmp_path,
+                                                              case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FIX1_REJECTIONS[case]]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "failed", st
+    assert len(WORLD.api.calls) == 1 and WORLD.generate_calls == 1
+
+
+@pytest.mark.parametrize("exc", [KeyboardInterrupt, asyncio.CancelledError])
+def test_fix1_f8_an_interrupt_after_the_api_spawn_is_outcome_unknown(world, env, capfd, tmp_path,
+                                                                    exc):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [exc()]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    # the interrupt contract keeps exit 130; the status and the record say outcome_unknown
+    assert code == 130 and st["status"] == "outcome_unknown" and st["via"] == "api", st
+    assert "outcome unknown" in st["reason"] and _app_untouched() and len(WORLD.api.calls) == 1
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False and recs[1]["exit"] == 130
+    assert lanew_log.check("t1", log_path=e["GEMINIPRO_LOG"], ceiling=12)[0]
+
+
+FIX1_BAD_COMPLETED = {
+    "steps_not_a_list": {"status": "completed", "model": "gemini-4-carbon", "steps": 5},
+    "content_not_a_list": {"status": "completed", "model": "gemini-4-carbon",
+                           "steps": [{"type": "model_output", "content": 7}]},
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX1_BAD_COMPLETED))
+def test_fix1_f8_a_completed_shape_that_fails_to_parse_is_outcome_unknown(world, env, capfd,
+                                                                         tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [(0, json.dumps(FIX1_BAD_COMPLETED[case]).encode(), b""),
+                        api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown" and st["via"] == "api", st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+    assert [r["status"] for r in log_entries(e)] == ["started", "outcome_unknown"]
+
+
+def test_fix1_f8_an_unexpected_error_after_the_api_spawn_is_outcome_unknown(world, env, capfd,
+                                                                           tmp_path, monkeypatch):
+    def boom(self, proc, api_model):
+        raise RuntimeError("the judge broke")
+
+    monkeypatch.setattr(gp.Wrapper, "api_judge", boom)
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown", st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+
+
+@pytest.mark.parametrize("where", ["before_publish", "after_publish"])
+def test_fix1_f8_an_interrupt_never_keeps_an_answer_labelled_with_the_requested_model(
+        world, env, capfd, tmp_path, monkeypatch, where):
+    if where == "before_publish":
+        def interrupt(model):
+            raise KeyboardInterrupt
+        monkeypatch.setattr(gp, "api_model_name", interrupt)
+    else:
+        real_log = gp.log
+
+        def log(msg):
+            if str(msg).startswith("API answered"):
+                raise KeyboardInterrupt
+            real_log(msg)
+        monkeypatch.setattr(gp, "log", log)
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("KEPT-391", model="gemini-4-hydrogen")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    report = st.get("report")
+    kept = "KEPT-391" in out + err or bool(report and os.path.exists(report) and "KEPT-391" in
+                                          open(report, encoding="utf-8").read())
+    assert not kept or (st["model"] == "gemini-4-hydrogen" and st["model_mismatch"] is True), st
+    if where == "before_publish":
+        assert code == 130 and st["status"] == "outcome_unknown" and not kept, st
+    else:
+        assert code == 0 and kept, st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+
+
+@pytest.mark.parametrize("how", ["explicit", "path"])
+def test_fix1_f9_a_key_bearing_cli_path_refuses_the_launch(world, env, capfd, tmp_path,
+                                                           monkeypatch, how):
+    e = primary_env(env, tmp_path)
+    cli = tmp_path / ("gemini-api-%s.exe" % API_KEY)
+    cli.write_bytes(b"")
+    if how == "explicit":
+        e["GEMINIPRO_API_CLI"] = str(cli)
+    else:
+        e.pop("GEMINIPRO_API_CLI")
+        monkeypatch.setattr(gp.shutil, "which", lambda name, *a, **k: (
+            str(cli) if name == gp.API_CLI_NAME else "C:/fake/browser-harness.exe"))
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 2 and st["status"] == "preflight_refused", st
+    assert "CLI path contains the API key" in st["reason"] and st["api_attempt"] == "not_run", st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert API_KEY not in out + err
+
+
+def test_fix1_f9_too_little_time_refuses_before_the_app(world, env, capfd, tmp_path, monkeypatch):
+    monkeypatch.setattr(gp, "JOB_MIN", 200)  # over the 120 s total deadline
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 5 and st["status"] == "deadline" and st["api_attempt"] == "not_run", st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+
+
+def test_fix1_f9_no_time_left_for_the_attempt_refuses_after_admission(world, env, capfd, tmp_path,
+                                                                      monkeypatch):
+    monkeypatch.setattr(gp, "API_MARGIN", 1000)  # the attempt's timeout comes out <= 0
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 5 and st["status"] == "deadline" and st["api_attempt"] == "not_run", st
+    assert WORLD.api.calls == [] and _app_untouched() and _api_dirs(e) == []
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+
+
+def test_fix1_f9_an_unreadable_ledger_refuses_the_launch(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    os.makedirs(_ledger(e))  # a directory where the ledger file belongs: it cannot be read
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure" and "ledger" in st["reason"], st
+    assert st["api_attempt"] == "skipped" and WORLD.api.calls == [] and _app_untouched()
+    assert log_entries(e) == []
+
+
+@pytest.mark.parametrize("fault", ["log_error", "raises"])
+def test_fix1_f9_a_reservation_write_or_lock_failure_refuses_the_launch(world, env, capfd, tmp_path,
+                                                                        monkeypatch, fault):
+    def reserve(*a, **k):
+        if fault == "raises":
+            raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+        return ("log_error", None, 0)
+
+    monkeypatch.setattr(gp.lanew_log, "reserve", reserve)
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure" and "reservation" in st["reason"], st
+    assert st["api_attempt"] == "skipped" and WORLD.api.calls == [] and _app_untouched()
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+    assert lanew_log.check("t1", log_path=e["GEMINIPRO_LOG"], ceiling=12)[0]
+
+
+def test_fix1_f9_a_ceiling_refusal_at_reservation_still_falls_back(world, env, capfd, tmp_path,
+                                                                    monkeypatch):
+    monkeypatch.setattr(gp.lanew_log, "reserve", lambda *a, **k: ("refused", 40, 0))
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "skipped", st
+    assert WORLD.api.calls == [] and WORLD.generate_calls == 1
+    assert [r["status"] for r in log_entries(e)] == ["started", "ok"]
+
+
+def test_fix1_f9_the_cli_vanishing_at_spawn_falls_back_to_the_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [gp._mark_unspawned(FileNotFoundError(2, "The system cannot find the file"))]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "not_run", st
+    assert "not found" in st["api_reason"] or "cannot find" in st["api_reason"], st
+    assert len(WORLD.api.calls) == 1 and WORLD.generate_calls == 1
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "ok"] and recs[1]["via"] == "app", recs
+
+
+def test_fix1_f9_a_file_not_found_after_the_spawn_stays_outcome_unknown(world, env, capfd,
+                                                                        tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FileNotFoundError(2, "gone after the spawn")]  # not Popen's own
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown" and _app_untouched(), st
+
+
+@pytest.mark.parametrize("raised,tagged", [(FileNotFoundError, True), (PermissionError, False)])
+def test_fix1_f9_run_api_tags_only_popens_own_file_not_found(monkeypatch, tmp_path, raised,
+                                                             tagged):
+    def popen(*a, **k):
+        raise raised(2, "refused by the test")
+
+    monkeypatch.setattr(gp.subprocess, "Popen", popen)
+    holder = {}
+    with pytest.raises(raised) as ei:
+        REAL["_run_api"](["no-such-cli"], str(tmp_path), {}, 1, subprocess.DEVNULL, holder)
+    assert gp._unspawned(ei.value) is tagged and holder == {}
+
+
+def test_fix1_f10_the_reservation_row_is_stamped_under_the_ledger_lock(world, env, capfd, tmp_path,
+                                                                       monkeypatch):
+    rows, real = [], gp.lanew_log.reserve
+
+    def spy(path, row, ceiling, *a, **k):
+        rows.append(dict(row))
+        return real(path, row, ceiling, *a, **k)
+
+    monkeypatch.setattr(gp.lanew_log, "reserve", spy)
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and len(rows) == 1 and "ts" not in rows[0], rows
+    with open(_ledger(e), encoding="utf-8") as f:
+        (row,) = [json.loads(line) for line in f if line.strip()]
+    assert row["ts"] and lanew_log.count_reservations(_ledger(e)) == (1, 0)
+
+
+# --------------------------------------------------------------------------
+# FIX-4 (2026-11-18, review round 2): N1 a proven rejection is an allowlist over BOTH channels;
+# N5 a CLI path that exists but is not a regular file is a local fault; N6 a damaged API-day
+# ledger refuses; N7 an answer that is not encodable UTF-8 is outcome unknown
+# --------------------------------------------------------------------------
+
+# gemini-api v0.4.4 internal/output/progress.go: the request spinner (the CLI's only non-result
+# stderr text; never printed in machine mode or to a pipe): frames "\r\x1b[2K%c %s" (%c from
+# "|/-\\", %s the command path cut to the terminal width), then the clear "\r\x1b[2K"
+_SPIN = (b"\r\x1b[2K| gemini-api generate\r\x1b[2K/ gemini-api generate"
+         b"\r\x1b[2K- gemini-api generate\r\x1b[2K\\ gemini-api generate\r\x1b[2K")
+_SERVER_503_PRETTY = SERVER[503][2]
+_COMPLETED_LINE = json.dumps(_COMPLETED).encode()
+
+FIX4_UNKNOWN = {
+    # contrary dispatch evidence BEFORE a final 429 envelope
+    "n1_5xx_envelope_then_429": (1, b"", _SERVER_503_PRETTY + b"\n" + Q429[2]),
+    "n1_5xx_line_then_429": (1, b"", SERVER_ERR[2] + b"\n" + Q429[2]),
+    "n1_completed_interaction_then_429": (1, b"", _COMPLETED_LINE + b"\n" + Q429[2]),
+    "n1_completed_pretty_then_429": (1, b"", json.dumps(_COMPLETED, indent=2).encode() + b"\n"
+                                     + Q429[2]),
+    # error_type outside the rejection allowlist, with an accepted outer status
+    "n1_server_error_type_429_no_nested_code": _fix1_err(_fix1_env_fields(
+        error_type="server_error", error={"code": "too_many_requests", "message": "x"})),
+    "n1_server_error_type_429_nested_429": _fix1_err(_fix1_env_fields(error_type="server_error")),
+    "n1_api_error_type_429": _fix1_err(_fix1_env_fields(error_type="api_error")),
+    "n1_connection_error_type_400": _fix1_err(_fix1_env_fields(
+        error_type="connection_error", status_code=400, error=google_err(400, "INVALID_ARGUMENT"))),
+    "n1_unknown_type_403": _fix1_err(_fix1_env_fields(
+        error_type="quota_teapot", status_code=403, error=google_err(403, "PERMISSION_DENIED"))),
+    "n1_no_error_type": _fix1_err(_fix1_no("error_type", _fix1_env_fields())),
+    # stderr text that is not a known CLI progress shape before the envelope
+    "n1_spinner_with_a_foreign_label": (1, b"", b"\r\x1b[2K| HTTP 503 upstream\r\x1b[2K" + Q429[2]),
+    "n1_spinner_after_the_envelope": (1, b"", Q429[2] + b"\r\x1b[2K| gemini-api generate"),
+    "n1_bare_escape_before_429": (1, b"", b"\x1b[31m" + Q429[2]),
+    "n1_two_envelopes": (1, b"", Q429[2] + b"\n" + Q429[2]),
+    "n1_duplicate_status_code_key": (1, b"", b'{"error_type": "rate_limit_error", "exit_code": 1, '
+                                     b'"status_code": 503, "status_code": 429}'),
+    "n1_stderr_not_utf8": (1, b"", b"\xff\xfe" + Q429[2]),
+    "n1_nested_code_float_mismatch": _fix1_err(_fix1_env_fields(
+        error={"code": 503.0, "message": "x", "status": "UNAVAILABLE"})),
+    # condition 5 (the outer status is required) and unknown stderr lines: see the cases moved
+    # to UNKNOWN / FIX1_UNKNOWN ("429_after_cli_retry_lines", "one_line_429_as_the_last_line", ...)
+    # the guard's exit 9: a content denial only with an empty stdout; anything else is unknown
+    "n1_exit_9_with_a_clean_429_envelope": (9, b"", Q429[2]),
+    "n1_guard_denial_with_stdout": (9, b"partial", b"gemini-guard: denied: a signed link\n"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX4_UNKNOWN))
+def test_fix4_n1_anything_but_an_allowlisted_rejection_is_outcome_unknown(world, env, capfd,
+                                                                         tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FIX4_UNKNOWN[case], api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown", st
+    assert st["via"] == "api" and st["api_attempt"] == "failed" and st["api_reason"], st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False and _ledger_count(e) == 1
+
+
+FIX4_REJECTIONS = {
+    "n1_known_spinner_then_429": (1, b"", _SPIN + Q429[2]),
+    "n1_spinner_cut_to_the_terminal_width_then_429": (
+        1, b"", b"\r\x1b[2K| gemi\r\x1b[2K/ gemi\r\x1b[2K" + Q429[2]),
+    "n1_spinner_then_one_line_429_and_blank_lines": (1, b"", _SPIN + _COMPACT_429 + b"\n\n"),
+    "n1_blank_lines_then_429": (1, b"", b"\n\r\n" + Q429[2] + b"\n"),
+    "n1_service_disabled_403": _fix1_err(_fix1_env_fields(
+        error_type="service_disabled", status_code=403, error_reason="SERVICE_DISABLED",
+        error=google_err(403, "PERMISSION_DENIED"))),
+    "n1_billing_disabled_403": _fix1_err(_fix1_env_fields(
+        error_type="billing_disabled", status_code=403, error_reason="BILLING_DISABLED",
+        error=google_err(403, "PERMISSION_DENIED"))),
+    "n1_nested_code_float_equal": _fix1_err(_fix1_env_fields(
+        error={"code": 429.0, "message": "x", "status": "RESOURCE_EXHAUSTED"})),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX4_REJECTIONS))
+def test_fix4_n1_known_progress_then_an_allowlisted_rejection_falls_back(world, env, capfd,
+                                                                         tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FIX4_REJECTIONS[case]]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "failed", st
+    assert len(WORLD.api.calls) == 1 and WORLD.generate_calls == 1
+    assert [r["status"] for r in log_entries(e)] == ["started", "ok"]
+
+
+def test_fix4_n1_a_key_on_an_unknown_stderr_line_is_unknown_and_never_echoed(world, env, capfd,
+                                                                            tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [cli_error(1, 429, "rate_limit_error", "RESOURCE_EXHAUSTED",
+                                  "quota for key " + API_KEY,
+                                  google_err(429, "RESOURCE_EXHAUSTED", "quota for key " + API_KEY),
+                                  noise=b"retry with key " + API_KEY.encode() + b"\n")]
+    code, st, out, err = run(capfd, tmp_path, e, json_mode=False)
+    assert code == 6 and st["status"] == "outcome_unknown" and _app_untouched(), st
+    assert "[redacted]" in st["api_reason"] and API_KEY not in out + err
+    assert API_KEY not in json.dumps(st) and _key_leaks(str(tmp_path)) == []  # files, records
+
+
+@pytest.mark.parametrize("stderr", [Q429[2], SERVER[503][2], b"warning: something odd\n",
+                                    b"\xff not utf-8"])
+def test_fix4_n1_exit_0_with_an_answer_and_stderr_keeps_the_answer_with_a_warning(
+        world, env, capfd, tmp_path, stderr):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [(0, api_ok("KEPT-391", model="gemini-4-carbon")[1], stderr)]
+    code, st, out, err = run(capfd, tmp_path, e, json_mode=False)
+    assert code == 0 and st["status"] == "ok" and st["via"] == "api", st
+    assert out.strip() == "KEPT-391" and st["api_stderr_warning"] is True, st
+    assert set(st) == PRIMARY_KEYS | {"model_mismatch", "api_stderr_warning"}, st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+    assert "something odd" not in err and "rate_limit_error" not in err
+
+
+def test_fix4_n1_exit_0_with_only_spinner_text_on_stderr_has_no_warning(world, env, capfd,
+                                                                        tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [(0, api_ok("KEPT-391", model="gemini-4-carbon")[1], _SPIN)]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "api" and "api_stderr_warning" not in st, st
+
+
+def test_fix4_n1_the_progress_shapes_are_a_named_constant(world):
+    assert gp.API_PROGRESS_LABEL == "gemini-api generate"
+    assert len(gp.API_PROGRESS_SHAPES) == 2
+    assert gp.api_envelope(_SPIN + Q429[2]) == json.loads(Q429[2])
+    assert gp.api_envelope(b"x" + Q429[2]) is None
+    assert gp.API_REJECT_TYPES == frozenset((
+        "authentication_error", "authorization_error", "service_disabled", "billing_disabled",
+        "not_found", "validation_error", "rate_limit_error"))
+
+
+@pytest.mark.parametrize("kind", ["directory", "stat_raises"])
+def test_fix4_n5_a_cli_path_that_is_not_a_regular_file_refuses_the_launch(world, env, capfd,
+                                                                          tmp_path, monkeypatch,
+                                                                          kind):
+    e = primary_env(env, tmp_path)
+    if kind == "directory":
+        d = tmp_path / "gemini-api-dir"
+        d.mkdir()
+        e["GEMINIPRO_API_CLI"] = str(d)
+    else:
+        target, real = e["GEMINIPRO_API_CLI"], os.stat
+
+        def stat(p, *a, **k):
+            if str(p) == target:
+                raise PermissionError(13, "Access is denied", target)
+            return real(p, *a, **k)
+        monkeypatch.setattr(gp.os, "stat", stat)
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 2 and st["status"] == "preflight_refused", st
+    assert st["api_attempt"] == "not_run" and "GEMINIPRO_API_CLI" in st["api_reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert not os.path.exists(_ledger(e))
+
+
+def test_fix4_n5_legacy_keeps_a_not_a_file_cli_as_backup_not_run(world, env, capfd, tmp_path):
+    d = tmp_path / "gemini-api-dir"
+    d.mkdir()
+    e = dict(api_env(env, tmp_path), GEMINIPRO_API_CLI=str(d))
+    _harness_down()
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 2 and st["backup"] == "not_run" and "not a regular file" in st["reason"], st
+    assert WORLD.api.calls == []
+
+
+def _damage_ledger(e):
+    os.makedirs(os.path.dirname(_ledger(e)), exist_ok=True)
+    row = json.dumps({"kind": "api_reservation", "ts": lanew_log._now_iso(), "run": "x"})
+    with open(_ledger(e), "w", encoding="utf-8") as f:
+        f.write(row + "\n" + "{not json\n" + row + "\n")
+
+
+def test_fix4_n6_a_damaged_middle_ledger_line_refuses_the_launch(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    _damage_ledger(e)
+    before = open(_ledger(e), "rb").read()
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure", st
+    assert "API-day ledger damaged at line 2" in st["reason"] and st["api_attempt"] == "skipped", st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert open(_ledger(e), "rb").read() == before  # never repaired or appended to
+
+
+def test_fix4_n6_legacy_a_damaged_ledger_refuses_the_backup_with_exit_3(world, env, capfd,
+                                                                        tmp_path):
+    e = api_env(env, tmp_path)
+    _damage_ledger(e)
+    _harness_down()
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure", st
+    assert "API-day ledger damaged at line 2" in st["reason"] and st["backup"] == "not_run", st
+    assert WORLD.api.calls == [] and log_entries(e) == []
+
+
+def test_fix4_n6_a_torn_tail_healed_by_one_launch_never_blocks_the_next(world, env, capfd,
+                                                                        tmp_path):
+    e = primary_env(env, tmp_path)
+    os.makedirs(os.path.dirname(_ledger(e)), exist_ok=True)
+    with open(_ledger(e), "w", encoding="utf-8") as f:
+        f.write('{"kind": "api_reservation", "ts": "2026-11-1')  # a crash mid-append
+    WORLD.api.script = [api_ok(model="gemini-4-carbon"), api_ok(model="gemini-4-carbon")]
+    for name in ("a", "b"):
+        code, st, _, err = run(capfd, tmp_path, e, args=("t1", name))
+        assert code == 0 and st["via"] == "api", st
+        assert "unreadable line" in err, err
+    assert lanew_log.count_reservations(_ledger(e)) == (2, 1)
+
+
+def test_fix4_n7_an_answer_with_a_lone_surrogate_is_outcome_unknown(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("KEPT\ud800391", model="gemini-4-carbon"),
+                        api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown" and st["via"] == "api", st
+    assert "UTF-8" in st["api_reason"], st
+    assert st["report"] is None or not os.path.exists(st["report"]), st
+    assert "KEPT" not in out + err and len(WORLD.api.calls) == 1 and _app_untouched()
+    assert [r["status"] for r in log_entries(e)] == ["started", "outcome_unknown"]

@@ -1,6 +1,6 @@
 # FabStra quota, failure signatures, and the fast pin
 
-Contents: Why Astra holds the critic seats; The fast pin; Astra blocked, how to read it
+Contents: Why Sol and Astra hold the critic seats; The fast pin; Astra blocked, how to read it
 
 Reached from: fabstra SKILL.md - on any 429/400/502/stream error, and before honouring a "fast" word
 
@@ -8,14 +8,19 @@ Related:
 > The launch commands these errors come out of are in transport.md.
 > The rest of the effort rubric the fast pin belongs to is in phases.md.
 > the Codex transport -> transport.md
-## Why Astra holds the critic seats
+## Why Sol and Astra hold the critic seats
 
-Each model sits where it leads: Fable in the planner seat, Astra in the
-critic and executor seats (evidence: bench/results/results.csv).
+Each model sits where it leads: Fable in the planner seat; GPT-6.2 Sol in the
+critic and executor seats by default, and GPT-6.2 Astra on the hard-reasoning
+rows and as Sol's backup (JC 2026-11-18; OpenAI: "Use GPT-6.2 Astra for the
+most demanding tasks or GPT-6.2 Sol for complex work at lower cost."). The
+older evidence for a GPT critic seat is bench/results/results.csv (GPT-6 era).
 
-**Astra's quota: every ChatGPT login in the proxy is a separate pool.** All
+**Sol and Astra quota: every ChatGPT login in the proxy is a separate pool.** All
 logins in `~/.cli-proxy-api/codex-*.json` serve `gpt-6-astra` and
-`gpt-6.1-sol`; meters are per seat, not per workspace, and the same email in
+`gpt-6.1-sol`; 8317 serves `gpt-6.2-sol` and `gpt-6.2-astra` since 2026-11-18,
+but not every login is proven for 6.2 (the native `.codex-biz` login rejected
+6.2 on 2026-11-18; a rejection follows "Astra blocked, how to read it"); meters are per seat, not per workspace, and the same email in
 two workspaces is two pools. Never quote a percentage from memory: run
 `bcost` (windows per login) or `verify-codex-logins` (pool + disabled flags)
 at the start of a run. Business seats have a 5-hour and a 7-day window,
@@ -29,7 +34,7 @@ being round-robined until the credit check disables it. The proxy
 remembers a credential's last error per model, so a login that once answered
 "not supported" for a model is not retried until the proxy restarts. Never
 edit a `~/.cli-proxy-api/*.json` file in place to nudge it - a failed
-rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-row gates - design review and build review of excluded and architecture work - and let Sol hold the Sol row and Terra/Luna do the routed typing.
+rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra rows - an architecture or data-model decision, a plan whose check you cannot state, "break it", a re-review after a Sol miss on a P1 - and let Sol hold every other gate, parent and review seat (excluded work at xhigh) and Terra/Luna do the routed typing.
 
 ## The fast pin (last bullet of the effort rubric)
 
@@ -66,7 +71,7 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   anything still on, `rm -f ~/.codex-fast-rr ~/.codex-fast-skip`, and fall
   back to the rules below.
 
-- **Fast pin - "astra fast", `/fabstra ... fast`.** The word `fast` in the
+- **Fast pin - "sol fast", "astra fast", `/fabstra ... fast`.** The word `fast` in the
   invocation or brief turns on Codex Fast mode (`service_tier = "fast"`)
   for this run's launches on the `.codex-pro` home (the Pro login; JC's
   standing choice since 2026-09-14, after the Business seat ran out of
@@ -77,9 +82,13 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   only when JC asks for the Business seat by name. The launch then carries
   the `CODEX_HOME="${CODEX_PRO_HOME:-$HOME/.codex-pro}" CODEX_DIRECT=1` prefix (or uses
   the `codex-pro` shim) - the config switch alone does nothing if the job
-  runs through the router. Fast is a service tier, not an effort: Astra
-  streams about 2x faster, `gpt-6.1-sol` about 2x (advertised and verified 2026-10-13; it ran at standard speed before), GPT-6 Sol / Terra / Luna 1.5x, every request on that
-  login's pool costs 2.5x, and children Astra spawns inherit it (`spark`
+  runs through the router. Fast is a service tier, not an effort: the Codex
+  catalogue advertises the fast tier for both `gpt-6.2-sol` and
+  `gpt-6.2-astra` (2026-11-18; speed-up not yet measured), and a native home
+  is not proven for 6.2 until the re-probe (a rejected launch hops by the
+  hop rules, transport.md, Model pins). Earlier
+  measurements: Astra streamed about 2x faster, `gpt-6.1-sol` about 2x (advertised and verified 2026-10-13; it ran at standard speed before), GPT-6 Sol / Terra / Luna 1.5x, every request on that
+  login's pool costs 2.5x, and children the parent spawns inherit it (`spark`
   has no fast tier and stays standard, and is Pro-home only - a fast run
   on `.codex-pro` can use `spark` directly). It reaches only a
   native home - verified 2026-09-06 on Pro and 2026-09-10 on `.codex-biz`
@@ -92,30 +101,37 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra-
   showed `service_tier: None` and no handshake hint); the config switch is
   the only door. Without the word, standard tier; a slow run is never a
   reason to turn it on yourself. The fast pin and the Pro-home surfaces
-  (surfaces.md) are the two reasons to launch Astra on a native home;
-  otherwise Astra rotates over every login in the proxy.
+  (surfaces.md) are the two reasons to launch the Codex parent (Sol, or Astra
+  on an Astra row) on a native home; otherwise it rotates over every login in
+  the proxy.
 
 ## Astra blocked, how to read it (Phase 3)
 
-**Astra blocked, how to read it:** quota errors are 429 "All credentials
-for model gpt-6-astra are cooling down" (every login spent or cooling) or
-"usage_limit_reached" from the proxy, or 503 "auth_unavailable: no auth available (providers=codex ...)" (every login refused - seen 2026-11-17 with an upstream 402 deactivated_workspace), or a Codex job that fails within
+**Astra blocked, how to read it:** this reads the same for Sol and Astra,
+each with its own id. Quota errors are 429 "All credentials
+for model gpt-6.2-sol are cooling down" (or `gpt-6.2-astra`; every login spent or cooling) or
+"usage_limit_reached" from the proxy, or 503 "auth_unavailable: no auth available (providers=codex ...)" (every login refused - seen 2026-11-17 with an upstream 402 deactivated_workspace; on a 6.2 id, until the GPT-6.2 re-probe passes on or after 2026-11-21 15:27, it may be a remembered per-login model rejection rather than spent quota, so the paid API seat also needs the usage-endpoint check - transport.md, "API seat (OpenAI credits)"), or a Codex job that fails within
 seconds with the same text. A 400 "not supported when using Codex with a
-ChatGPT account" means that login has lost or not yet gained the model:
-probe the other logins directly, restart the proxy so it re-probes, and if
-only the proxy binary is old upgrade it; do not fall back. A 502 from the
-proxy on `gpt-6-astra` is usually a proxy binary that predates the model -
+ChatGPT account", or any other model-rejected / unsupported-model error on a
+6.2 id, means that login or home has lost or not yet gained the model; it is
+not quota, and the launch hops by the hop rules (transport.md,
+"Model pins (GPT-6.2)"); a surface job stays on the Pro home (surfaces.md,
+"Codex surface rules (Pro home)"). A 502 from the
+proxy on a model id is usually a proxy binary that predates the model -
 check `cli-proxy-api.exe --version` (7.3.12 is the verified version for
-`gpt-6-astra` and `gpt-6-luna`; 7.2.157 lacked Sol and Luna)
+`gpt-6-astra` and `gpt-6-luna`; 7.2.157 lacked Sol and Luna; 8317 served
+`gpt-6.2-sol` and `gpt-6.2-astra` on 2026-11-18)
 before concluding that; a current proxy can also
 relay an upstream 502, which a retry a minute later tells apart. `gpt-6.1-sol` verified served 2026-09-30 (proxy 7.3.12; native Codex needs CLI 0.159.2+). A `result`
 that reads "API Error: stream error: stream disconnected before completion"
 after a few turns is an upstream stream drop, not quota (seen 2026-09-05 at
 turn 9 of an Astra review with the account at 7% used): check the usage
 endpoint first (`allowed: true`, `limit_reached: false` = not quota), then
-relaunch the same spec once (`--fresh` on the Codex transport; the proxy command as-is,
-it has no such flag). Sol's
-quota errors read the same with `gpt-6.1-sol` and cover every login.
+relaunch the same spec once (`--fresh` on the Codex transport - it is a
+Codex-companion flag only; a proxy `claude -p` relaunch or hop is simply a new
+invocation). Both models' quota errors cover every login; a cooling model
+hops by the hop rules (transport.md, Model pins), then the "Reviewer
+fallback" table.
 
 Lane W stays retired (2026-09-27). The non-gating Pro consult seat (pro-consult.md) exists since 2026-10-17; it never replaces a gate or review seat.
 Codex-only breakages: "Codex CLI is not installed" means the PATH shims are

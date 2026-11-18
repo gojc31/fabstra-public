@@ -1,9 +1,8 @@
 ---
 name: fabsol
 disable-model-invocation: true
-description: Retired alias (2026-09-24). Sol-led runs now go through model-router:fabstra - name Sol in the brief (sol, gpt-6.1 sol, sol xhigh) and the skill pins Sol for the Astra seats.
+description: Retired alias (2026-09-24). Run model-router:fabstra; since 2026-11-18 Sol is its default gate seat, so naming Sol is no longer needed.
 ---
 
-Retired alias (2026-09-24): invoke `model-router:fabstra` and name Sol in the brief (`sol`, `gpt-6.1 sol`, `sol xhigh`).
-The skill then pins Sol for the Astra seats; builds and reviews run the same commands with `--model gpt-6.1-sol`.
-The Sol transport notes and `.fabsol/RUN.md` resume rule moved to fabstra `references/transport.md`, "Sol pin".
+Retired alias (2026-09-24): invoke `model-router:fabstra`. Since 2026-11-18 Sol (`gpt-6.2-sol`) is its default gate seat; naming Sol is no longer needed, though it still pins Sol.
+The `.fabsol/RUN.md` resume rule lives in fabstra `references/transport.md`, "Model pins (GPT-6.2)".

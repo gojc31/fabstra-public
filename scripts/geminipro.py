@@ -1,7 +1,10 @@
-"""geminipro - send ONE brief to the consumer Gemini web app (gemini.google.com) on
-the configured Google AI Pro account (GEMINIPRO_ACCOUNT, else EXPECTED_ACCOUNT below)
-through the gemini_webapi library; the answer goes to stdout and to a report file.
-A consult seat like astrapro, for Gemini (default model gemini-carbon).
+"""geminipro - send ONE brief to Gemini: first to the paid Gemini API through the gemini-api
+CLI (see "API primary (2026-11-18)"), else to the consumer Gemini web app (gemini.google.com)
+on the configured Google AI Pro account (GEMINIPRO_ACCOUNT, else EXPECTED_ACCOUNT below)
+through the gemini_webapi library (see "App fallback"); the answer goes to stdout and to a
+report file. A consult seat like astrapro, for Gemini (default model gemini-carbon).
+GEMINIPRO_API_PRIMARY=0 restores the old order: the app first, the API only as its backup
+(see "API backup").
 
 Usage: geminipro <run> <name> [--model <m>] [--json] [--brief-file <path>] < brief.md
        geminipro --status [--json]
@@ -15,23 +18,32 @@ fresh single-turn temporary chat, no files, no Gem, no tools, no history reuse.
 
 Exit codes:
   0    ok
-  1    logger refused (cap reached)
-  2    preflight refused (no account configured, browser-harness / Chrome unreachable, no
-       context with Google cookies)
+  1    refused before anything was admitted or sent: the per-run ceiling / logger refused, or
+       Google's usage meter at or above its limit (see "Usage meter")
+  2    preflight refused (no account configured - in API primary job mode only once the app
+       path is entered -, browser-harness / Chrome unreachable, no context with Google cookies;
+       in API primary mode a GEMINIPRO_API_CLI path carrying the key, or one that exists but is
+       not a regular file or cannot be inspected - no transport at all)
   3    logging failure
   4    model not available
   5    no free slot within the wait / deadline
-  6    the request ran and did not end ok (Gemini error, empty answer, blocked, quota)
-  7    brief gate
+  6    the request ran and did not end ok (Gemini error, empty answer, blocked, quota), or an
+       API primary attempt whose outcome is unknown (never resent, never sent to the app)
+  7    brief gate (in API primary mode a brief carrying the GEMINI_API_KEY value is refused
+       here too, before any transport), or the gemini-api guard denied the brief's content
+       on the API primary path (terminal: the brief never goes to the app)
   8    account mismatch
   64   usage error (run/name must match [A-Za-z0-9._-]{1,80}; a run/name argument holding the
        GEMINI_API_KEY value, in any mode, or a job-mode CLIPROXY_DIR or GEMINIPRO_LOG holding
        it - the value is never echoed, nothing is read, admitted or written)
   130  interrupted
 Every exit path emits one JSON status line (keys tool, exit, status, reason, run,
-name, model, job_id, report, account_ok, duration_s, submissions, context, via; --status
-adds account, tier, models, credits_5h, credits_weekly, abuse; the API backup trigger
-adds backup, primary_exit, primary_reason, requested_model - see "API backup"). Default: the
+name, model, job_id, report, account_ok, duration_s, submissions, context, via, meter; --status
+adds account, tier, models, credits_5h, credits_weekly, abuse, api_day; API primary mode, once
+the transport is chosen, adds api_attempt, api_reason, requested_model and, when the API
+answered, model_mismatch - plus api_stderr_warning: true only when the CLI also wrote to stderr -
+see "API primary"; the legacy API backup trigger adds backup,
+primary_exit, primary_reason, requested_model - see "API backup"). Default: the
 answer (or the --status summary) on stdout, the status line on stderr. --json
 (honoured on every exit, usage errors included): stdout carries only the status
 line. Steps log to stderr. The status line is written in its own step: a failed
@@ -46,17 +58,22 @@ Env: GEMINIPRO_ACCOUNT (the Google account the signed-in Gemini session must be;
   whitespace-only value - set, or the default - is exit 2 preflight_refused before
   any browser, cookie or network step, and a set value never falls back to the default),
   GEMINIPRO_MODEL (default gemini-carbon; --model wins), GEMINIPRO_RUN_JOB_CEILING
-  (default 12), GEMINIPRO_DAILY_CAP (default 80 admitted jobs per local calendar day,
-  all runs), GEMINIPRO_TOTAL_DEADLINE (s, default 900: one monotonic deadline over
+  (default 12), GEMINIPRO_MAX_5H_PCT (default 80) and GEMINIPRO_MAX_WEEKLY_PCT (default 90):
+  the usage-meter limits, numbers from 0 to 100 (anything else is exit 64; see "Usage
+  meter"; the retired GEMINIPRO_DAILY_CAP is no longer read), GEMINIPRO_TOTAL_DEADLINE (s, default 900: one monotonic deadline over
   stdin, slot wait, harness, network, checked again inside the transport guard just
   before the prompt POST - expired there: exit 5, nothing sent; finalization gets
   BACKSTOP_GRACE = 60 s more, then a hard exit), GEMINIPRO_SLOT_WAIT (s, default 300), GEMINIPRO_LOG (default
   ~/.cli-proxy-api/geminipro-usage.jsonl), CLIPROXY_DIR (default ~/.cli-proxy-api:
   geminipro-out/ reports and the geminipro.d/ state dir live under it).
-  API backup: GEMINIPRO_API_BACKUP (`0` turns it off; default on), GEMINI_API_KEY (read by
-  the gemini-api CLI itself; 16+ characters, else not a key), GEMINIPRO_API_CLI (an explicit
-  CLI path; default `gemini-api` on PATH), GEMINIPRO_API_MODEL (default gemini-4-hydrogen),
-  GEMINIPRO_API_TIMEOUT (s per attempt, default 300; a non-number is exit 64).
+  API: GEMINIPRO_API_PRIMARY (`0` = the legacy app-first order with the API backup; default
+  on: API primary), GEMINIPRO_API_DAY_CEILING (default 40: wrapper-started CLI attempts per
+  local day, both modes; a whole number >= 0, anything else exit 64 in every mode; 0 = no paid
+  CLI attempt in either mode), GEMINI_API_KEY (read by the gemini-api CLI itself; 16+
+  characters, else not a key), GEMINIPRO_API_CLI (an explicit CLI path; default `gemini-api`
+  on PATH), GEMINIPRO_API_TIMEOUT (s per attempt, default 300; a non-number is exit 64).
+  Legacy backup only: GEMINIPRO_API_BACKUP (`0` turns it off; default on),
+  GEMINIPRO_API_MODEL (default gemini-4-hydrogen; API primary uses the API_MODELS table).
 Test-only, honoured ONLY with GEMINIPRO_TEST=1 (exit 2 otherwise):
   GEMINIPRO_EXPECT_ACCOUNT (replaces the expected account for the identity check;
   GEMINIPRO_ACCOUNT must still resolve non-empty), GEMINIPRO_TEST_CONTEXT
@@ -115,13 +132,171 @@ Design (T1, 2026-11-13; fix round 1 the same day):
   dispatch is exit 6 outcome_unknown unless Gemini's own stream error code shows
   the request was refused.
 - Caps: one job at once (OS lock geminipro.d/job.lock), the per-run ceiling via
-  lanew_log.admit on geminipro's own log, a daily cap counted from that log. The
-  terminal record is written here (lanew_log.record_end classifies Codex
+  lanew_log.admit on geminipro's own log, Google's own usage meter (below) on the
+  app path, and the daily API ceiling (below) on CLI attempts - app jobs are not counted per day. The terminal record is written here (lanew_log.record_end classifies Codex
   transcripts) with status ok / failed / outcome_unknown and Codex fields null.
 
-API backup (2026-11-15). When the app path cannot run for a Chrome or account reason, the
-same gate-passed brief goes ONCE to the Gemini API through the `gemini-api` CLI (on this
-machine a guard wrapper; never the HTTP API directly). It is never the primary path.
+Usage meter (2026-11-16). Google meters the Gemini app per account in a 5-hour and a weekly
+credit window (the windows --status shows). On the app path, after the identity is proven
+and before the model is picked and the job admitted, the wrapper reads `usage_percentage`
+of the `current_5h` and `weekly` windows from the usage info the library fetched during
+init (GetUsageInfo, part of the library's own init; no extra request is made). A 5-hour
+value at or above GEMINIPRO_MAX_5H_PCT, or a weekly value at or above
+GEMINIPRO_MAX_WEEKLY_PCT, is exit 1 run_refused, reason "Google usage limit: 5h <x>% used
+(stop at <limit>%), resets <reset_at>" (the weekly window likewise; both named, joined by
+"; ", when both are over): nothing admitted, logged, sent or latched, and exit 1 never
+triggers the API backup. A window that cannot be read (missing, or a value that is not a
+number) is not checked and never blocks on its own; the reason names it: "Google usage
+meter: <5h|weekly> unreadable - not checked". A readable window at or over its limit still
+refuses (the reason is then the limit text plus that note). When nothing can be read (no
+usage info, or neither window readable) the consult goes ahead and the reason carries
+"Google usage meter unreadable - not checked". The status
+line key `meter` is "5h <x>%, weekly <y>%" - the library's values as reported, the same
+numbers the gate compared - once the meter was read on this run (only the windows read,
+when one is unreadable), else null; always null on the API backup path, which the meter
+does not gate (a separate API quota). --status prints "Gemini usage: 5h <x>% used (resets
+<reset_at>), weekly <y>% used (resets <reset_at>); consults stop at 5h <limit>% / weekly
+<limit>%" as its first summary line, and --status --json carries `meter` too.
+
+API primary (2026-11-18, JC: "paid API key first, then the Gemini app"). The default mode.
+GEMINI_API_KEY is on a paid (billed, Tier 1 prepay) Google project; Google states that
+paid-tier prompts and answers are not used to improve its products. The API is within
+Google's terms; the app path automates the consumer web app, which is not, so it is only the
+fallback. Always through the `gemini-api` CLI (a guard wrapper on this machine), never the HTTP
+API directly.
+- Order: argument parsing, config, the brief gate - which in this mode also refuses a brief
+  carrying the registered GEMINI_API_KEY value (exit 7, nothing admitted, no transport on any
+  route) -, the slot (one job at a time, both paths), the per-run precheck; then the API step;
+  the app path only if the API step did not answer.
+- Model: the requested model (--model, else GEMINIPRO_MODEL, else gemini-carbon), matched
+  case-insensitively in API_MODELS: gemini-carbon -> gemini-4-carbon, gemini-4-hydrogen ->
+  gemini-4-hydrogen. Any other model never goes to the API (app path only).
+- Preconditions, in order (a miss = api_attempt "not_run" or "skipped", nothing admitted, no
+  reservation, the app path runs exactly as in the app-only design): a mapped model (not_run);
+  GEMINIPRO_API_DAY_CEILING above 0 (skipped); GEMINI_API_KEY set, non-blank, 16+ characters
+  (not_run); the CLI resolves (GEMINIPRO_API_CLI, else gemini-api on PATH) (not_run: only a
+  GEMINIPRO_API_CLI path that provably does not exist, or gemini-api not on PATH); today's
+  reservations under the ceiling (skipped).
+- Local faults never reach the app (FIX-1, 2026-11-18): the launch is refused, no transport at
+  all, nothing sent to the API or the app - a CLI path carrying the key: exit 2
+  preflight_refused (api_attempt not_run, like the browser-harness path check), and so is
+  (FIX-4 N5) a GEMINIPRO_API_CLI path that exists but is not a regular file (a directory) or
+  whose inspection raised (permission / OS error); fewer than
+  JOB_MIN seconds left, or no time left for the attempt's timeout after the reservation: exit 5
+  deadline (not_run); an unreadable ledger, or a reservation that cannot be written (lock,
+  write or verify failure): exit 3 log_failure (skipped); so is (FIX-4 N6) a damaged ledger -
+  a line before the last that is not a JSON object (only a torn LAST line is skipped; see
+  "Daily API ceiling"): exit 3 log_failure "API-day ledger damaged at line N" (skipped), checked
+  before admission, nothing written. After admission the job's terminal record is failed,
+  unlatched.
+- Admission: admit() once (the per-run ceiling; the started record names the API model). The
+  app fallback reuses this job: an API attempt plus an app answer in one launch is ONE job.
+  Refused or failed admission is the run's exit (1 / 3), api_attempt not_run.
+- Reservation: then, still under the job lock, a durable reservation row goes into the ledger
+  (lanew_log.reserve: the day count re-checked and the row appended, fsync'd and verified, in
+  one critical section under the ledger's lock; the row's ts and the local date it counts
+  against come from one clock read there) BEFORE the child is spawned; a reservation the
+  ceiling now refuses (another launch took the last slot) is api_attempt "skipped" and the
+  admitted job goes to the app path.
+- Call: body.json {"input": <brief>, "model": <API model>, "stream": false, "store": false} in
+  a new empty directory under geminipro.d/, `<cli> generate --output-format json --body
+  @body.json --no-retries`, no shell, stdin DEVNULL, the environment inherited (the CLI reads
+  the key; it is never in argv or the body), timeout min(GEMINIPRO_API_TIMEOUT, time left -
+  API_MARGIN), ONE attempt: no wrapper retry, and the CLI's own backoff retries off
+  (--no-retries, a global flag the guard's usage table knows), so one admitted attempt is at
+  most one upstream request. The child handling (tree kill, holder, backstop, body-directory
+  removal, housekeeping) is the API backup's, below. Popen's own FileNotFoundError (the CLI
+  vanished between the lookup and the spawn: no child) is api_attempt not_run, the app follows.
+- Outcome classes (from the CLI's exit code, its stdout and its classified JSON error envelope
+  on stderr - gemini-api v0.4.4 prints the API's own error body plus error_type, exit_code,
+  message, hints, error_reason and status_code, the HTTP status):
+  * answered: exit 0, stdout one JSON object, status "completed", a valid model_output text
+    (hold()) that is encodable UTF-8 (FIX-4 N7: a lone surrogate is malformed success output,
+    exit 6 below, never the kept-answer exit 3): exit 0, via "api", `model` = the model the
+    RESPONSE names (a "models/" prefix dropped); missing, or not the mapped model: the answer
+    is kept, model_mismatch true (the record carries model_mismatch, its model is the
+    response's), never resent. Anything on stderr beside it (an error envelope included;
+    the CLI's own progress text excepted) does not discard the answer - an answer in hand
+    cannot cause a double send: the status line adds api_stderr_warning: true (stderr is never
+    echoed). The answer, model, model_mismatch and api_stderr_warning are held in one step
+    (publish_api_answer).
+  * proven rejection - the only case after a possible dispatch that reaches the app; an
+    allowlist judged over both channels (FIX-4 N1, 2026-11-18) - only when ALL hold: (1) the
+    CLI exited non-zero and not with the guard's exit 9; (2) stdout is empty (zero bytes);
+    (3) stderr is strict UTF-8 holding zero or more pieces of the CLI's own progress text
+    (API_PROGRESS_SHAPES: gemini-api v0.4.4 progress.go's spinner frames - CR, ESC [2K, a
+    frame character, a space, a prefix of "gemini-api generate" - and clears - CR, ESC [2K;
+    the CLI has no retry or backoff lines, and prints the spinner only to a terminal outside
+    machine mode) and
+    whitespace, then exactly ONE JSON error envelope (one line or indented, no duplicate key)
+    and nothing but whitespace after it (api_envelope); (4) its error_type is in
+    API_REJECT_TYPES (from classify.go: rate_limit_error, validation_error,
+    authentication_error, authorization_error, not_found, service_disabled,
+    billing_disabled - server_error and any unknown type never qualify); (5) its top-level
+    status_code is a well-formed int 400 / 401 / 403 / 404 / 429 (missing, null, string,
+    float or bool: no evidence), and a numeric error.code, when there is one, equals it;
+    (6) it carries no interaction field (API_GENERATION_KEYS). api_attempt "failed",
+    api_reason the scrubbed summary (<= 300 characters).
+  * guard content denial (terminal): exit 9 with a `gemini-guard: denied:` line AND an empty
+    stdout (private / signed links, client files: the real CLI never started): exit 7
+    brief_refused with the guard's reason; the brief is never sent to the app; terminal record
+    failed, unlatched. An exit 9 without that (a guard internal error, or output on stdout
+    beside a denial line) is outcome unknown.
+  * everything else once the child was spawned - a timeout (the child killed), any error after
+    the spawn (an unexpected internal error included), HTTP 5xx (500 / 502 / 503 / 504
+    included), a connection or other error without an HTTP status, an error_type outside the
+    allowlist, any stderr text before the envelope that is not the CLI's own progress text
+    (a 5xx diagnostic or a completed interaction ahead of a final 429 included), two
+    envelopes or text after one, an exit 9 that is not a clean content denial, output on
+    stdout before a failure (partial answer content), exit 0 with output that is not a
+    completed answer (not JSON, not completed, a completed shape that does not parse, empty,
+    an error card, text that is not encodable UTF-8, any error payload - exit 0 is never a
+    proven rejection): exit 6 outcome_unknown, terminal record outcome_unknown, unlatched;
+    never resent on either transport, never sent to the app. An interrupt or
+    cancellation once the child was started keeps exit 130 (the interrupt contract) with
+    status outcome_unknown, record outcome_unknown, unlatched.
+- Records: the terminal record carries via ("api" / "app"); a job that ended on the API never
+  latches the run. The status line says via "api" from the admission until the API step ends
+  without an answer (back to "app"); `context` and `meter` are null on via "api".
+- Account: a blank GEMINIPRO_ACCOUNT no longer refuses an API launch; it is required (and the
+  identity check runs) only when the app path is entered: then exit 2 preflight_refused "no
+  Google account configured for the app fallback ... (API attempt <state>: <reason>)", before
+  any harness, cookie or network step. --status and the legacy mode still refuse it at config.
+- Report: account line "n/a (API key)", plus "- via: api (primary; requested <model>)".
+
+Daily API ceiling. GEMINIPRO_API_DAY_CEILING (default 40) caps the CLI attempts this wrapper
+starts per LOCAL calendar day (JC's own spend guard: local date on purpose, not UTC), in both
+modes: the count is the reservation rows dated today in the ledger
+<GEMINIPRO_LOG without extension>-api-day.jsonl (kind "api_reservation"; lanew_log never
+treats such a row as a job record), terminated or not; a row whose time cannot be read counts.
+It counts wrapper-admitted CLI attempts: in the primary mode one attempt is at most one upstream
+request (--no-retries); the legacy backup keeps the CLI's own backoff retries inside one
+attempt, which are not seen. A torn trailing ledger line (the LAST line, with no trailing
+newline: a crash mid-append) is skipped with a note on stderr, never a crash, and the next row
+is written on a new line and stamped (lanew_log.TORN_MARK) so the now-interior fragment stays
+skippable. Any other line that is not a JSON object - before the last line, or a last line
+with its newline - is damaged committed history (FIX-4 N6): the launch is refused, exit 3
+log_failure "API-day ledger damaged at line N", no transport, nothing written - in the
+legacy mode too (the backup is not run; exit 3 instead of the app path's exit); --status
+shows api_day "?/<ceiling>". --status
+prints "api_day: <n>/<ceiling>" (key api_day).
+
+App fallback. When the API step did not answer and may not have (api_attempt not_run, skipped
+or failed - a proven rejection), the app path runs as described above (identity check, usage
+meter, temporary chat, its own exits). An API failure never latches the run. When the API
+step had admitted the job, the app path reuses it (no second admission) and an app-side
+refusal BEFORE any app POST (no account, harness / identity / meter / model / deadline / block)
+ends with that refusal's own exit, its terminal record failed and UNLATCHED; once the app
+POSTed, the app path's own latch rules apply. When the API answered, the app path is never
+entered (no browser-harness, no cookies).
+
+API backup (2026-11-15) - the GEMINIPRO_API_PRIMARY=0 mode. When the app path cannot run for a
+Chrome or account reason, the same gate-passed brief goes ONCE to the Gemini API through the
+`gemini-api` CLI (on this machine a guard wrapper; never the HTTP API directly). In this mode
+it is never the primary path; it obeys GEMINIPRO_API_BACKUP and the daily API ceiling (each
+CLI attempt, the retry included, reserves a ledger row first; a ceiling of 0 or a reached
+ceiling is "API backup not run: ..."), and the key-in-brief check stays its own precondition
+below (the brief gate does not refuse it in this mode).
 - Trigger: job mode only (never --status). An exit 2 (preflight_refused) or 8
   (account_mismatch) raised after the brief gate, the slot and the precheck passed and
   before admission (no job_id, 0 submissions, no answer held): harden(), candidates(),
@@ -129,11 +304,13 @@ machine a guard wrapper; never the HTTP API directly). It is never the primary p
   test-only variable without GEMINIPRO_TEST=1) and every other code (1, 3, 4, 5, 6, 7, 64,
   130) never trigger.
 - Preconditions, in order (a miss = "not run"): GEMINIPRO_API_BACKUP is not 0;
+  GEMINIPRO_API_DAY_CEILING is not 0;
   GEMINI_API_KEY is non-blank and 16+ characters; GEMINIPRO_API_MODEL does not contain the
   key ("GEMINIPRO_API_MODEL contains the API key"); the CLI resolves (GEMINIPRO_API_CLI, else
   gemini-api on PATH) and its path does not contain the key ("the CLI path contains the API
   key"); JOB_MIN seconds remain; the brief does not contain the key (such a brief is never
-  written to a body file or sent, and not silently scrubbed). Not run: the original exit
+  written to a body file or sent, and not silently scrubbed); today's API reservations are
+  under GEMINIPRO_API_DAY_CEILING (see "Daily API ceiling"). Not run: the original exit
   code and status, reason + "; API backup not run: <why>", nothing admitted or logged, no
   report, the CLI never started. Metadata carrying the key is refused, never scrubbed into a
   file or argv - one check (key_in) at every persistence and process boundary: run/name, and
@@ -145,7 +322,7 @@ machine a guard wrapper; never the HTTP API directly). It is never the primary p
   harness child starts (in job mode that is the backup trigger); the requested --model only
   reaches the scrubbed status line. Report text is scrubbed field by field; the body file
   holds only the checked brief and API model.
-- Call: admit() first (same per-run ceiling and daily cap; the record's model is the API
+- Call: admit() first (same per-run ceiling, no usage-meter gate; the record's model is the API
   model), then body.json - {"input": <brief>, "model": <API model>, "stream": false,
   "store": false}, UTF-8 JSON - in a new empty directory under geminipro.d/, and
   `<cli> generate --output-format json --body @body.json` with no shell, stdin DEVNULL,
@@ -234,6 +411,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -299,6 +477,42 @@ API_REASON_MAX = 300  # longest API failure text in a reason (scrubbed first)
 API_BODY = "body.json"
 KILL_WAIT = 12        # the backstop waits this long for its verified tree step; the whole kill
 #                       step - direct kill + tree step - is bounded by about 12 s (<= 15)
+
+# the API primary path (module docstring, "API primary (2026-11-18)")
+# the requested model (an app slug or an API id, matched case-insensitively) -> the API model id;
+# a model not in this table never goes to the API (app path only)
+API_MODELS = {"gemini-carbon": "gemini-4-carbon", "gemini-4-hydrogen": "gemini-4-hydrogen"}
+API_DAY_CEILING = 40  # GEMINIPRO_API_DAY_CEILING default: CLI attempts per local day, 0 = API off
+API_LEDGER_SUFFIX = "-api-day.jsonl"  # the reservation ledger, next to the usage log
+API_REJECT_STATUS = frozenset((400, 401, 403, 404, 429))  # proven rejections: the app may follow
+# The error types of an API refusal before generation (FIX-4 N1), from gemini-api v0.4.4
+# internal/output/classify.go: classifyHTTPStatus (401 authentication_error, 403
+# authorization_error, 404 not_found, 400 validation_error, 429 rate_limit_error) and the reason
+# rules' service_disabled / billing_disabled. server_error, connection_error, protocol_error,
+# api_error, runtime_error, unsupported_error, async_* and any unknown type never qualify.
+API_REJECT_TYPES = frozenset(("authentication_error", "authorization_error", "service_disabled",
+                              "billing_disabled", "not_found", "validation_error",
+                              "rate_limit_error"))
+# The CLI's only non-result stderr text (FIX-4 N1), read from the gemini-api v0.4.4 source:
+# internal/output/progress.go StartRequestProgress, the request spinner - frames
+# fmt.Fprintf(out, "\r\x1b[2K%c %s", ...) with %c from "|/-\\" and %s the command path cut to
+# the terminal width (requestProgressLabel: a prefix, no ellipsis), then fmt.Fprint(out,
+# "\r\x1b[2K") when it stops. It prints only when stdout AND stderr are terminals outside
+# machine mode (--output-format json is machine mode), so under this wrapper it never appears.
+# There are no retry / backoff lines: internal/sdk/sdkinternal/utils/retries.go and
+# internal/sdk/retry/config.go print nothing, and internal/output/output.go (with classify.go)
+# writes only the error envelope to stderr in JSON mode (renderStructuredError:
+# json.MarshalIndent with "  ", then a newline). Any other stderr text is unknown evidence.
+API_PROGRESS_LABEL = "gemini-api generate"  # cmd.CommandPath() of api_argv's command
+API_PROGRESS_SHAPES = (
+    # a spinner frame; its label must be a prefix of API_PROGRESS_LABEL (_progress_end)
+    re.compile(r"\r\x1b\[2K[|/\\-] ([a-z -]{1,%d})" % len(API_PROGRESS_LABEL)),
+    re.compile(r"\r\x1b\[2K"),  # the spinner's clear when it stops
+)
+# interaction fields in an error envelope = generation evidence: never a proven rejection
+API_GENERATION_KEYS = ("steps", "outputs", "candidates", "status", "object")
+GUARD_EXIT = 9                       # the gemini-api guard's deny / internal-error exit
+GUARD_DENIED = "gemini-guard: denied:"  # the guard's content-denial stderr line
 
 HARD_EXIT = os._exit  # the backstop's exit; tests replace it
 _ABSENT = object()    # "no such field" (distinct from a JSON null)
@@ -1234,14 +1448,46 @@ class ApiFailure(Exception):
     """The API backup ran and did not answer (the run keeps the app path's exit)."""
 
 
+class ApiRejected(Exception):
+    """API primary: positive evidence that the API answered nothing (a proven rejection): the
+    app fallback may follow. `state` is the api_attempt value the fallback reports."""
+    state = "failed"
+
+
+class ApiNotStarted(ApiRejected):
+    """API primary: the CLI vanished between lookup and spawn (Popen's own FileNotFoundError,
+    _unspawned): no child, nothing sent - the app fallback may follow."""
+    state = "not_run"
+
+
+_UNSPAWNED = "geminipro_unspawned"
+
+
+def _mark_unspawned(exc):
+    """Tag the FileNotFoundError that subprocess.Popen itself raised in _run_api: the CLI was
+    not there at spawn, so no child was created. Returns exc (re-raised unchanged)."""
+    setattr(exc, _UNSPAWNED, True)
+    return exc
+
+
+def _unspawned(exc):
+    """True only for the FileNotFoundError _run_api's own Popen raised (a proven non-dispatch);
+    any other error once the CLI may have started is not."""
+    return isinstance(exc, FileNotFoundError) and getattr(exc, _UNSPAWNED, False) is True
+
+
 def api_body(text, model):
     """The request body file's bytes: UTF-8 JSON of exactly the gate-passed text."""
     return json.dumps({"input": text, "model": model, "stream": False, "store": False},
                       ensure_ascii=False).encode("utf-8")
 
 
-def api_argv(cli):
-    return [cli, "generate", "--output-format", "json", "--body", "@" + API_BODY]
+def api_argv(cli, retries=True):
+    """The CLI's argv. retries=False (API primary) adds the CLI's global --no-retries flag (the
+    guard's usage table knows it as a boolean and forwards argv unchanged): one admitted attempt
+    is then at most one upstream request. The legacy backup keeps the CLI's own retries."""
+    argv = [cli, "generate", "--output-format", "json", "--body", "@" + API_BODY]
+    return argv if retries else argv + ["--no-retries"]
 
 
 _created = lanew_log.pid_created  # a live process's creation time (FILETIME ticks) or None; tests replace
@@ -1419,9 +1665,13 @@ def _run_api(argv, cwd, env, timeout, stdin, holder):
     tree step). A timeout or interrupt kills the child tree before re-raising; every path out
     kills a child still running and drops it from holder only when it is dead. Tests replace this."""
     extra = {} if os.name == "nt" else {"start_new_session": True}
-    holder["proc"] = proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=stdin,
-                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                             shell=False, **extra)
+    try:
+        holder["proc"] = proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=stdin,
+                                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                                 shell=False, **extra)
+    except FileNotFoundError as exc:  # Popen's own: no child was created (_unspawned)
+        _mark_unspawned(exc)
+        raise
     try:
         holder["created"] = _created(proc.pid)
         try:
@@ -1437,7 +1687,9 @@ def _run_api(argv, cwd, env, timeout, stdin, holder):
 
 
 def _json_tail(data):
-    """The CLI's JSON object: the whole text, else the last line that starts with '{'."""
+    """The CLI's JSON object: the whole text, else the last line that starts with '{'.
+    The legacy backup's parser (its retry predicate and api_error_text), exactly as in 1.15.5;
+    the API primary path judges with api_envelope."""
     text = data.decode("utf-8", "replace") if isinstance(data, bytes) else str(data or "")
     with contextlib.suppress(ValueError):
         obj = json.loads(text.strip())
@@ -1450,6 +1702,153 @@ def _json_tail(data):
                 if isinstance(obj, dict):
                     return obj
     return None
+
+
+def _json_final(data):
+    """API primary, for the reason text only (api_error_summary; the judgement is
+    api_envelope's): the CLI's FINAL JSON object - the block from a line that starts with '{' to
+    the end of the text (one line, or the CLI's indented envelope after retry / progress
+    lines) that parses as one object with nothing but whitespace after it; else None. An
+    earlier object followed by any other text is never returned."""
+    text = data.decode("utf-8", "replace") if isinstance(data, bytes) else str(data or "")
+    lines = text.rstrip().splitlines()
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].lstrip().startswith("{"):
+            with contextlib.suppress(ValueError):
+                obj = json.loads("\n".join(lines[i:]))
+                if isinstance(obj, dict):
+                    return obj
+    return None
+
+
+def _int(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+
+def _progress_end(text):
+    """The index where the leading known CLI progress text (API_PROGRESS_SHAPES: spinner
+    frames whose label is a prefix of API_PROGRESS_LABEL, spinner clears) and whitespace end."""
+    frame, clear = API_PROGRESS_SHAPES
+    pos, end = 0, len(text)
+    while pos < end:
+        m = frame.match(text, pos)
+        if m and API_PROGRESS_LABEL.startswith(m.group(1)):
+            pos = m.end()
+            continue
+        m = clear.match(text, pos)
+        if m:
+            pos = m.end()
+            continue
+        if text[pos] in " \t\r\n":
+            pos += 1
+            continue
+        break
+    return pos
+
+
+def _unique_keys(pairs):
+    """json object_pairs_hook: a duplicated key (at any depth) is not one well-formed envelope."""
+    obj = dict(pairs)
+    if len(obj) != len(pairs):
+        raise ValueError("duplicate key")
+    return obj
+
+
+def api_envelope(stderr):
+    """API primary (FIX-4 N1): the CLI's error envelope when stderr is strict UTF-8 holding
+    only known CLI progress text and whitespace (_progress_end), then exactly ONE JSON object
+    (one line or indented, no duplicate keys) and nothing but whitespace after it; else None."""
+    if isinstance(stderr, bytes):
+        try:
+            text = stderr.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    else:
+        text = str(stderr or "")
+    rest = text[_progress_end(text):]
+    if not rest.startswith("{"):
+        return None
+    try:
+        obj = json.loads(rest, object_pairs_hook=_unique_keys)
+    except (ValueError, RecursionError):
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def api_stderr_extra(stderr):
+    """True when stderr holds anything beyond known CLI progress text and whitespace (on an
+    answered exit 0: the status line's api_stderr_warning; the text itself is never echoed)."""
+    text = stderr.decode("utf-8", "replace") if isinstance(stderr, bytes) else str(stderr or "")
+    return _progress_end(text) < len(text)
+
+
+def api_rejection(obj):
+    """Positive evidence that the API refused the request before generating (module docstring,
+    "Outcome classes"; FIX-4 N1), judged on the CLI's one error envelope (api_envelope; the
+    caller has checked a non-zero exit that is not the guard's 9 and a zero-byte stdout): its
+    error_type in API_REJECT_TYPES; no generation field (API_GENERATION_KEYS); a top-level
+    status_code that is a well-formed int in 400 / 401 / 403 / 404 / 429; and the API body's
+    error.code, when it is a number, equal to it. A missing or malformed status_code (null, a
+    string, a float, a bool) is no evidence, whatever a nested field says. Returns a short
+    label, or None: anything else is no evidence (server_error and 5xx included)."""
+    if not isinstance(obj, dict):
+        return None
+    etype = obj.get("error_type")
+    if not isinstance(etype, str) or etype not in API_REJECT_TYPES:
+        return None
+    if any(k in obj for k in API_GENERATION_KEYS):
+        return None
+    status = _int(obj.get("status_code"))
+    if status is None or status not in API_REJECT_STATUS:
+        return None
+    err = obj.get("error") if isinstance(obj.get("error"), dict) else {}
+    nested = err.get("code")
+    if isinstance(nested, (int, float)) and not isinstance(nested, bool) and nested != status:
+        return None
+    return "HTTP %d" % status
+
+
+def api_error_summary(rc, data):
+    """A short description of a failed CLI call from its final error envelope (status, reason,
+    type, message) or its raw text; scrubbed here (the caller truncates it)."""
+    obj = _json_final(data)
+    if isinstance(obj, dict) and ("error_type" in obj or "error" in obj):
+        err = obj.get("error") if isinstance(obj.get("error"), dict) else {}
+        status = _int(obj.get("status_code"))
+        if status is None:
+            status = _int(err.get("code"))
+        parts = ["HTTP %d" % status] if status is not None else []
+        for v in (obj.get("error_reason"), err.get("status"), err.get("code"), obj.get("error_type")):
+            if isinstance(v, str) and v and v not in parts:
+                parts.append(v)
+        msg = err.get("message") or obj.get("message") or (
+            obj.get("error") if isinstance(obj.get("error"), str) else "")
+        return "CLI exit %d (%s): %s" % (rc, scrub(", ".join(parts))[:120] or "error",
+                                         scrub(" ".join(str(msg or "").split()))[:400])
+    raw = data.decode("utf-8", "replace") if isinstance(data, bytes) else str(data or "")
+    text = scrub(" ".join(raw.split()))[:400]
+    return "CLI exit %d%s" % (rc, (": " + text) if text else " with no error text")
+
+
+def guard_denial(rc, stderr):
+    """The gemini-api guard refused the request's content: exit 9 with a `gemini-guard: denied:`
+    line (the real CLI never started). Returns the guard's reason, else None (a guard internal
+    error, `gemini-guard: error:`, is not a denial)."""
+    if rc != GUARD_EXIT:
+        return None
+    text = stderr.decode("utf-8", "replace") if isinstance(stderr, bytes) else str(stderr or "")
+    for line in text.splitlines():
+        if line.startswith(GUARD_DENIED):
+            return line[len(GUARD_DENIED):].strip() or "no reason given"
+    return None
+
+
+def api_model_name(model):
+    """The answering model as the response named it (a "models/" prefix dropped), or None."""
+    if not isinstance(model, str) or not model.strip():
+        return None
+    model = model.strip()
+    return model[len("models/"):] if model.startswith("models/") else model
 
 
 def api_server_error(obj):
@@ -1473,13 +1872,23 @@ def api_error_text(rc, stderr):
     return "CLI exit %d%s" % (rc, (": " + text) if text else " with no error text")
 
 
-def api_answer(stdout):
-    """The answer text from the CLI's JSON: status completed; the text items of the
-    model_output steps, in order (thought steps ignored)."""
+def _json_obj(stdout):
     try:
         obj = json.loads((stdout or b"").decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
-        obj = None
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
+def api_answer(stdout):
+    """The answer text from the CLI's JSON (api_result)."""
+    return api_result(stdout)[0]
+
+
+def api_result(stdout):
+    """(answer, model) from the CLI's JSON: status completed; the text items of the
+    model_output steps, in order (thought steps ignored); model as the response named it."""
+    obj = _json_obj(stdout)
     if not isinstance(obj, dict):
         raise ApiFailure("the CLI output was not the expected JSON (not echoed)")
     if obj.get("status") != "completed":
@@ -1492,7 +1901,18 @@ def api_answer(stdout):
                 if isinstance(item, dict) and item.get("type") == "text" and isinstance(
                         item.get("text"), str):
                     texts.append(item["text"])
-    return "".join(texts)
+    return "".join(texts), obj.get("model")
+
+
+def answer_invalid(text):
+    """Why a completed answer cannot be held (Wrapper.hold): an empty answer or Gemini's error
+    card as text; None when it can."""
+    text = text or ""
+    if not text.strip():
+        return "empty answer"
+    if len(text) < 300 and ERROR_CARD_RE.match(text):
+        return "Gemini returned an error card as text: %s" % scrub(text)[:120]
+    return None
 
 
 def credits(usage, key):
@@ -1501,6 +1921,34 @@ def credits(usage, key):
         return None
     return {"remaining_credits": w.get("remaining_credits"), "usage_percentage":
             w.get("usage_percentage"), "reset_at": w.get("reset_at")}
+
+
+METER_WINDOWS = (("5h", "current_5h"), ("weekly", "weekly"))  # (label, usage_info key)
+METER_UNREADABLE = "Google usage meter unreadable - not checked"
+
+
+def read_meter(usage):
+    """{label: (usage_percentage, reset_at)} for each window of the library's usage info whose
+    usage_percentage is a number (taken as reported: never re-rounded or recomputed)."""
+    got = {}
+    if not isinstance(usage, dict):
+        return got
+    for label, key in METER_WINDOWS:
+        w = usage.get(key)
+        p = w.get("usage_percentage") if isinstance(w, dict) else None
+        if isinstance(p, (int, float)) and not isinstance(p, bool) and p == p:  # p == p: not nan
+            got[label] = (p, w.get("reset_at"))
+    return got
+
+
+def meter_text(got):
+    """The status line's `meter`: "5h <x>%, weekly <y>%" (only the windows read), or None."""
+    return ", ".join("%s %s%%" % (label, got[label][0]) for label, _ in METER_WINDOWS
+                     if label in got) or None
+
+
+def fmt_pct(v):
+    return "%g%%" % (v + 0.0)  # + 0.0: a limit of -0 prints as 0%
 
 
 # --------------------------------------------------------------------------
@@ -1553,6 +2001,15 @@ class Wrapper:
         self.api_holder = {}        # the live CLI child ("proc"), for the backstop
         self.api_dir = None         # the body file's directory while it exists
         self.api_started = False    # a CLI child was started (the brief may have gone out)
+        self.meter = None           # "5h <x>%, weekly <y>%" once Google's usage meter was read
+        self.meter_usage = {}       # --status: read_meter() of the usage info
+        self.max_5h, self.max_weekly = 80.0, 90.0  # config() reads the env limits
+        self.primary_mode = True    # config(): GEMINIPRO_API_PRIMARY (0 = the legacy app-first order)
+        self.day_ceiling = API_DAY_CEILING  # config(): GEMINIPRO_API_DAY_CEILING
+        self.api_ledger = None      # config(): the API reservation ledger next to the usage log
+        self.account_error = None   # API primary job mode: a blank account refuses only the app path
+        self.pre_admitted = False   # the job was admitted by the API step, before the app path
+        self.api_day = None         # --status: "<n>/<ceiling>"
 
     # ---- config -----------------------------------------------------------------
     def parse_args(self):
@@ -1604,13 +2061,17 @@ class Wrapper:
         for k in TEST_ONLY:
             if e.get(k) and not self.test:
                 raise Exit(2, "preflight_refused", "%s is test-only (needs GEMINIPRO_TEST=1)" % k)
+        self.primary_mode = (e.get("GEMINIPRO_API_PRIMARY") or "").strip() != "0"
         # the production account: a set GEMINIPRO_ACCOUNT (even blank) wins over the default
         raw = e.get(ACCOUNT_ENV)
         self.account = (EXPECTED_ACCOUNT if raw is None else raw).strip()
         if not self.account:
-            raise Exit(2, "preflight_refused", "no Google account configured: set %s to the "
-                       "account Chrome is signed in to on gemini.google.com - nothing read or "
-                       "sent" % ACCOUNT_ENV)
+            refusal = Exit(2, "preflight_refused", "no Google account configured: set %s to the "
+                           "account Chrome is signed in to on gemini.google.com - nothing read or "
+                           "sent" % ACCOUNT_ENV)
+            if self.status_mode or not self.primary_mode:
+                raise refusal
+            self.account_error = refusal  # API primary: required only when the app path is entered
         override = (e.get("GEMINIPRO_EXPECT_ACCOUNT") or "").strip() if self.test else ""
         STATE.expected = override or self.account
         self.test_context = e.get("GEMINIPRO_TEST_CONTEXT") if self.test else None
@@ -1624,12 +2085,28 @@ class Wrapper:
         num("GEMINIPRO_TOTAL_DEADLINE", 900, 1)  # validated; the value is self.total
         self.slot_wait = num("GEMINIPRO_SLOT_WAIT", 300, 0)
         self.ceiling = int(num("GEMINIPRO_RUN_JOB_CEILING", 12, 1))
-        self.daily_cap = int(num("GEMINIPRO_DAILY_CAP", 80, 1))
+
+        def pct(key, default):
+            try:
+                v = float(e.get(key) or default)
+            except ValueError:
+                v = None
+            if v is None or not 0 <= v <= 100:  # nan and inf fail the range check too
+                raise Exit(64, "usage_error", "%s must be a number from 0 to 100" % key)
+            return v
+
+        self.max_5h = pct("GEMINIPRO_MAX_5H_PCT", 80)
+        self.max_weekly = pct("GEMINIPRO_MAX_WEEKLY_PCT", 90)
         self.api_timeout = num("GEMINIPRO_API_TIMEOUT", API_TIMEOUT, 1)
         self.api_model = (e.get("GEMINIPRO_API_MODEL") or "").strip() or API_MODEL
+        cap = (e.get("GEMINIPRO_API_DAY_CEILING") or "").strip()
+        if cap and not re.fullmatch(r"[0-9]+", cap):
+            raise Exit(64, "usage_error", "GEMINIPRO_API_DAY_CEILING must be a whole number >= 0")
+        self.day_ceiling = int(cap) if cap else API_DAY_CEILING
         home = os.path.expanduser("~")
         self.cliproxy = e.get("CLIPROXY_DIR") or os.path.join(home, ".cli-proxy-api")
         self.usage_log = e.get("GEMINIPRO_LOG") or os.path.join(self.cliproxy, "geminipro-usage.jsonl")
+        self.api_ledger = os.path.splitext(self.usage_log)[0] + API_LEDGER_SUFFIX
         if not self.status_mode:  # job mode creates files under both roots (names persisted)
             for var, root in (("CLIPROXY_DIR", self.cliproxy), ("GEMINIPRO_LOG", self.usage_log)):
                 if self.key_in(root):
@@ -1712,6 +2189,8 @@ class Wrapper:
             refuse("brief is empty")
         if len(text) > MAX_BRIEF:
             refuse("brief is %d characters - over the 20,000 the secret scan covers" % len(text))
+        if self.primary_mode and self.key_in(text):  # before any transport choice, on every route
+            refuse("brief contains the API key (GEMINI_API_KEY) - not sent to the API or the app")
         try:
             import jev_privacy
             hit = jev_privacy.has_secret(text)
@@ -1734,40 +2213,35 @@ class Wrapper:
             raise Exit(5, "no_slot", "another geminipro job holds the slot (waited %.0fs)" % wait)
         log("slot taken (one job at a time).")
 
-    def daily_count(self):
-        try:
-            with open(self.usage_log, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            return 0
-        today, n = _dt.datetime.now().date(), 0
-        for raw in lines:
-            if not raw.strip():
-                continue
-            try:
-                e = json.loads(raw)
-            except ValueError:
-                raise Exit(1, "run_refused", "usage log is corrupt - refusing")
-            if isinstance(e, dict) and e.get("status") == "started":
-                ts = _parse_iso(e.get("ts_start"))
-                if ts is not None and ts.astimezone().date() == today:
-                    n += 1
-        return n
-
     def precheck(self):
         ok, reason = lanew_log.check(self.run, log_path=self.usage_log, ceiling=self.ceiling)
         if not ok:
             raise Exit(1, "run_refused", reason)
-        n = self.daily_count()
-        if n >= self.daily_cap:
-            raise Exit(1, "run_refused", "daily cap reached: %d job(s) admitted today (cap %d)"
-                       % (n, self.daily_cap))
+
+    def meter_gate(self, usage):
+        """Google's usage meter (module docstring, "Usage meter"): the app path's gate, after
+        the identity is proven and before admission. Sets self.meter to what it compared."""
+        got = read_meter(usage)
+        self.meter = meter_text(got)
+        missing = [label for label, _ in METER_WINDOWS if label not in got]
+        if missing:
+            # names what was not read: one window, or the whole meter when nothing was read
+            note = (METER_UNREADABLE if not got else
+                    "Google usage meter: %s unreadable - not checked" % " and ".join(missing))
+            self.notes.append(note)
+            log("%s (read: %s)." % (note, self.meter or "nothing"))
+        else:
+            log("Google usage meter: %s (consults stop at 5h %s / weekly %s)."
+                % (self.meter, fmt_pct(self.max_5h), fmt_pct(self.max_weekly)))
+        limits = {"5h": self.max_5h, "weekly": self.max_weekly}
+        over = ["%s %s%% used (stop at %s), resets %s" % (label, got[label][0],
+                                                          fmt_pct(limits[label]), got[label][1])
+                for label, _ in METER_WINDOWS
+                if label in got and got[label][0] >= limits[label]]
+        if over:
+            raise Exit(1, "run_refused", "Google usage limit: %s" % "; ".join(over))
 
     def admit(self):
-        n = self.daily_count()
-        if n >= self.daily_cap:
-            raise Exit(1, "run_refused", "daily cap reached: %d job(s) admitted today (cap %d)"
-                       % (n, self.daily_cap))
         stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.report = os.path.join(self.out_dir, "%s-%s-%s-%d.md"
                                    % (stamp, self.run, self.name, os.getpid())).replace("\\", "/")
@@ -1795,14 +2269,16 @@ class Wrapper:
         """The terminal record, shaped like lanew_log's (check() counts it), Codex
         diagnostics null; written with lanew_log's own lock + verified append. At most
         once per job (the backstop thread may race the main thread here). latch: the
-        stop_latch value (default: any non-ok status latches). An API-backup job's record
-        carries via "api" and primary_exit and NEVER latches, whatever ended it (failure,
-        interrupt, cancellation, any exception, the backstop): this is the one choke point."""
+        stop_latch value (default: any non-ok status latches). Every record carries via. A job
+        that ended on the API (via "api": the backup, with primary_exit, or the primary path)
+        NEVER latches, whatever ended it (failure, interrupt, cancellation, any exception, the
+        backstop), and neither does a job the API step admitted that ended on the app path
+        before any app POST: this is the one choke point."""
         with self.term_lock:
             if not self.job_id or self.job_ended:
                 return True
             self.job_ended = True
-        if self.via == "api":
+        if self.via == "api" or (self.pre_admitted and not STATE.policy.submissions):
             latch = False
         ts_end = _now_iso()
         a, b = _parse_iso(self.ts_start), _parse_iso(ts_end)
@@ -1815,8 +2291,11 @@ class Wrapper:
             "report_path": self.report, "stop_latch": (status != "ok") if latch is None else latch,
             "tool": TOOL, "exit": code, "submissions": STATE.policy.submissions,
         }
-        if self.via == "api":
-            entry.update(via="api", primary_exit=self.primary.code)
+        entry["via"] = self.via
+        if self.via == "api" and self.primary is not None:  # the legacy API backup
+            entry["primary_exit"] = self.primary.code
+        if (self.trigger or {}).get("model_mismatch"):
+            entry["model_mismatch"] = True
         ok = lanew_log.append_line_verified(self.usage_log, json.dumps(entry, sort_keys=True) + "\n")
         self.term_ok = bool(ok)
         if not ok:
@@ -1854,6 +2333,8 @@ class Wrapper:
             self.account_ok = True
             self.remember_context()
             usage = client.usage_info or {}
+            self.meter_usage = read_meter(usage)
+            self.meter = meter_text(self.meter_usage)
             tier = (usage.get("tier") or {}).get("label")
             self.extra = {"account": self.ctx.get("account"), "tier": tier,
                           "models": model_names(client), "credits_5h": credits(usage, "current_5h"),
@@ -1866,12 +2347,8 @@ class Wrapper:
     def hold(self, text, quiet=False):
         """Validate a completed answer and hold it (raw; each sink scrubs it once).
         quiet: an invalid answer is simply not held (no Exit raised)."""
-        text = text or ""
-        if not text.strip():
-            why = "empty answer"
-        elif len(text) < 300 and ERROR_CARD_RE.match(text):
-            why = "Gemini returned an error card as text: %s" % scrub(text)[:120]
-        else:
+        why = answer_invalid(text)
+        if why is None:
             self.answer = text
             return
         if not quiet:
@@ -1886,11 +2363,16 @@ class Wrapper:
             client = await open_verified(cands, min(INIT_TIMEOUT, max(5.0, self.left())), self.ctx)
             self.account_ok = True
             self.remember_context()
+            self.meter_gate(client.usage_info)  # before pick_model / admit: a refusal admits nothing
             model = pick_model(client, self.model)
+            if self.job_id is not None and self.key_in(model.model_name):  # the record carries it
+                raise Exit(3, "log_failure", "the app's model name would carry the API key into "
+                           "the usage record - nothing sent")
             self.model = model.model_name
             if self.left() < JOB_MIN:
                 raise Exit(5, "deadline", "total deadline too close to send (%.0fs left)" % self.left())
-            self.admit()
+            if self.job_id is None:  # an API primary launch was admitted once, by the API step
+                self.admit()
             STATE.policy.deadline = self.deadline  # re-checked inside the guard right before the POST
             STATE.policy.armed = True
             log("sending the brief (%d chars) to %s in a temporary chat." % (len(prompt), self.model))
@@ -1944,34 +2426,105 @@ class Wrapper:
         e = self.env
         if (e.get("GEMINIPRO_API_BACKUP") or "").strip() == "0":
             return None, "GEMINIPRO_API_BACKUP=0"
-        key = e.get("GEMINI_API_KEY")
-        if key is None:
-            return None, "GEMINI_API_KEY is not set"
-        if not key.strip():
-            return None, "GEMINI_API_KEY is blank"
-        if len(key) < SECRET_MIN:
-            return None, "GEMINI_API_KEY is too short to be a key"
+        if self.day_ceiling == 0:
+            return None, "the API is off (GEMINIPRO_API_DAY_CEILING=0)"
+        why = self.api_key_why()
+        if why:
+            return None, why
         if self.key_in(self.api_model):
             return None, "GEMINIPRO_API_MODEL contains the API key"
+        cli, why = self.api_cli()
+        if why:
+            return None, why
+        key = e.get("GEMINI_API_KEY")
+        if key in prompt or key.strip() in prompt:
+            return None, "the brief contains the API key"
+        try:
+            used = self.api_day_count()
+        except lanew_log.LedgerDamaged:
+            raise  # FIX-4 N6: api_backup refuses with exit 3
+        except OSError as exc:
+            return None, "the API day ledger could not be read (%s)" % fmt_exc(exc)
+        if used >= self.day_ceiling:
+            return None, self.ceiling_text(used)
+        return cli, None
+
+    def api_key_why(self):
+        """Why GEMINI_API_KEY cannot be used (None: it can; the CLI reads it, never argv)."""
+        key = self.env.get("GEMINI_API_KEY")
+        if key is None:
+            return "GEMINI_API_KEY is not set"
+        if not key.strip():
+            return "GEMINI_API_KEY is blank"
+        if len(key) < SECRET_MIN:
+            return "GEMINI_API_KEY is too short to be a key"
+        return None
+
+    def api_cli(self):
+        """The legacy backup's check (api_ready): (cli, None) or (None, why not)."""
+        cli, why, _ = self.api_cli_lookup()
+        return cli, why
+
+    def api_cli_lookup(self):
+        """The CLI path (GEMINIPRO_API_CLI, else gemini-api on PATH) and JOB_MIN seconds left:
+        (cli, None, None) or (None, why not, fault) - fault "missing" (no CLI, proven before any
+        spawn: an explicit path that does not exist, or gemini-api not on PATH), "key" (its
+        path carries the API key), "local" (FIX-4 N5: an explicit path that exists but is not a
+        regular file, or whose inspection raised - a local fault, never "not found") or "time"
+        (too little time left)."""
+        e = self.env
         explicit = (e.get("GEMINIPRO_API_CLI") or "").strip()
         if explicit:
             if self.key_in(explicit):
-                return None, "the CLI path contains the API key"
-            if not os.path.isfile(explicit):
-                return None, "GEMINIPRO_API_CLI (%s) was not found" % explicit
+                return None, "the CLI path contains the API key", "key"
+            try:
+                mode = os.stat(explicit).st_mode
+            except FileNotFoundError:
+                return None, "GEMINIPRO_API_CLI (%s) was not found" % explicit, "missing"
+            except (OSError, ValueError) as exc:
+                return None, "GEMINIPRO_API_CLI (%s) could not be inspected (%s)" % (
+                    explicit, fmt_exc(exc)[:200]), "local"
+            if not stat.S_ISREG(mode):
+                return None, "GEMINIPRO_API_CLI (%s) is not a regular file" % explicit, "local"
             cli = explicit
         else:
             cli = shutil.which(API_CLI_NAME, path=e.get("PATH"))
             if not cli:
-                return None, "%s is not on PATH" % API_CLI_NAME
+                return None, "%s is not on PATH" % API_CLI_NAME, "missing"
             if self.key_in(cli):
-                return None, "the CLI path contains the API key"
+                return None, "the CLI path contains the API key", "key"
         if self.left() < JOB_MIN:
             return None, "only %.0fs left before the total deadline (needs %ds)" % (
-                max(0.0, self.left()), JOB_MIN)
-        if key in prompt or key.strip() in prompt:
-            return None, "the brief contains the API key"
-        return cli, None
+                max(0.0, self.left()), JOB_MIN), "time"
+        return cli, None, None
+
+    # ---- the API day ceiling (module docstring, "Daily API ceiling") ---------------
+    def ceiling_text(self, used):
+        return ("daily API ceiling reached: %s/%d CLI attempts today (GEMINIPRO_API_DAY_CEILING, "
+                "local date)" % ("?" if used is None else used, self.day_ceiling))
+
+    def ledger_note(self, skipped):
+        if skipped:
+            log("API day ledger: %d unreadable line(s) skipped (a torn write from a crash?) - "
+                "not counted." % skipped)
+
+    def api_day_count(self):
+        """Today's (local date) API reservations in the ledger; OSError when it cannot be read."""
+        used, skipped = lanew_log.count_reservations(self.api_ledger)
+        self.ledger_note(skipped)
+        return used
+
+    def api_reserve(self, model, mode):
+        """The durable pre-dispatch reservation for ONE CLI attempt, under the job lock (held
+        since take_slot) and the ledger's own lock: lanew_log.reserve re-checks the day count
+        and appends (fsync'd) in one critical section, and stamps the row's ts there - the ts
+        and the local date it counts against come from one clock read under the ledger lock.
+        Returns (status, count)."""
+        row = {"tool": TOOL, "run": self.run, "name": self.name,
+               "job_id": self.job_id, "model": model, "mode": mode}
+        status, count, skipped = lanew_log.reserve(self.api_ledger, row, self.day_ceiling)
+        self.ledger_note(skipped)
+        return status, count
 
     def api_backup(self, prompt, primary):
         """The app path ended with exit 2 / 8 before admission: send the same gate-passed
@@ -1988,7 +2541,12 @@ class Wrapper:
             raise Exit(primary.code, primary.status, "%s; API backup not run: %s"
                        % (primary.reason, why))
 
-        cli, why = self.api_ready(prompt)
+        try:
+            cli, why = self.api_ready(prompt)
+        except lanew_log.LedgerDamaged as exc:  # FIX-4 N6: damaged history refuses, exit 3
+            log("API backup not run: %s - nothing sent to the API." % exc)
+            raise Exit(3, "log_failure", "%s; API backup not run: %s - nothing sent to the API"
+                       % (primary.reason, exc))
         if why:
             not_run(why)
         requested = self.model
@@ -1997,7 +2555,7 @@ class Wrapper:
             # terminal record of this job is unlatched and the status line says api (backup
             # failed until an answer is held)
             self.via, self.trigger["backup"], self.model = "api", "failed", self.api_model
-            self.admit()   # the same per-run ceiling and daily cap; the record names the API model
+            self.admit()   # the same per-run ceiling (no meter gate); the record names the API model
         except BaseException as exc:
             # no job id handed over: fail closed like the app path - no terminal record is
             # written (never for a job id this wrapper was not handed); back to the app path's state
@@ -2061,6 +2619,11 @@ class Wrapper:
             timeout = min(self.api_timeout, self.left() - API_MARGIN)
             if timeout <= 0:
                 raise ApiFailure("the total deadline left no time for attempt %d" % attempt)
+            status, used = self.api_reserve(self.model, "backup")  # every CLI attempt is counted
+            if status != "reserved":
+                raise ApiFailure("attempt %d not made: %s" % (attempt, self.ceiling_text(used) if
+                                 status == "refused" else "the API day reservation could not be "
+                                 "written (day count unknown)"))
             self.api_started = True
             try:
                 proc = _run_api(argv, cwd=self.api_dir, env=dict(self.env), timeout=timeout,
@@ -2081,6 +2644,223 @@ class Wrapper:
                 time.sleep(API_RETRY_PAUSE)
                 continue
             raise ApiFailure(text if attempt == 1 else "attempt %d: %s" % (attempt, text))
+
+    # ---- the API primary path (module docstring, "API primary (2026-11-18)") ----------
+    def api_primary(self, prompt):
+        """The paid API first. Returns with the answer held (via "api"), or returns for the app
+        fallback with api_attempt not_run / skipped / failed (a proven rejection) and the job
+        admitted or not, or raises the run's exit (outcome unknown, guard denial, admission, or
+        a local fault that refuses the launch). Only an unmapped model, the API off, a missing
+        key, a CLI not found before the spawn (or at it: ApiNotStarted), the day ceiling and a
+        proven rejection reach the app; a local fault never does (refuse below)."""
+        requested = self.model
+        api_model = API_MODELS.get((requested or "").strip().lower())
+        self.trigger = {"api_attempt": "not_run", "api_reason": None, "requested_model": requested}
+
+        def fallback(state, why):
+            self.trigger.update(api_attempt=state, api_reason=scrub(why)[:API_REASON_MAX])
+            log("API attempt %s: %s - the app path follows." % (state.replace("_", " "), why))
+
+        def refuse(code, status, state, why):
+            """A local fault: the launch is refused - no transport at all, never the app (exit 2
+            a key-bearing CLI path, 3 a ledger fault, 5 no time)."""
+            self.trigger.update(api_attempt=state, api_reason=scrub(why)[:API_REASON_MAX])
+            log("API attempt %s: %s - launch refused, the app path is not entered."
+                % (state.replace("_", " "), why))
+            raise Exit(code, status, "%s - nothing sent to the API or the app" % why)
+
+        if api_model is None:
+            return fallback("not_run", "model %s has no API id (mapped: %s) - app path only"
+                            % (requested, ", ".join(sorted(API_MODELS))))
+        if self.day_ceiling == 0:
+            return fallback("skipped", "the API is off (GEMINIPRO_API_DAY_CEILING=0)")
+        why = self.api_key_why()
+        if why:
+            return fallback("not_run", why)
+        cli, why, fault = self.api_cli_lookup()
+        if fault == "missing":
+            return fallback("not_run", why)
+        if fault == "time":
+            refuse(5, "deadline", "not_run", why)
+        if fault is not None:  # "key", "local" and any other fault: a local fault refuses
+            refuse(2, "preflight_refused", "not_run", why)
+        try:
+            used = self.api_day_count()
+        except lanew_log.LedgerDamaged as exc:  # FIX-4 N6: committed history is damaged
+            refuse(3, "log_failure", "skipped", str(exc))
+        except OSError as exc:
+            refuse(3, "log_failure", "skipped", "the API day ledger could not be read (%s)"
+                   % fmt_exc(exc))
+        if used >= self.day_ceiling:
+            return fallback("skipped", self.ceiling_text(used))
+        try:
+            # one admission per launch: the app fallback reuses this job (the per-run ceiling
+            # counts it once, whichever path answers); "failed" until an answer is held
+            self.via, self.model, self.trigger["api_attempt"] = "api", api_model, "failed"
+            self.admit()
+        except BaseException as exc:
+            if self.job_id is None:  # no job id handed over: back to the app path's state
+                self.via, self.model, self.report = "app", requested, None
+                self.trigger.update(api_attempt="not_run", api_reason=scrub(
+                    "not admitted (%s)" % (exc.reason if isinstance(exc, Exit) else
+                                           type(exc).__name__))[:API_REASON_MAX])
+            raise
+        self.pre_admitted = True
+        try:
+            status, used = self.api_reserve(api_model, "primary")
+        except Exception as exc:  # the ledger raised: the day count is unknown
+            status, used = "log_error", None
+            log("API day reservation raised %s." % fmt_exc(exc)[:200])
+        if status == "refused":  # another launch took the last slot: the ceiling is reached
+            self.via, self.model = "app", requested
+            return fallback("skipped", self.ceiling_text(used))
+        if status != "reserved":
+            self.via, self.model = "app", requested
+            refuse(3, "log_failure", "skipped", "the API day reservation could not be written "
+                   "(day count unknown)")
+        timeout = min(self.api_timeout, self.left() - API_MARGIN)
+        if timeout <= 0:
+            self.via, self.model = "app", requested
+            refuse(5, "deadline", "not_run", "the total deadline left no time for the API attempt")
+        try:
+            try:
+                self.api_primary_call(cli, prompt, api_model, timeout)  # the answer held first
+            except ApiRejected as exc:
+                self.api_started = False  # proven: nothing answered, nothing outstanding
+                self.via, self.model = "app", requested
+                return fallback(exc.state, str(exc))
+        finally:
+            # housekeeping, contained: it never changes the result (finish() retries a removal)
+            self.housekeeping(self.remove_api_dir)
+
+    def api_unknown(self, text):
+        """The run's exit when the API attempt may have been answered upstream: no fallback, no
+        retry on either transport (the job stays unlatched: via api)."""
+        msg = scrub(text)[:API_REASON_MAX]
+        self.trigger["api_reason"] = msg
+        log("API attempt outcome unknown: %s - not resent, not sent to the app." % msg)
+        return Exit(6, "outcome_unknown", "API attempt outcome unknown (%s) - not resent, not "
+                    "sent to the app" % msg)
+
+    def api_primary_call(self, cli, prompt, api_model, timeout):
+        """ONE CLI attempt (no wrapper retry; the CLI's own retries off: --no-retries): body.json
+        in a new empty directory under the state dir, the CLI run there; judged by api_judge
+        (the caller removes the directory). Popen's own FileNotFoundError (the CLI vanished
+        after the lookup) is ApiNotStarted; any other error once the child may have started is
+        outcome unknown."""
+        argv = api_argv(cli, retries=False)
+        self.api_dir = tempfile.mkdtemp(prefix="api-", dir=self.state_dir)
+        with open(os.path.join(self.api_dir, API_BODY), "wb") as f:
+            f.write(api_body(prompt, api_model))
+        log("API primary: sending the brief (%d chars) to %s through %s (one attempt)."
+            % (len(prompt), api_model, API_CLI_NAME))
+        self.api_started = True
+        try:
+            proc = _run_api(argv, cwd=self.api_dir, env=dict(self.env), timeout=timeout,
+                            stdin=subprocess.DEVNULL, holder=self.api_holder)
+        except subprocess.TimeoutExpired:
+            raise self.api_unknown("the CLI did not answer within %.0fs (killed)" % timeout)
+        except FileNotFoundError as exc:
+            if not _unspawned(exc):
+                raise self.api_unknown("the CLI failed after it was started (%s)" % fmt_exc(exc))
+            raise ApiNotStarted("the CLI was not found at the spawn (%s) - nothing started"
+                                % fmt_exc(exc))
+        except Exception as exc:  # any error once the child may have started
+            raise self.api_unknown("the CLI failed after it was started (%s)" % fmt_exc(exc))
+        self.api_judge(proc, api_model)
+
+    def api_judge(self, proc, api_model):
+        """Classify one finished CLI attempt (module docstring, "Outcome classes") from its exit
+        code, stdout and stderr together: hold the answer, or raise ApiRejected (proven
+        rejection), Exit 7 (guard content denial) or the outcome-unknown exit 6. The child's
+        stdout / stderr are never echoed raw. A proven rejection (FIX-4 N1) needs ALL of: a
+        non-zero exit that is not the guard's 9; a zero-byte stdout; stderr = known CLI progress
+        text, then exactly one error envelope and nothing after it (api_envelope); and that
+        envelope a rejection (api_rejection). Exit 9 is a content denial only with an empty
+        stdout; any other exit 9 is outcome unknown."""
+        rc, out, err = proc.returncode, proc.stdout or b"", proc.stderr or b""
+        if rc == GUARD_EXIT:
+            denied = None if out else guard_denial(rc, err)
+            if denied is None:  # a guard internal error, or output beside a denial line
+                raise self.api_unknown(api_error_summary(rc, err) + (
+                    " - with output on stdout" if out else ""))
+            self.api_started = False  # the guard refuses before the real CLI starts
+            why = scrub(denied)[:API_REASON_MAX]
+            self.trigger["api_reason"] = "gemini-api guard denied: %s" % why
+            log("API attempt refused by the gemini-api guard: %s - not sent to the app." % why)
+            raise Exit(7, "brief_refused", "the gemini-api guard denied the brief: %s - nothing "
+                       "sent to the API, and the brief is never sent to the app" % why)
+        if rc == 0:
+            obj = _json_obj(out)
+            if isinstance(obj, dict) and "error_type" in obj:  # never a proven rejection on exit 0
+                raise self.api_unknown(api_error_summary(rc, out))
+            try:
+                text, model = api_result(out)
+                why = answer_invalid(text)
+                shown = api_model_name(model)
+            except ApiFailure as exc:
+                raise self.api_unknown(str(exc))
+            except Exception as exc:  # a completed-shaped response that does not parse
+                raise self.api_unknown("the CLI output did not parse (%s)" % fmt_exc(exc)[:200])
+            if why is not None:  # an empty answer or an error card: invalid success output
+                raise self.api_unknown(why)
+            try:  # FIX-4 N7: malformed text (a lone surrogate) is never published as success
+                text.encode("utf-8")
+            except UnicodeEncodeError:
+                raise self.api_unknown("the answer text is not encodable as UTF-8 (a lone "
+                                       "surrogate) - malformed success output, not held")
+            if shown is not None and (len(shown) > 200 or self.key_in(shown)):
+                shown = None  # never a record field carrying the key
+            warn = api_stderr_extra(err)  # an answer in hand is kept: stderr is only flagged
+            self.publish_api_answer(text, shown, api_model, stderr_warning=warn)
+            log("API answered (%d chars) with %s%s%s." % (
+                len(self.answer), shown or "an unnamed model", "" if shown == api_model else
+                " - not %s: answer kept, model_mismatch" % api_model,
+                "; the CLI also wrote to stderr (not echoed): api_stderr_warning" if warn else ""))
+            return
+        if out:  # anything on stdout: answer content may have been produced before the failure
+            raise self.api_unknown("the CLI wrote output before it failed - %s"
+                                   % api_error_summary(rc, err))
+        if api_rejection(api_envelope(err)):
+            raise ApiRejected(api_error_summary(rc, err))
+        raise self.api_unknown(api_error_summary(rc, err))
+
+    def publish_api_answer(self, text, shown, api_model, stderr_warning=False):
+        """Hold the API answer and its provenance (the response's model, model_mismatch, and
+        api_stderr_warning only when true) in ONE step: a single dict.update (one C call, no
+        interrupt can land between its stores), so a kept answer is never labelled with the
+        model set at admission."""
+        trigger = dict(self.trigger, api_attempt="ok", api_reason=None,
+                       model_mismatch=(shown != api_model))
+        if stderr_warning:
+            trigger["api_stderr_warning"] = True
+        self.__dict__.update(answer=text, model=shown, trigger=trigger)
+
+    def run_primary(self, prompt):
+        """API primary, then the app fallback when the API did not answer (and may not have)."""
+        try:
+            self.api_primary(prompt)
+        except BaseException as late:  # an interrupt / error in cleanup after the answer
+            if self.answer is None:
+                raise
+            self.notes.append("%s after the API answer arrived - answer kept" % (
+                late.status if isinstance(late, Exit) else type(late).__name__))
+        if self.answer is not None:
+            return
+        if self.account_error is not None:
+            raise Exit(2, "preflight_refused", "no Google account configured for the app "
+                       "fallback: set %s to the account Chrome is signed in to on "
+                       "gemini.google.com - the app path was not entered (API attempt %s: %s)"
+                       % (ACCOUNT_ENV, self.trigger["api_attempt"], self.trigger["api_reason"]))
+        harden()
+        cands = self.candidates()
+        try:
+            self.run_async(self.job_async(cands, prompt))
+        except BaseException as exc:  # an Exit / abort / interrupt after the answer arrived
+            if self.answer is None:
+                raise
+            self.notes.append("%s after the answer arrived - answer kept" % (
+                exc.status if isinstance(exc, Exit) else type(exc).__name__))
 
     def remove_api_dir(self):
         """Remove the body directory (3 tries). api_dir stays set until it is gone, so an
@@ -2133,7 +2913,9 @@ class Wrapper:
     def write_report(self):
         fields = [scrub(str(v)) for v in (self.run, self.name, self.model, self.job_id)]
         if self.via == "api":
-            who = "- account: n/a (API key)\n- via: api (backup; app path exit %d)\n" % self.primary.code
+            how = ("backup; app path exit %d" % self.primary.code if self.primary is not None else
+                   "primary; requested %s" % scrub(str((self.trigger or {}).get("requested_model"))))
+            who = "- account: n/a (API key)\n- via: api (%s)\n" % how
         else:
             who = "- account: %s (context %s)\n" % tuple(
                 scrub(str(v)) for v in (self.ctx.get("account"), self.ctx.get("context")))
@@ -2158,9 +2940,19 @@ class Wrapper:
         return Exit(0, "ok", "answer received (report %s); %s during finalization"
                     % (self.report, what))
 
+    def api_dispatched(self):
+        """API primary: the CLI child was started and not proven unsent (the brief may have
+        reached the API)."""
+        return bool(self.primary_mode and self.api_started)
+
     def interrupted(self, during=""):
         if self.answer is not None:
             return self.held_exit("interrupted%s" % during)
+        if self.api_dispatched():
+            # the interrupt contract keeps exit 130; the status (and the terminal record,
+            # finish()) say outcome_unknown; via api never latches the run
+            return Exit(130, "outcome_unknown", "interrupted%s after the API attempt started - "
+                        "outcome unknown, not resent, not sent to the app" % during)
         return Exit(130, "interrupted", "interrupted%s%s" % (
             during, " after dispatch - outcome unknown" if self.sent() else " - nothing sent"))
 
@@ -2168,6 +2960,10 @@ class Wrapper:
         self.parse_args()
         self.config()
         if self.status_mode:
+            try:  # the API day count (read only; the meter below is the app's own)
+                self.api_day = "%d/%d" % (self.api_day_count(), self.day_ceiling)
+            except OSError:
+                self.api_day = "?/%d" % self.day_ceiling
             harden()  # library release check before any cookie is read
             cands = self.candidates()
             self.run_async(self.status_async(cands))
@@ -2176,6 +2972,29 @@ class Wrapper:
         log("brief gate passed (%d chars)." % len(prompt))
         self.take_slot()
         self.precheck()
+        if self.primary_mode:
+            self.run_primary(prompt)
+        else:
+            self.run_legacy(prompt)
+        try:
+            self.write_report()
+        except OSError as exc:
+            self.record_terminal("ok", 3)
+            raise Exit(3, "log_failure", "answer received (printed here) but the report could not "
+                       "be written (%s)" % fmt_exc(exc))
+        if not self.record_terminal("ok", 0):
+            raise Exit(3, "log_failure", "answer received (report %s) but the terminal record "
+                       "could not be verified" % self.report)
+        if self.via == "api" and self.primary is not None:
+            raise Exit(0, "ok", "answer received through the API backup (app path exit %d: %s)"
+                       % (self.primary.code, self.primary.reason))
+        if self.via == "api":
+            raise Exit(0, "ok", "answer received through the API (%s)" % (
+                self.model or "the response named no model"))
+        raise Exit(0, "ok", "answer received")
+
+    def run_legacy(self, prompt):
+        """GEMINIPRO_API_PRIMARY=0: the app path first, the API backup on its exit 2 / 8."""
         try:
             harden()
             cands = self.candidates()
@@ -2196,19 +3015,6 @@ class Wrapper:
                     raise
                 self.notes.append("%s after the API answer arrived - answer kept" % (
                     late.status if isinstance(late, Exit) else type(late).__name__))
-        try:
-            self.write_report()
-        except OSError as exc:
-            self.record_terminal("ok", 3)
-            raise Exit(3, "log_failure", "answer received (printed here) but the report could not "
-                       "be written (%s)" % fmt_exc(exc))
-        if not self.record_terminal("ok", 0):
-            raise Exit(3, "log_failure", "answer received (report %s) but the terminal record "
-                       "could not be verified" % self.report)
-        if self.via == "api":
-            raise Exit(0, "ok", "answer received through the API backup (app path exit %d: %s)"
-                       % (self.primary.code, self.primary.reason))
-        raise Exit(0, "ok", "answer received")
 
     # ---- every exit -------------------------------------------------------------
     def reap_api_child(self):
@@ -2261,12 +3067,15 @@ class Wrapper:
              "job_id": n(self.job_id), "report": n(self.report), "account_ok": self.account_ok,
              "duration_s": round(time.monotonic() - self.t0, 3),
              "submissions": STATE.policy.submissions,
-             "context": None if self.via == "api" else self.ctx.get("context"), "via": self.via}
+             "context": None if self.via == "api" else self.ctx.get("context"), "via": self.via,
+             "meter": None if self.via == "api" else self.meter}
         if self.trigger:
             d.update(self.trigger)
         if self.status_mode:
             d.update({"account": self.ctx.get("account")})
             d.update(self.extra)
+            if self.api_day is not None:
+                d["api_day"] = self.api_day
         return json.dumps(scrub_obj(d))  # leaves scrubbed once; the JSON text is never scrubbed
 
     def emit(self, r, hard=False):
@@ -2336,13 +3145,23 @@ class Wrapper:
             return "%s (used %s%%, resets %s)" % (c.get("remaining_credits"), c.get("usage_percentage"),
                                                   c.get("reset_at"))
         ab = x.get("abuse") or {}
-        lines = ["account: %s (verified from gemini.google.com/app, context %s)"
+        got = scrub_obj(self.meter_usage)
+
+        def win(label):
+            if label not in got:
+                return "%s unreadable" % label
+            return "%s %s%% used (resets %s)" % (label, got[label][0], got[label][1])
+
+        lines = ["Gemini usage: %s, %s; consults stop at 5h %s / weekly %s"
+                 % (win("5h"), win("weekly"), fmt_pct(self.max_5h), fmt_pct(self.max_weekly)),
+                 "account: %s (verified from gemini.google.com/app, context %s)"
                  % (x.get("account"), scrub_obj(self.ctx.get("context"))),
                  "tier: %s" % x.get("tier"),
                  "models: %s" % ", ".join(str(m) for m in x.get("models") or []),
                  "5h remaining credits: %s" % cr(x.get("credits_5h")),
                  "weekly remaining credits: %s" % cr(x.get("credits_weekly")),
-                 "abuse status: %s" % ("clean" if ab.get("is_clean") else json.dumps(ab))]
+                 "abuse status: %s" % ("clean" if ab.get("is_clean") else json.dumps(ab)),
+                 "api_day: %s" % self.api_day]
         print("\n".join(lines), flush=True)
 
     def backstop(self):
@@ -2367,7 +3186,9 @@ class Wrapper:
             code, status, term = 3, "log_failure", "ok"
             why = ("hard backstop: answer received (printed here) but finalization overran the "
                    "total deadline")
-        elif self.via == "api":  # never latched (record_terminal), the app path's own exit
+        elif self.via == "api" and self.primary is not None:
+            # the legacy backup: never latched (record_terminal), the app path's own exit (the
+            # API primary path takes the branch below: outcome unknown once the CLI started)
             p = self.primary
             code, status, term = p.code, p.status, "failed"
             why = "%s; API backup failed: hard backstop: the process overran the total deadline" % (
@@ -2415,8 +3236,9 @@ def main(argv=None, env=None):
                 log("internal error: %s%s" % (fmt_exc(e)[:300], _frames(e)))
                 if w.answer is not None:
                     result = w.held_exit("an internal error (%s)" % fmt_exc(e)[:300])
-                else:
-                    result = Exit(6 if w.job_id else 2, "outcome_unknown" if STATE.policy.submissions
+                else:  # classified by the active transport's dispatch state
+                    sent = STATE.policy.submissions or w.api_dispatched()
+                    result = Exit(6 if w.job_id else 2, "outcome_unknown" if sent
                                   else "internal_error", "internal error: %s" % fmt_exc(e)[:300])
             # finalization inside the same cancellation-aware boundary, watchdog still armed
             try:

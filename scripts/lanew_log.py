@@ -69,6 +69,20 @@ stop_latch (bool - true on any non-ok terminal status; a latched run
 refuses every further `check` until reconciled by hand, honoring the
 docs' no-retry-in-the-run rule).
 
+API reservation rows (added 2026-11-18 for geminipro's API primary path): a row with
+"kind": "api_reservation" (RESERVATION_KIND) is a pre-dispatch reservation for one paid
+API attempt, written by reserve() into its own ledger file BEFORE the attempt starts and
+never followed by a terminal row. It is not a job record: check() and report() skip it
+wherever it appears, so it never starts, ends or latches a job (an orphaned job stays an
+orphan). count_reservations() counts the rows of one local date for a daily ceiling. Only a
+torn LAST line (no trailing newline: a crash mid-append) is skipped and reported in the
+returned skipped count; reserve() terminates such a tail and stamps the row it writes next
+with TORN_MARK, so that known fragment stays skippable. Any other line that is not a JSON
+object - anywhere before the last line, or a last line WITH its newline - is damage to
+committed history: count_reservations() raises LedgerDamaged (an OSError, "API-day ledger
+damaged at line N") and reserve() returns "log_error" without appending (FIX-4 N6,
+2026-11-18: the spend guard never undercounts).
+
 CLI: `record start|end|preflight-failed` (`record start` takes optional
 `--pid` and `--pid-created`), `check --run R`, `admit --run R ... [--pid P]
 [--pid-created C]` (atomic check +
@@ -99,6 +113,8 @@ LOG_PATH = os.environ.get("LANEW_LOG") or DEFAULT_LOG
 RUN_JOB_CEILING = int(os.environ.get("LANEW_RUN_JOB_CEILING", "8"))
 
 IN_FLIGHT_MAX_AGE_S = 2700  # longest possible astrapro job; see the in-flight rule
+RESERVATION_KIND = "api_reservation"  # a pre-dispatch API reservation row: never a job record
+TORN_MARK = "after_torn_line"  # set on the row reserve() writes right after a torn last line
 
 LOCK_TRIES = 500
 LOCK_SLEEP = 0.02  # ~10 s worst case, generous for two local processes
@@ -113,6 +129,20 @@ _EXEC_EVENT_RE = re.compile(r"(?m)^exec\b")
 
 class LogCorrupt(Exception):
     """Raised by _read_log when a line in the log is not valid JSON."""
+
+
+class LedgerDamaged(OSError):
+    """Raised by the API reservation ledger readers when committed history is damaged: a line
+    before the last that is not a JSON object and is not a known torn fragment (TORN_MARK).
+    An OSError, so every caller that fails closed on an unreadable ledger fails closed here too.
+    `line` is the 1-based line number."""
+
+    def __init__(self, line):
+        super().__init__("API-day ledger damaged at line %d" % line)
+        self.line = line
+
+    def __str__(self):
+        return self.args[0]
 
 
 # --------------------------------------------------------------------------
@@ -315,17 +345,33 @@ def _with_log_lock(path: str, fn):
             pass
 
 
-def _append_unlocked(path: str, line: str) -> bool:
-    """Append + verify one line; the CALLER holds the lock. Never raises."""
+def _append_unlocked(path: str, line: str, durable: bool = False) -> bool:
+    """Append + verify one line; the CALLER holds the lock. Never raises.
+    durable: fsync the file before closing (a reservation must survive a crash), and verify
+    only the bytes just appended (the file's tail, read in binary): an undecodable byte
+    elsewhere in the file can never raise after the fsync."""
     binary = getattr(os, "O_BINARY", 0)
+    data = line.encode("utf-8")
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | binary, 0o600)
         try:
-            os.write(fd, line.encode("utf-8"))
+            os.write(fd, data)
+            if durable:
+                os.fsync(fd)
         finally:
             os.close(fd)
     except OSError:
         return False
+    if durable:
+        try:
+            with open(path, "rb") as f:
+                size = f.seek(0, os.SEEK_END)
+                if size < len(data):
+                    return False
+                f.seek(size - len(data))
+                return f.read(len(data)) == data
+        except OSError:
+            return False
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -608,7 +654,7 @@ def check(run, log_path=None, ceiling=None):
     jobs = {}
     latched = False
     for e in entries:
-        if e.get("run") != run:
+        if e.get("run") != run or is_reservation(e):  # a reservation row is never a job record
             continue
         jid = e.get("job_id")
         if not jid:
@@ -697,6 +743,135 @@ def admit(run, name, model, out_path, report_path, owner_pid=None, log_path=None
     return result
 
 
+# --------------------------------------------------------------------------
+# API reservation ledger (module docstring, "API reservation rows")
+# --------------------------------------------------------------------------
+
+def is_reservation(entry) -> bool:
+    return isinstance(entry, dict) and entry.get("kind") == RESERVATION_KIND
+
+
+def _read_rows_tolerant(path):
+    """(rows, skipped, ends_with_newline): every line of path that is a JSON object. Only a
+    known torn fragment is skipped (and counted): the LAST line when the file does not end
+    with a newline (a crash mid-append), or a line whose next row carries TORN_MARK (such a
+    tail, terminated later by reserve()). Any other line that is not a JSON object is damage
+    to committed history: LedgerDamaged (an OSError) with its line number - the count would
+    otherwise be too low. Blank lines are ignored. A missing file is ([], 0, True). Raises
+    OSError when the file cannot be read."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except FileNotFoundError:
+        return [], 0, True
+    whole = not text or text.endswith("\n")
+    parts = text.split("\n")
+    if whole:
+        parts.pop()  # the empty text after the final newline
+    lines = []  # (line number, the object or None, is the torn last line)
+    for n, raw in enumerate(parts, 1):
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            entry = None
+        lines.append((n, entry if isinstance(entry, dict) else None,
+                      not whole and n == len(parts)))
+    rows, skipped = [], 0
+    for i, (n, entry, torn_tail) in enumerate(lines):
+        if entry is not None:
+            rows.append(entry)
+            continue
+        nxt = lines[i + 1][1] if i + 1 < len(lines) else None
+        if torn_tail or (isinstance(nxt, dict) and nxt.get(TORN_MARK) is True):
+            skipped += 1
+            continue
+        raise LedgerDamaged(n)
+    return rows, skipped, whole
+
+
+def _local_day(entry):
+    """The local date of a reservation row's ts, or None when it cannot be read."""
+    ts = _parse_iso(entry.get("ts"))
+    if ts is None:
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone().date()
+
+
+def _count_day(rows, day):
+    """Reservation rows dated `day` (local date). A row whose ts cannot be read counts: the
+    count is a spend guard and fails closed."""
+    n = 0
+    for e in rows:
+        if is_reservation(e):
+            d = _local_day(e)
+            if d is None or d == day:
+                n += 1
+    return n
+
+
+def count_reservations(path, day=None):
+    """(count, skipped): the reservation rows of local date `day` (default today) in the
+    ledger at path, and the number of known torn fragments skipped. Raises OSError when the
+    ledger exists but cannot be read, LedgerDamaged (an OSError) when committed history is
+    damaged (_read_rows_tolerant)."""
+    if day is None:
+        day = datetime.now().date()
+    rows, skipped, _ = _read_rows_tolerant(path)
+    return _count_day(rows, day), skipped
+
+
+def reserve(path, row, ceiling, day=None):
+    """Atomic daily-ceiling check + reservation append, under path's lock file (one critical
+    section, like admit()): returns (status, count, skipped). "reserved": row was appended
+    (fsync'd, verified by re-reading) and count is today's total including it; "refused":
+    today's count is at or over ceiling, NOTHING appended; "log_error": the lock was not
+    taken, the ledger could not be read or is damaged (LedgerDamaged: nothing appended), or
+    the append could not be verified (the caller must treat the day count as unknown). row
+    gets "kind" = RESERVATION_KIND. A ledger whose last line is torn (no trailing newline)
+    gets a newline first, so the new row stays whole, and the new row carries TORN_MARK: true
+    (the fragment before it is known, and stays skippable as an interior line).
+    A row without "ts" is stamped here, under the lock, and the local date counted against is
+    taken from that SAME clock read (a lock wait spanning midnight can never commit a
+    yesterday-dated row today); a caller's own ts is kept, and the date is then read under the
+    lock too. `day` (tests) overrides the date counted against."""
+    entry = dict(row, kind=RESERVATION_KIND)
+
+    def critical():
+        today = day
+        if entry.get("ts") is None:
+            now = datetime.now(timezone.utc)  # the one clock read: ts and local date
+            entry["ts"] = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            if today is None:
+                today = _local_day(entry)
+        elif today is None:
+            today = datetime.now().date()
+        try:
+            rows, skipped, whole = _read_rows_tolerant(path)
+        except OSError:  # LedgerDamaged included: damaged history is never appended to
+            return "log_error", None, 0
+        count = _count_day(rows, today)
+        if count >= ceiling:
+            return "refused", count, skipped
+        if not whole:  # the torn last line becomes interior: mark it as a known fragment
+            entry[TORN_MARK] = True
+        line = json.dumps(entry, sort_keys=True) + "\n"
+        if not _append_unlocked(path, ("" if whole else "\n") + line, durable=True):
+            return "log_error", count, skipped
+        return "reserved", count + 1, skipped
+
+    if ceiling <= 0:
+        return "refused", 0, 0
+    locked, result = _with_log_lock(path, critical)
+    if not locked:
+        return "log_error", None, 0
+    return result
+
+
 def report(days=None, run=None, log_path=None) -> str:
     """Return a formatted usage report. See module docstring for scope."""
     if log_path is None:
@@ -717,7 +892,7 @@ def report(days=None, run=None, log_path=None) -> str:
     if run is not None:
         entries = [e for e in entries if e.get("run") == run]
 
-    terminal = [e for e in entries if e.get("status") != "started"]
+    terminal = [e for e in entries if e.get("status") != "started" and not is_reservation(e)]
     lines = ["lanew usage report", ""]
     if not terminal:
         lines.append("(no terminal jobs recorded)")

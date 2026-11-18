@@ -1,6 +1,6 @@
 ---
-description: "Retired (2026-09-24): run /model-router:fabstra and name Sol in the brief (sol, gpt-6.1 sol, sol xhigh)."
+description: "Retired (2026-09-24): run /model-router:fabstra; Sol (gpt-6.2-sol) is its default gate seat since 2026-11-18."
 ---
 
 Retired (2026-09-24): this command no longer runs a flow of its own.
-Run /model-router:fabstra with your brief and name Sol in it (sol, gpt-6.1 sol, sol xhigh); the skill pins Sol for the Astra seats.
+Run /model-router:fabstra with your brief; Sol is its default gate seat since 2026-11-18, so naming Sol is no longer needed.

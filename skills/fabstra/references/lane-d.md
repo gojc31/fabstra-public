@@ -17,10 +17,22 @@ through the Agent tool. History: the 2026-09-11 lead test measured
 OpenRouter seats and GLM lead left with Lane C, retired 2026-11-15
 (archive/2026-11-15-lane-c/).
 
-**Trigger.** The session model is `gpt-6-astra` (or another proxy alias the
-user names - not an OpenRouter model) and the user wants that model to lead
-rather than to be delegated to. Launch: `bcode <folder> astra` for a VSCode
-window, `scripts/session.ps1 gpt-6-astra` for a terminal session.
+**Trigger.** The session model is `gpt-6.2-sol` (the default lead since JC's
+2026-11-18 decision; `gpt-6.2-astra` only when the user names Astra, or
+another proxy alias the user names - not an OpenRouter model) and the user
+wants that model to lead rather than to be delegated to. Launch:
+`scripts/session.ps1` for a terminal session on the default
+(`MODEL_ROUTER_MODEL`, `gpt-6.2-sol`), `scripts/session.ps1 gpt-6.2-astra` for
+an Astra lead, `bcode <folder> sol` or `bcode <folder> astra` for a VSCode
+window. The lead's context variable comes from the launch scripts (Sol
+500000, Astra 272000; transport.md, Model pins). The terminal launcher
+(`scripts/session.ps1` / `.sh`) passes `--effort` to the interactive lead:
+its effort parameter, else `MODEL_ROUTER_EFFORT`, else high; the VS Code
+launchers (`bcode`) pass none, so that lead runs at the extension's own
+effort setting. Every seat call the lead makes (Agent tool
+`effort`, headless `--effort`) passes one, because GPT-6.2's Codex catalogue
+default is low and the proxy's medium. History: the 2026-09-11 lead was `gpt-6-astra`,
+the default until 2026-11-18.
 
 **The hard boundary - VERIFIED 2026-09-11.** A routed session can spawn any
 model the proxy serves and no Claude model at all. Measured both ways from a
@@ -39,13 +51,22 @@ the proxy env from the child (VERIFIED 2026-09-11: from a proxied env,
 --model haiku ...` answered on the Claude login with no auth warning; `haiku`
 resolves to `claude-haiku-5-5` - the settings env pin and the CLI agree, specs.md). Strip all
 three: leaving `ANTHROPIC_API_KEY` in place bills the API key, not the
-subscription. Shape, one background Bash call per task, cwd = the project:
+subscription. Strip the two proxy context variables too
+(`CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_DISABLE_1M_CONTEXT`), or the
+lead's window pin (Sol 500000, Astra 272000) rides into the Claude child;
+the credits-pool route keeps its own deliberate
+`CLAUDE_CODE_DISABLE_1M_CONTEXT=1` (transport.md, "Claude on credits seat
+(pool)") but drops the lead's pin: from a Lane D lead, that section's command
+replaces its leading `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` (after the `KEY=`
+statement) with
+`env -u CLAUDE_CODE_MAX_CONTEXT_TOKENS CLAUDE_CODE_DISABLE_1M_CONTEXT=1`.
+Shape, one background Bash call per task, cwd = the project:
 
 ```bash
-env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY timeout 1500 claude -p --model claude-opus-5-5 --effort <low|medium|high|xhigh> --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/lane-d-task-N.md > <scratch>/lane-d-task-N.md.out 2>&1
+env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY -u CLAUDE_CODE_MAX_CONTEXT_TOKENS -u CLAUDE_CODE_DISABLE_1M_CONTEXT timeout 1500 claude -p --model claude-opus-5-5 --effort <low|medium|high|xhigh> --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/lane-d-task-N.md > <scratch>/lane-d-task-N.md.out 2>&1
 ```
 
-Advisor state (advisor.md): every run logs `advisor=fable` unless the brief opts out (`advisor=off`) or asks for `advisor=opus`; on a run that logs `advisor=<model>` add `--advisor <model>`, only after that launch's state check found `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` not set to a true value in the lead's environment or a settings `env` block - that preflight covers the on-form, so the child inherits no disable variable and the form adds no `-u` for it; on an `advisor=off` run add `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` after the three `-u` flags. The designer and reviewer launches below take the off form.
+Advisor state (advisor.md): every run logs `advisor=fable` unless the brief opts out (`advisor=off`) or asks for `advisor=opus`; on a run that logs `advisor=<model>` add `--advisor <model>`, only after that launch's state check found `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` not set to a true value in the lead's environment or a settings `env` block - that preflight covers the on-form, so the child inherits no disable variable and the form adds no `-u` for it; on an `advisor=off` run add `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` after the five `-u` flags. The designer and reviewer launches below take the off form.
 
 No `--bare` here: on Claude Code 2.1.280 bare mode disables the subscription
 login and the child answers 'Not logged in' (verified 2026-09-23); the child
@@ -65,12 +86,36 @@ window is the problem, say so instead of burning it.
 
 | Seat | Agent | Model |
 |---|---|---|
-| ORCHESTRATOR | the session itself | `gpt-6-astra` (default) or another proxy alias the user names |
-| BUILDER - complex implementation | `model-router:worker` | `gpt-6.1-sol` |
+| ORCHESTRATOR | the session itself | `gpt-6.2-sol` (default), `gpt-6.2-astra` when the user names Astra, or another proxy alias the user names |
+| BUILDER - complex implementation | `model-router:worker` | `gpt-6.2-sol` |
 | SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-6.1-terra` |
 | MECHANIC - trivial, fully specified | `model-router:mechanic-routed` | `gpt-6-luna` |
-| ASTRA as a fresh-context seat (design gate / review fallback / hardest slice) | `model-router:astra-routed` | `gpt-6-astra` |
+| ASTRA as a fresh-context seat (design gate / review fallback / hardest slice) | `model-router:astra-routed` | `gpt-6.2-astra` |
 | CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | stripped-env headless `claude -p`, see above | the user's Claude login |
+
+**Routed build briefs (specs.md rules a and g).** Every build brief this
+lane sends to a routed seat (`worker`, `support-routed`, `mechanic-routed`,
+and `astra-routed` on the hardest slice), by Agent call or headless proxy
+launch, carries this sentence verbatim in its report instructions: "Write
+the report self-contained and anew for the orchestrator who reads it, with
+no shorthand carried over from your reasoning, tool calls or sub-agent
+messages." and ends with the check line, filled in: `What I will check:
+<the acceptance cases by name, what counts as finished, and where the review
+will be exhaustive - the callers, invariants and bug classes it tests
+first>.` A review seat takes the Phase 3 spec verbatim, whose report contract carries
+rule g.
+
+**Context windows (known gap, D6).** Proxy context pins apply per launch
+only, and an Agent-tool seat inherits the lead session's environment: under
+a Sol lead (500000) the `astra-routed` seat runs with Sol's 500k window
+instead of Astra's 272k, and under an Astra lead (272000) the `worker` seat
+runs with Astra's 272k instead of Sol's 500k; Terra and Luna seats inherit
+the lead's window instead of their 200k. A seat that needs its own window
+runs as a headless proxy `claude -p` launch with that model's context
+variable (transport.md, Model pins), not through the Agent tool. A
+cooling or model-rejected seat hops by the hop rules (transport.md, Model
+pins); where they reach a fresh Fable or the Claude builders, in this lane
+those are the stripped-env launches above.
 
 **Reviewer rule (2026-11-15).** Every proxy seat is GPT, so no cross-family
 proxy reviewer exists. The reviewer is the stripped-env headless Fable
@@ -78,8 +123,8 @@ command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
 a build in an excluded category), logged `login: claude`. Fable unavailable:
 `pool/claude-fable-5-2` (a client's work: `client-<slug>/claude-fable-5-2`
 with its own `client-<slug>: usable` line, haiku mapping on the same prefix)
-headless on the credits pool at the same effort with the read-only flags above
-(8318 is Anthropic's own API on JC's key, not the banned subscription proxy
+headless on the credits pool at the same effort, with the read-only flags above
+and the pool-route `env -u CLAUDE_CODE_MAX_CONTEXT_TOKENS` form (8318 is Anthropic's own API on JC's key, not the banned subscription proxy
 route; plain terminal or scheduled launch and a usable pool only;
 transport.md, "Claude on credits seat (pool)"). Otherwise, on a Fable limit:
 the stripped-env headless `claude -p --model claude-opus-5-5` on the Claude

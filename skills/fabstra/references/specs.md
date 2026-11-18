@@ -1,6 +1,6 @@
 # FabStra spec templates - design review, builder blueprint, adversarial review
 
-Contents: Design-review spec template (Phase 1b); Builder spec contract (Phase 2); Review spec (Phase 3)
+Contents: Design-review spec template (Phase 1b); GPT-6.2 seats - prompting rules; Builder spec contract (Phase 2); Review spec (Phase 3)
 
 Reached from: fabstra SKILL.md - before writing any blueprint or review spec
 
@@ -58,15 +58,42 @@ builder will likely get it wrong as written, P3 minor - each with the task
 number, the blueprint line it concerns, file:line evidence from the repo,
 what breaks, and your confidence 0-100. Report only findings you are 80+
 confident in and would act on yourself. (3) nothing else. A plan with no
-findings is a legitimate result - do not manufacture objections. Before
+findings is a legitimate result - do not manufacture objections. Write the
+report self-contained and anew for its reader, with no shorthand carried
+over from your reasoning, tool calls or sub-agent messages. Before
 finishing, overwrite <scratch dir>/fabstra-design-findings.md via Bash
 with this report.
 </structured_output_contract>
 ```
 
+## GPT-6.2 seats - prompting rules
+
+Sources, read 2026-11-18: "Prompting GPT-6.2 in Codex"
+(https://learn.chatgpt.com/guides/prompting-gpt-6-2-astra; its techniques
+apply to the whole GPT-6.2 family, Sol included) and "Using GPT-6.2"
+(https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6.2-astra).
+These rules bind every spec this file sends to a GPT-6.2 seat (Sol, Astra):
+Codex-side builds and the design-review and review templates; Lane B and
+Lane D briefs take rules a and g from here. Each rule is the guide's; the
+"Applied" part is FabStra's.
+
+- a. Describe the task the way you would to a colleague who knows the project, then say what you will look for when you review the work. Applied: every Codex-side spec ends with the "What I will check:" line (Builder spec contract, Codex-side tasks), built from the acceptance criteria and the review focus.
+- b. Say what counts as finished and where to be exhaustive. Applied: the spec's Outcome and Acceptance cases; the "What I will check:" line names where the review is exhaustive; both Codex parent clauses end "You are done when every acceptance criterion passes"; the review contract lists every instance of a bug class.
+- c. Set effort by the depth of investigation: medium for a quick survey, high to trace one suspected cause across several systems, xhigh when several causes may interact. Always pass effort (GPT-6.2's Codex catalogue default is low; the API rejects `none`). Applied: the Codex-side launch line carries `--effort`.
+- d. Give permission to delegate: tell a Codex parent "use subagents as needed" for parts that can move independently. Applied: both Codex parent clauses, inside their spawn limits.
+- e. Task completion: do not end the turn on a suggested next step, a plan, or a request for a routine decision when an authorized next step exists - take it within scope and flag the assumptions; stop only for a significant scope change, a concrete block, a decision the user must make, or an irreversible or destructive action. Applied: the task-completion line of every Codex-side spec; in FabStra the spec stands in for the user, so NEEDS_CONTEXT / BLOCKED stay the stop signals.
+- f. Coding: preserve the behavior existing callers rely on; skip new tests unless requested, required by the repo, or needed to catch a specific regression existing tests would miss; write readable code - fewer lines, short names, minified formatting or dense one-liners are not substitutes for simplicity; avoid unnecessary indirection and abstraction. Applied: the coding line of every Codex-side spec, which replaces the test-first line (one test rule per spec, not two).
+- g. Final answers are self-contained and written anew for the reader, with no shorthand carried over from reasoning, tool calls or sub-agent messages. Applied: the Codex-side report line and both `<structured_output_contract>` blocks.
+- h. GPT-6.2 writes concisely by default, so GPT-bound templates carry no "be concise" or brevity instruction; output-structure contracts stay. Applied: the Codex-side report line drops "Keep the report short".
+- i. On a shared machine, consider how many builds or tests run at once and leave CPU and memory for other work; at wrap-up, stop the background jobs you started and remove the temporary files you created. Applied: both Codex parent clauses and the Codex-side wrap-up line.
+- j. Visual work: review the render at the size people will see it, and try the interactions it is meant to support. Applied: the UI line of a Codex-side spec with a UI surface.
+
+The GPT-6 page's prompts (anti-slop phrase lists, approval-flow text) are not confirmed for GPT-6.2 and are not folded here.
+
 ## Builder spec contract (Phase 2)
 
-Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via Astra.
+Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via the
+gate seat (Sol by default, `gpt-6.2-sol`; Astra rows `gpt-6.2-astra`).
 
 One Agent tool call per task. The tier picks the seat (phases.md, "Claude
 seat efforts", which also holds the excluded-category floor, the miss ladder
@@ -170,7 +197,8 @@ category can fire on benign security work) and a resend usually refuses
 again: send a refused Haiku task to the seat its tier takes unpinned
 (phases.md, "Claude seat efforts") with the same spec.
 
-Every spec also carries these lines, verbatim:
+Every spec also carries these lines, verbatim (a Codex-side spec swaps
+four of them and adds the lines listed under Codex-side tasks, below):
 
 - "Hold the outcome, invariants, scope, shared interfaces, and file
   ownership this spec fixes. Inside them, investigate the code you touch and
@@ -224,10 +252,31 @@ While an advisor is effective, every review, gate and grading spec
 carries, verbatim: "Do not consult the advisor tool in this session; this seat's judgment must be its own."
 On an `advisor=off` run with no advisor effective, no spec carries either.
 
-**Codex-side tasks** take the same spec, delivered headless through Astra.
-Write the spec to `<scratch>/fabstra-task-N.md`, then run the Codex
-transport (launch with `--write --model gpt-6-astra --prompt-file
-<scratch>/fabstra-task-N.md`, background wait, fetch). Any directory works (the companion falls back to the working
+**Codex-side tasks** take the same spec, delivered headless through the gate
+seat: Sol by default (`gpt-6.2-sol`), Astra on an Astra row (`gpt-6.2-astra`;
+gate seat rubric, lead-mode.md). Claude builder seats keep the contract above
+unchanged. Write the spec to `<scratch>/fabstra-task-N.md`, then run the Codex
+transport (launch with `--write --model gpt-6.2-sol --effort <effort>
+--prompt-file <scratch>/fabstra-task-N.md`, `--model gpt-6.2-astra` on an
+Astra row; always pass `--effort`, the row's effective effort from transport.md, an
+excluded-category build at xhigh over any lower effort word;
+background wait, fetch). A hop (cooling, model-rejected) or a retry follows
+the hop rules (transport.md, "Model pins (GPT-6.2)"), re-assembling this spec
+with the clause of the parent that now runs (Codex parent clauses, below).
+
+GPT-6.2 lines (GPT-6.2 seats - prompting rules). A Codex-side spec makes
+four swaps in the verbatim list above and adds four lines:
+
+- Swap the test-first line ("Where the task produces testable behavior...") for this coding line (rule f), verbatim: "Preserve the behavior existing callers rely on. The acceptance cases and required verification this spec names are the tests it requests; beyond them, add a new test only when the repository requires it or one is needed to catch a specific regression the existing tests would miss. Write readable code: fewer lines, short names, minified formatting or dense one-liners are not substitutes for simplicity. Avoid unnecessary indirection and abstraction."
+- Swap the "Hold the outcome..." line for, verbatim: "Hold the outcome, invariants, scope, shared interfaces, and file ownership this spec fixes. Inside them, investigate the code you touch and decide internal signatures, structure, and algorithms yourself, adding tests only as the coding line allows; list each decision in your report. Return NEEDS_CONTEXT only when the spec contradicts the repository, an action is unsafe, or business meaning is ambiguous."
+- Swap the background-command line for this wrap-up line (rule i), verbatim: "This machine is shared: consider how many builds or tests run at once and leave CPU and memory for other work. Before your report, stop every background command you started (dev servers, watchers, tails) - a headless run waits for them and can hit its timeout - and remove the temporary files you created."
+- Swap the report line for (rules g, h), verbatim: "End the report with exactly one status: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED - plus changed paths, each implementation decision you made inside the spec, the verification commands you ran this session, and the tail of their output. 'It should work' does not count; only fresh command output counts. Write the report self-contained and anew for the orchestrator who reads it, with no shorthand carried over from your reasoning, tool calls or sub-agent messages."
+- Add the task-completion line (rule e), verbatim: "Do not end your turn on a suggested next step, a plan, or a question about a routine decision when an authorized next step exists: take it within this spec's scope and flag the assumptions you made. Stop only for a significant scope change, a concrete block, a decision the user must make, or an irreversible or destructive action; this spec stands in for the user, so report those as NEEDS_CONTEXT or BLOCKED."
+- A spec with a UI surface adds the UI line (rule j), verbatim: "Review the render at the size people will see it, and try the interactions it is meant to support."
+- Add the Codex parent clause of the model that actually runs as parent - Sol-parent for a Sol launch, Astra-parent for an Astra launch (plus the Sol-unavailable line while Sol is cooling or rejected), re-assembled on every hop or retry (Codex parent clauses, below); a task that fits one thread may omit it, its wrap-up line still carrying rule i.
+- End the spec with the "What I will check:" line (rules a, b), filled in: `What I will check: <the acceptance cases by name, what counts as finished, and where the review will be exhaustive - the callers, invariants and bug classes it tests first>.`
+
+Any directory works (the companion falls back to the working
 directory when there is no git repo). A NEEDS_CONTEXT re-send is a new
 `--fresh` job with the revised spec; the answer lives in the spec, not in a
 resumed thread (see the transport note on `--resume-last`). The companion
@@ -252,9 +301,11 @@ load. The layering that serves both tools: tool-agnostic facts in
 `AGENTS.md`, and a thin `CLAUDE.md` whose first line is `@AGENTS.md`
 followed by Claude-only rules.
 
-**Astra delegates by tier.** Codex's `multi_agent` feature gives the parent
+**Codex parent clauses.** Codex's `multi_agent` feature gives the parent
 thread `spawn_agent`; three custom agents exist for it in `~/.codex/agents`:
-`sol` (GPT-6.1 Sol at xhigh, workspace-write, the hard-tier role), `terra`
+`sol` (GPT-6.2 Sol at xhigh on the main/router home, workspace-write, the
+hard-tier role; the native `.codex-pro` / `.codex-biz` agent files stay on
+GPT-6.1 Sol until a 6.2 re-probe passes there), `terra`
 (GPT-6.1 Terra at high, the contract-tier role), and `luna` (GPT-6 Luna at
 medium, the mechanical-tier role), plus `spark` (GPT-5.3-Codex-Spark at medium,
 the same mechanical-tier role at 1000+ tok/s; defined only in `~/.codex-pro/agents`
@@ -266,25 +317,47 @@ and `.codex-biz` homes set `max_depth = 1`; the main home sets no limit of
 its own, and the codex-chatgpt-web bridge patches in `max_depth = 2` while
 it is on, so the rule below is the enforcement there), at most 6 run at
 once, and a job is capped at 1800 s.
-Add this clause to every
-Codex-side build spec:
+Add the clause of the effective parent - the model that actually runs as
+parent on this launch (which clause a hop or retry takes: transport.md,
+"Model pins (GPT-6.2)", hop rules) - to every Codex-side build spec, each
+complete and pasteable as written; a task that fits one thread may omit it,
+its wrap-up line (Codex-side tasks, above) still carrying the shared-machine
+rule (rule i).
+
+**Sol-parent clause** (whenever Sol runs as parent, `gpt-6.1-sol` included):
+"You are the parent thread. Do multi-file and design-level sub-tasks yourself; spawn `terra` for a self-contained sub-task with a written contract and `spark` for mechanical steps (`luna` if `spark` is not defined in your home); never spawn `sol`. Use subagents as needed for parts that can move independently, at most 6 at once. You own the plan as written, the integration, and the single final report; pass each sub-agent its slice of the blueprint and the stack rules verbatim and the same DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED protocol; never delegate your own verification. Sub-agents you spawn never spawn agents of their own. This machine is shared: consider how many builds or tests run at once and leave CPU and memory for other work; at wrap-up, stop the background jobs you started and remove the temporary files you created. The blueprint fixes the interface, the file set, and the acceptance criteria: keep those. Inside them, resolve implementation details yourself rather than stopping, and list each decision in your report. Return NEEDS_CONTEXT only when the blueprint contradicts the repository or would require changing an interface or a file the spec did not name. You are done when every acceptance criterion passes and the integration works - not at a first implementation."
+
+**Astra-parent clause** (whenever Astra runs as parent, `gpt-6-astra`
+included; while Sol is cooling or rejected, add the Sol-unavailable line
+below):
 "You are the parent thread. Spawn `sol` for a multi-file or design-level
 sub-task, `terra` for a self-contained sub-task with a written contract,
 and `spark` for mechanical steps (`luna` if `spark` is not defined in your
-home). Sub-tasks whose files do not overlap launch together, in one turn;
+home). Use subagents as needed for parts that can move independently, at
+most 6 at once. Sub-tasks whose files do not overlap launch together, in one turn;
 do the typing yourself only when the task fits one thread. You own the plan as written, the integration, and the
 single final report; pass each sub-agent its slice of the blueprint and the
 stack rules verbatim and the same DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT
 / BLOCKED protocol; never delegate your own verification. Sub-agents you
-spawn never spawn agents of their own. The blueprint
+spawn never spawn agents of their own. This machine is shared: consider how
+many builds or tests run at once and leave CPU and memory for other work; at
+wrap-up, stop the background jobs you started and remove the temporary files
+you created. The blueprint
 fixes the interface, the file set, and the acceptance criteria: keep those.
 Inside them, resolve implementation details yourself rather than stopping,
 and list each decision in your report. Return NEEDS_CONTEXT only when the
 blueprint contradicts the repository or would require changing an interface
 or a file the spec did not name.
 You are done when every acceptance criterion passes and the integration
-works - not at a first implementation." Reviewer roles never delegate: one
-fresh context is the review.
+works - not at a first implementation."
+
+**Sol-unavailable line** (paste it right after the Astra-parent clause
+whenever Astra runs as parent while Sol is cooling or rejected - a Sol row
+that hopped to Astra, or an Astra row launched while Sol is out; it
+overrides the clause's `sol` spawn):
+"Sol is unavailable this run: do hard-tier sub-tasks yourself; spawn only `terra` / `spark` (`luna` if `spark` is not defined); never spawn `sol`."
+
+Reviewer roles never delegate: one fresh context is the review.
 
 ## Review spec (Phase 3)
 
@@ -450,7 +523,9 @@ shape breaking an untouched caller - did not exist on the base, so it is
 never PRE-EXISTING: it stays an ordinary finding, and a change that breaks
 a caller is still a P1 (review_scope).
 (4) nothing else. Finding nothing wrong is a legitimate result - do not
-manufacture findings to look thorough. Before finishing, overwrite
+manufacture findings to look thorough. Write the report self-contained and
+anew for its reader, with no shorthand carried over from your reasoning,
+tool calls or sub-agent messages. Before finishing, overwrite
 <scratch dir>/fabstra-review-findings.md via Bash with this final report.
 </structured_output_contract>
 ```

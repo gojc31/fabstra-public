@@ -12,5 +12,21 @@ if [ ! -f "$script" ] && [ -n "${MODEL_ROUTER_HOME:-}" ]; then
   script="$MODEL_ROUTER_HOME/scripts/geminipro.py"
 fi
 [ -f "$script" ] || script="$HOME/model-router/scripts/geminipro.py"
+# Windows: when reg.exe exists, refresh GEMINIPRO_ACCOUNT from the user registry (a process
+# started before the variable changed still holds the old value) when it is unset; a no-op elsewhere.
+if [ -z "${GEMINIPRO_ACCOUNT+x}" ] && command -v reg.exe >/dev/null 2>&1; then
+  _acct="$(reg.exe query 'HKCU\Environment' //v GEMINIPRO_ACCOUNT 2>/dev/null | awk '/GEMINIPRO_ACCOUNT/ {print $NF}' | tr -d '
+')"
+  [ -n "$_acct" ] && export GEMINIPRO_ACCOUNT="$_acct"
+fi
+# Windows: when reg.exe exists, refresh GEMINI_API_KEY from the user registry (a process
+# started before the variable changed still holds the old value); a no-op elsewhere.
+# A non-empty registry value is exported over the process value and never echoed.
+if command -v reg.exe >/dev/null 2>&1; then
+  _key="$(reg.exe query 'HKCU\Environment' //v GEMINI_API_KEY 2>/dev/null | awk '/GEMINI_API_KEY/ {print $NF}' | tr -d '
+')"
+  [ -n "$_key" ] && export GEMINI_API_KEY="$_key"
+  unset _key
+fi
 py="${GEMINIPRO_PYTHON:-$HOME/geminipro-lab/.venv/Scripts/python.exe}"
 exec "$py" "$script" "$@"

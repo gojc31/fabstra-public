@@ -15,7 +15,8 @@ normal login - never through the proxy (Anthropic's terms ban subscription
 OAuth in third-party tools; the credits pool on 8318 is Anthropic's own API on JC's
 key, not that banned route, so its headless `pool/` seats are allowed - transport.md). Astra and Sol reach this machine only through
 every ChatGPT login in the local proxy (CLIProxyAPI, port 8317, serving
-`gpt-6-astra`, `gpt-6.1-sol` and `gpt-6-luna`; native Codex
+`gpt-6.2-sol` and `gpt-6.2-astra` as the primary ids since 2026-11-18, plus
+`gpt-6-astra`, `gpt-6.1-sol` (fallback pins) and `gpt-6-luna`; native Codex
 needs CLI 0.159.2+). The
 `codex` shims in `~/bin` add `-c model_provider=router`, so the
 Codex CLI's model calls also go through that proxy as a plain OpenAI
@@ -31,27 +32,29 @@ threshold -> continue here from Phase 1 with that draft as the plan; below
 it -> Lead mode. Log `mode=` in RUN.md; never switch after a builder has
 launched. On Opus 5.5 below the threshold, and on Sonnet 5.5 / Haiku 5.5,
 run Lead mode instead - lead-mode.md:
-the session model builds, the gate seat (Astra or Sol) gates the plan and reviews, and the fixes are
+the session model builds, the gate seat (Sol, or Astra on an Astra row) gates the plan and reviews, and the fixes are
 delegated by tier; do not ask for a switch. Any other Claude model (a newer
 or older Fable, Opus, Sonnet or Haiku) runs the mode of its family's row in
 the SKILL.md session switch; no Claude session is asked to switch. Only a
 non-Claude session model outside the Lane D exception below
 stops before Phase 1 and asks the user to switch with `/model claude-opus-5-5`.
-**Lane D exception:** a session running on `gpt-6-astra` (or another proxy
-alias the user names) that the user wants to LEAD the run is Lane D - accept
+**Lane D exception:** a session running on `gpt-6.2-sol` (the default lead;
+`gpt-6.2-astra` only when the user names Astra, or another proxy alias the
+user names) that the user wants to LEAD the run is Lane D - accept
 it, and run the Lane D seats in lane-d.md instead of this crew. Lane C
 (OpenRouter budget crew: DeepSeek builds, GLM reviews/leads) retired
 2026-11-15; archive/2026-11-15-lane-c/.
 
 **Pairing rule:** Claude built -> the gate seat reviews
-(Reviewer A: Astra on the Astra row, Sol on the Sol row - gate seat
-rubric, SKILL.md); an xhigh row (an excluded category, multi-file
+(Reviewer A: the gate seat - Sol by default, Astra on an Astra row; gate
+seat rubric, SKILL.md); an xhigh row (an excluded category, multi-file
 architecture, re-review after a P1) adds a fresh Fable (Reviewer C) in
 parallel with the full scope, and the lead rules on both ledgers. Codex
-side (Astra or Sol + Terra/Luna) built -> fresh Fable
-reviews (Reviewer C), because Astra reviewing a build it orchestrated is the
-same eyes twice. Astra or Sol spent or cooling, or the proxy down: transport.md, Reviewer
-fallback (seat, effort, log line). A **mixed
+side (Sol or Astra + Terra/Luna) built -> fresh Fable
+reviews (Reviewer C), because the gate seat reviewing a build it orchestrated is the
+same eyes twice. The row's model cooling -> Reviewer B (the other model, after a Claude
+build only); hop rules: transport.md, Model pins; the rows after it: transport.md,
+Reviewer fallback (seat, effort, log line). A **mixed
 build** (some tasks Claude, some Codex side) gets both reviews in the same
 message, partitioned by provenance: Reviewer A the BUILDER tasks only,
 Reviewer C the CODEX tasks and every seam with the BUILDER tasks; each
@@ -63,14 +66,14 @@ Fix rounds are different: the Codex column may fix a Claude build (Phase 4
 default), and the re-review rule there handles the family change. The
 orchestrator never builds under any pairing; Fable 5.2 never builds at all.
 Lane B (Astra solo) built -> Sol xhigh
-(Reviewer B) and a fresh Fable (Reviewer C) review in parallel,
+(Reviewer S, ledger ids `S<n>`) and a fresh Fable (Reviewer C) review in parallel,
 independently, and the lead rules on every finding before the work ships
 (Lane B parts 4-5); Astra never reviews its own solo build; the
 orchestrator never reviews its own lane.
 
-**Arbitration rule:** when Astra's design review and the plan disagree, the
+**Arbitration rule:** when the gate seat's design review and the plan disagree, the
 lead decides (Fable; the session model in Lead mode) and writes the reason in
-the logbook. Astra advises; it does
+the logbook. The gate seat advises; it does
 not own the plan. A design finding is accepted by revising the blueprint, or
 rejected with one line - never silently dropped, never applied unread.
 A design-review or review finding that objects to the Design block's taste
@@ -96,17 +99,20 @@ like any other.
   `model-router:builder` at `effort: "medium"`; nothing routes there unpinned. The
   pin reaches only the Claude Sonnet seat: it is not an Astra or Sol effort
   pin (the Codex transport rejects `max`), so their effort follows the
-  effort rubric unless an effort word pins it separately. Log the pin in RUN.md.
+  effort rubric unless an effort word pins it separately (never below the
+  excluded-category xhigh floor). Log the pin in RUN.md.
 - **Codex side (routed)** - the default owner for a self-contained,
   well-specified hard- or contract-tier task (a written contract, no
   Claude-only MCP tool or skill, no CLAUDE.md-context dependence) in a folder
   that has passed the Codex write probe (transport.md); Claude side for the
   rest, and for every task in a folder that has not passed. Same spec
-  contract as a Claude builder; the gate seat is the parent thread - Astra
-  spawns `sol` / `terra` / `spark` by the same three tiers, Sol does the
-  hard-tier work itself and spawns `terra` / `spark` (Sol-parent clause,
-  transport.md); `luna` replaces `spark` only when the parent runs through
-  the proxy.
+  contract as a Claude builder; the gate seat is the parent thread - Sol (the
+  default) does the hard-tier work itself and spawns `terra` / `spark`
+  (Sol-parent clause); Astra, on Astra rows, spawns `sol` / `terra` / `spark`
+  by the same three tiers (Astra-parent clause; both: specs.md "Codex parent
+  clauses"); `luna` replaces `spark` only when the parent runs through
+  the proxy. The pasted clause follows the model that actually runs as
+  parent, not the row (hop rules: transport.md, Model pins).
 - **Design and UI/UX** - any task with a user-facing surface (page, screen,
   component, dashboard, landing section, form, empty/error state) gets its
   `## Design (from design-pass)` block from one Agent call,
@@ -116,7 +122,7 @@ like any other.
   airlock wash before the designer), passes the brief as given with
   `Pass: CLIENT`; otherwise state `Pass: INTERNAL`. The block goes into the builder spec's Conventions and
   its Gates / Verify sub-blocks into the review spec (specs.md). Opus 5.5
-  owns visual direction; Astra and every other reviewer
+  owns visual direction; the gate seat and every other reviewer
   report only what will not work, never taste. Lane D sessions
   cannot use the Agent tool for Claude seats: reach the designer by the
   stripped-env headless command in lane-d.md (no `--bare`) with `--model claude-opus-5-5
@@ -140,36 +146,42 @@ like any other.
   `codex:` subagent types are exempt - they pin their own model); put
   `jev-override: <reason>` on its own line in the spec when a deliberate
   override still needs to pass.
-- You orchestrate, never build. Reviewers review, never build. Astra as
-  design reviewer or build reviewer never edits; Astra as Codex parent
+- You orchestrate, never build. Reviewers review, never build. The gate seat as
+  design reviewer or build reviewer never edits; as Codex parent it
   builds only what its spec names.
 
-## Effort rubric (Astra and Sol) - pick per call, write it in the plan and logbook
+## Effort rubric (Sol and Astra) - pick per call, write it in the plan and logbook
 
 `--effort` is chosen per call from what is being reviewed or built, not
 fixed. On Sol each step up roughly doubled wall time (xhigh reviews 4-6 min
 on 2026-09-04). Log the duration of every Astra and Sol call in RUN.md; the
 rubric is tuned from those numbers.
 
-| Effort | Astra design review of a plan for... / review of a build of... | Codex-side build of... |
+| Effort | Sol or Astra gate of a plan for... / review of a build of... | Codex-side build of... |
 |---|---|---|
-| **xhigh** | an excluded category (SKILL.md, Excluded categories); multi-file architecture; a re-review after a P1 fix; the user asks to "break it" | hard-tier tasks (Astra parent at xhigh; `sol` runs at xhigh) |
+| **xhigh** | an excluded category (SKILL.md, Excluded categories); multi-file architecture; a re-review after a P1 fix; the user asks to "break it" | hard-tier tasks (a Sol parent at xhigh does them itself; an Astra parent on an Astra row spawns `sol` at xhigh) |
 | **high** (default) | standard features with tests, integration surfaces, refactors with a clear before/after, most fix-round re-reviews | contract-tier tasks (`terra` runs at high) |
-| **medium** | docs, config, copy, renames, generated boilerplate, a single-file point fix you can verify yourself | mechanical-tier tasks (prefer `spark` when Astra runs natively on Pro - free against the general window - else `luna`, medium) |
+| **medium** | docs, config, copy, renames, generated boilerplate, a single-file point fix you can verify yourself | mechanical-tier tasks (prefer `spark` when the parent runs natively on Pro - free against the general window - else `luna`, medium) |
 
 Rules:
 - **User override pins the run.** An effort word in the invocation or the
   brief - `/fabstra ... xhigh`, "astra xhigh", "review at high", "quick
   review" (= high) - sets every Astra and Sol call you issue in that run
-  (design review, Codex-side build launch, review, Sol fallback) to that
-  effort; the rubric only decides when no effort was named. The pin does not
-  reach into Codex children: agents Astra spawns run at their agent-file
+  (design review, Codex-side build launch, review, a fallback hop - hop rules:
+  transport.md, Model pins) to that
+  effort; the rubric only decides when no effort was named. The
+  excluded-category floor outranks the pin: on an excluded-category build
+  every Sol and Astra call runs at xhigh even when a lower effort word was
+  named, and the plan JC sees says so in one line (same rule as "Pins" in
+  "Claude seat efforts"). The pin does not
+  reach into Codex children: agents the parent (Sol or Astra) spawns run at their agent-file
   efforts (`sol` xhigh, `terra` high, `luna` medium), which is by design -
   say so in the logbook rather than treating it as a violation. A "sonnet
   max" phrase is not an effort word: it pins only the Claude Sonnet seat
   (routing rubric, Sonnet max pin).
 - Take the higher effort whenever the diff mixes tiers or you are unsure;
   a shallow review of a deep bug costs more than the minutes saved.
+- Investigation and debugging calls (GPT-6.2 guide): medium for a quick survey, high to trace one suspected cause across systems, xhigh when several causes may interact (specs.md, GPT-6.2 seats).
 - Floor: never below **high** for anything a user or client will run. Medium
   is for changes whose worst failure is cosmetic.
 - Log the chosen effort and the one-line reason (rubric row, or "user said
@@ -218,7 +230,7 @@ passes no `model` field and always passes `effort` by tier.
    scope and non-goals, shared interfaces and file ownership, grounded
    pointers, acceptance, verification (specs.md, "Builder spec contract").
    Builders own everything inside those lines and report each decision.
-   Astra's design review sharpens the specs; it does not replace them.
+   The gate seat's design review sharpens the specs; it does not replace them.
    Lane B is the one exception: there the brief carries the contract and the
    acceptance criteria, Astra owns the design by the user's choice, and this
    rule governs Lane A specs only.
@@ -231,7 +243,7 @@ passes no `model` field and always passes `effort` by tier.
 5. **The logbook, not your memory, is the source of truth.** Keep
    `.fabstra/RUN.md` current (next section); after a crash, compaction, or a
    new session, resume from it instead of re-planning.
-6. **One accountable orchestrator.** Astra never talks to the user, never
+6. **One accountable orchestrator.** The gate seat never talks to the user, never
    changes the plan on its own, and never picks its own scope. Everything it
    does arrives as a spec from you and returns as a report to you.
 7. **Finish the run.** An error, a timeout, a cooling seat, a locked file, an
@@ -292,7 +304,7 @@ before the report, and when it stops early, after a status read shows
 setting (`advisor-wrote=no`, an `advisor=off` run) never runs `off`.
 Contents: the brief, the approved plan (tasks, tiers,
 acceptance criteria) with its `advisor=fable|opus|off` line (advisor.md; `fable` by default,
-`off` on "no advisor", `opus` on "advisor opus"; a logbook with no line counts as off; an auto run adds `advisor-wrote=yes|no` and `advisor-phase=build|post-build`), the design-review ledger (each Astra finding ->
+`off` on "no advisor", `opus` on "advisor opus"; a logbook with no line counts as off; an auto run adds `advisor-wrote=yes|no` and `advisor-phase=build|post-build`), the design-review ledger (each gate-seat finding ->
 spec revised / rejected + one-line reason), one status line per task,
 smoke-gate result, review findings ledger (each finding, with an id and its
 file:line -> fixed/rejected + one-line reason), and what is still open. You are the only writer -
@@ -340,7 +352,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
 ## Phase 1 - ALIGN AND PLAN (you)
 
 - **Pick the lane first.** Lane A (default, the phases below): you
-  blueprint, Claude builds, Astra design-reviews and reviews. Lane B (Astra
+  blueprint, Claude builds, the gate seat (Sol by default) design-reviews and reviews. Lane B (Astra
   solo): the user names Astra as the builder - "astra solo", "let Astra
   design and build", "astra build it", or the brief says Astra owns the
   design. A count - "spawn 3 astra subagents", "a few astras on this",
@@ -413,7 +425,8 @@ keeps every run's record; the orchestrator never deletes a logbook.
   contract task alone in wave 0 (fanout.md, "Build waves").
 - **JC's readings (2026-10-24), applied before the class and the gate seat:**
   - Excluded categories read strictly: auth includes signup and login input validation; money includes read-only views that compute or show money totals; a client-facing release includes any edit to a client's document, email, or live workflow, however small ("quick" does not lower it).
-  - Scoping or planning a client automation, even with no code yet, is a real build with the Astra gate - never a research run.
+  - Scoping or planning a client automation, even with no code yet, is a real build with the Astra gate - never a research run. (superseded 2026-11-18)
+  - JC 2026-11-18: scoping or planning a client automation, even with no code yet, is still a real build, never a research run; its gate follows the gate seat rubric (Sol by default; Astra on an Astra row).
   - Lane B (Astra solo) only when the request is to BUILD something new and names Astra for it ("build ... use astra", "astra build it"). "go all astra fast", "using astra" or "astra" on fixes, a numbered list of changes, or other work on existing code keeps Lane A with Astra pinned as the gate seat.
 - Decide now which of three build classes this run is: a **real build**
   (multi-file, anything a user or client will run, anything whose failure
@@ -461,7 +474,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   cheapest place to fix a plan.
 - Show the plan in one screen or less. Get a go signal, then create the
   logbook, then read what the specs depend on (rule 3) and write every
-  builder spec (Phase 2 format). The specs are what the gate seat (Astra or Sol, gate seat rubric in SKILL.md) reviews next. That is Lane A. In Lane B write the brief instead (Lane B,
+  builder spec (Phase 2 format). The specs are what the gate seat (Sol or Astra, gate seat rubric in SKILL.md) reviews next. That is Lane A. In Lane B write the brief instead (Lane B,
   part 1); Astra's design file is what the reviewers grade against, and no
   blueprint is written.
 
@@ -528,11 +541,19 @@ discovering what a build command finds for free. Log the result.
   ladder and the pins of "Claude seat efforts" apply to fixes as they do to
   builds:
 
-  | Fix looks like | Claude subagent | Codex side (the gate seat as parent, `--write`; a Sol parent does the multi-file row itself) |
+  | Fix looks like | Claude subagent | Codex side (the gate seat as parent, `--write`: Sol by default, Astra on Astra rows; a Sol parent does the multi-file row itself) |
   |---|---|---|
-  | Mechanical: rename, config, doc, one obvious line | `model-router:builder` at effort low, in any number of files | Astra delegating to `spark` (native on Pro) or `luna` (proxy) |
-  | Contained, with a written contract: one function, one test, one component | `model-router:builder` at effort medium (`model-router:sonnet-max` under a Sonnet max pin, routing rubric) | Astra delegating to `terra` |
-  | Multi-file, design-level, or the reviewer disagreed with the approach | `model-router:builder` at effort high | the gate seat delegating by tier (Astra to `sol`; Sol does it itself) (agent-file xhigh), or Astra itself at the pinned effort (else xhigh) |
+  | Mechanical: rename, config, doc, one obvious line | `model-router:builder` at effort low, in any number of files | the parent delegating to `spark` (native on Pro) or `luna` (proxy) |
+  | Contained, with a written contract: one function, one test, one component | `model-router:builder` at effort medium (`model-router:sonnet-max` under a Sonnet max pin, routing rubric) | the parent delegating to `terra` |
+  | Multi-file, design-level, or the reviewer disagreed with the approach | `model-router:builder` at effort high | Sol itself at the pinned effort (else xhigh; an excluded category: xhigh over any pin); an Astra parent on an Astra row delegates to `sol` (agent-file xhigh) or does it itself at the pinned effort (else xhigh; excluded: xhigh over any pin) |
+
+  A Codex-column fix packet (`<scratch>/fabstra-fix-<name>.md`) is assembled
+  per specs.md "Codex-side tasks" - the GPT-6.2 swaps and additions and the
+  "What I will check:" line - plus the stack rules and the parent clause of
+  the model that runs as parent (specs.md "Codex parent clauses"; hop rules:
+  transport.md, Model pins), exactly as the Lead fix recipe
+  (lead-mode-deltas.md, "Lead mode delta - transports"); never the Claude
+  build packet as-is.
 
 - After each fix round, recount open findings in the logbook. Count did not
   go down? The approach is wrong - stop immediately, re-diagnose with the
@@ -548,9 +569,13 @@ discovering what a build command finds for free. Log the result.
   decision (decision-page.md). A check that survives three rounds is the
   signal that a person needs to look.
 - Re-run the reviewer when fixes touched more than one file or resolved any
-  P1 - the same reviewer seat the pairing rule gave the build, unless the
+  P1 - the reviewer actually logged in RUN.md for that scope (a Reviewer B
+  stand-in included; never re-picked by the pairing rule), unless the
   fixes moved the build across the pairing line (Codex-column fixes on a
-  Claude build -> Reviewer C for the re-review). For smaller point fixes,
+  Claude build -> Reviewer C for the re-review), or the P1 is a Sol miss: a
+  P1 that a Sol gate or review round on this build passed and a later seat,
+  test, smoke gate or JC found moves that re-review to Astra (a P1 Sol itself
+  found is not a Sol miss); Codex-column fixes still send it to Reviewer C. For smaller point fixes,
   verify the specific finding yourself with targeted slices.
 - Review rounds, numbered per build: round 1 is the Phase 3 review, each
   re-review the next round (every lane, every seat); log `round=N
@@ -613,5 +638,6 @@ discovering what a build command finds for free. Log the result.
 ## Old patterns
 
 - Proxy: 7.2.157 did not know GPT-6 Sol/Luna; 7.3.12 (verified 2026-09-23) serves `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`; `gpt-6.1-sol` verified served 2026-09-30.
+- 2026-11-18: GPT-6.2 Sol became the default gate seat and Codex parent; GPT-6.2 Astra the hard-reasoning seat and Sol's backup (run gpt62-sol-main; plugin version set at release).
 - Routing: the per-prompt Jev tag line and the batched tagging call were retired 2026-09-28; the lead tags every task from the routing rubric.
 - Seats: through 1.10.50 (2026-11-10) Fable 5.1 orchestrated. Opus-tier builder: `model-router:builder` (xhigh), logged `arm=builder eligible=post-trial`; Sonnet- and Haiku-tier tasks built on `general-purpose` with `model: "sonnet"` / `"haiku"`; Reviewer C was a fresh Fable 5.1.

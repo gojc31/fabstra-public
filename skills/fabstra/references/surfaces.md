@@ -96,6 +96,18 @@ check across the set, per above, not a content check).
 
 ## Codex surface rules (Pro home)
 
+Surface jobs launch with the gate seat's model and an explicit effort, the
+effective one (the rubric row's or the user's effort word; xhigh on an
+excluded-category build - phases.md, "Effort rubric (Sol and Astra)"):
+`--model gpt-6.2-sol` by default, `gpt-6.2-astra` on an Astra row. A cooling
+or rejected surface job hops by the hop rules (transport.md, Model pins)
+with one local change: the plugins exist only on the Pro home, which is not
+proven for 6.2 until a re-probe on or after 2026-11-21 15:27 passes, so a
+surface job never moves to the router - a rejected 6.2 launch relaunches on
+the Pro home with the fallback pin (`gpt-6-astra` for Astra, `gpt-6.1-sol`
+for Sol), logged - and when no route is left on the Pro home the surface is
+reported unavailable (no Fable or Claude seat stands in for a surface).
+
 - **Web page work** (dashboard QA, latency, bug hunting, forms) -> Codex
   side on the Pro home. Before launch, confirm Astra's Chrome is running
   (`tasklist` shows a chrome.exe with `ChromeAstra` in its command line);
@@ -119,7 +131,8 @@ check across the set, per above, not a content check).
   already fixed by a design system or an existing screen: no render. The
   render is a reference for the builder, never the deliverable - the
   dashboard still ships as code. Run it as one Codex-transport job on the
-  Pro home (`--write`, effort high) before the builder brief. Spec lines,
+  Pro home (`--write`, at the effective effort above, high by default)
+  before the builder brief. Spec lines,
   verbatim: `Surface: built-in image_gen tool via the imagegen system
   skill, built-in mode only - never the CLI fallback, there is no
   OPENAI_API_KEY here. One render per named screen or variant, at most 3

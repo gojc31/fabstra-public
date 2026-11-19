@@ -231,7 +231,7 @@ ran. Two
 reviewers cost twice the review time and quota; that is the user's choice
 (2026-09-05) for this lane, do not skip one to save time. Log the seats,
 their durations, and why any seat was skipped. In every round, launch
-Reviewer G (Carbon; pro-consult.md, "Reviewer G") in the same message as
+Reviewer G (Neon, Carbon spare; pro-consult.md, "Reviewer G") in the same message as
 Reviewers S and C; it sits outside the active set, its rows are `G<n>`
 findings ruled like S's and C's once you confirm each against the code (an
 unconfirmed one is WITHDRAWN with one line; a confirmed one is tagged `G`,

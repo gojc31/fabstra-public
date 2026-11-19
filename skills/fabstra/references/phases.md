@@ -61,7 +61,7 @@ Reviewer C the CODEX tasks and every seam with the BUILDER tasks; each
 acceptance criterion goes to exactly one reviewer (lead-mode.md, the review
 gate, has the wording). A contained change (Phase 1) has no gate seat and
 takes one review: Claude built -> Sol high; Codex side built -> fresh Fable.
-Every real-build review round also runs Reviewer G (Gemini Carbon) beside the pairing-rule seat(s) (pro-consult.md, "Reviewer G").
+Every real-build review round also runs Reviewer G (Gemini Neon, Carbon spare) beside the pairing-rule seat(s) (pro-consult.md, "Reviewer G").
 Fix rounds are different: the Codex column may fix a Claude build (Phase 4
 default), and the re-review rule there handles the family change. The
 orchestrator never builds under any pairing; Fable 5.2 never builds at all.
@@ -369,7 +369,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   budget-crew ask runs Lane A, and the report says the budget crew is
   retired (2026-11-15).
 - Pro consult (pro-consult.md), advisory, under its cap and unless JC said "no pro": launch it for a research or audit run whose report makes claims,
-  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan; Reviewer G (Carbon) reviews in every review round of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), and two advisory review modes run - the Gemini report check of a research or audit report, the Hydrogen fix check after a code-changing fix round that gets no re-review (pro-consult.md).
+  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan; Reviewer G (Neon, Carbon spare) reviews in every review round of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), and two advisory review modes run - the Gemini report check of a research or audit report, the Hydrogen fix check after a code-changing fix round that gets no re-review (pro-consult.md).
 - A brief that already states the goal and what done looks like needs no
   question round: restate done in one line and go to the plan. Otherwise
   open with one batched round aimed at the real gaps - scope, constraints,

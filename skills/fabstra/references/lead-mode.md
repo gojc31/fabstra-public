@@ -37,7 +37,7 @@ Astra held the gates by the user's choice (2026-09-05, Sol row added 2026-09-27;
 | Small change: trivial single-file, low-stakes - the user called it so, or nothing a user or client runs depends on it | none - you make the change | no | no - say so in the report |
 | A budget-crew ask (budget, cheap crew) | the row the work fits; the report says the budget crew is retired (Lane C retired 2026-11-15; archive/2026-11-15-lane-c/) | per that row | per that row |
 
-Taste findings against Design block: reject with one line. The lead picks the row from the brief; an Astra trigger beats every Sol row (the excluded one still floors the seat at xhigh); mixed or unsure, no trigger: Sol at the higher effort; naming a seat pins it ("astra", "sol"); hop rules: transport.md, Model pins. A P1 Sol found is no Sol miss. Never move down mid-task; after an empty review on doubt move up in effort (Astra only on a trigger). Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a re-review after a P1, unless pinned ("sol high"/"quick review" = high; excluded: xhigh over any pin). Astra and Sol share pools (quota.md); fast pin: quota.md. Gemini seats (Hydrogen quick check, Reviewer G, Carbon report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
+Taste findings against Design block: reject with one line. The lead picks the row from the brief; an Astra trigger beats every Sol row (the excluded one still floors the seat at xhigh); mixed or unsure, no trigger: Sol at the higher effort; naming a seat pins it ("astra", "sol"); hop rules: transport.md, Model pins. A P1 Sol found is no Sol miss. Never move down mid-task; after an empty review on doubt move up in effort (Astra only on a trigger). Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a re-review after a P1, unless pinned ("sol high"/"quick review" = high; excluded: xhigh over any pin). Astra and Sol share pools (quota.md); fast pin: quota.md. Gemini seats (Hydrogen quick check, Reviewer G, Gemini report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
 
 ## The five gates
 
@@ -103,7 +103,7 @@ Send the draft plan and the repository to the gate seat, read-only. While it run
 ### Gate 5 - Report calibrated
 
 - The chat report is the short report in decision-page.md (at most 6 lines, needs-you first: open decisions, approvals, commands only the user can run such as commits, pushes, uploads), with the questions asked via AskUserQuestion (decision-page.md). Everything below goes into the run's report file (decision-page.md, "Report file").
-- Separate verified from assumed, out loud; after the Carbon report check, mark any research or audit claim
+- Separate verified from assumed, out loud; after the Gemini report check, mark any research or audit claim
   you could not confirm and say where you looked. Cite file paths, line numbers,
   commands, the numbers you saw. Report what you observed, not what you
   intended. Never soften a real problem.

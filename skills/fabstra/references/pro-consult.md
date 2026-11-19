@@ -2,7 +2,7 @@
 
 Contents: What it is; What it never does; Triggers; Launch; The brief; Handling the answer; Gemini consult - the build-sheet seat; Antigravity seat (agyseat) - Carbon that reads the repo; Failures; Setup facts and cost
 
-Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Reviewer G, Carbon report check, Hydrogen fix check); Reviewer AG and the Antigravity builder (agyseat)
+Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Reviewer G, Gemini report check, Hydrogen fix check); Reviewer AG and the Antigravity builder (agyseat)
 
 Related:
 > The crew table rows for this seat and for Gemini consult are in transport.md.
@@ -37,7 +37,7 @@ What the wrapper does, fixed:
 
 It never closes Phase 1b or Phase 3, never counts as Reviewer A, B or C, never
 builds, never gates. The same holds for every Gemini mode except Reviewer G
-(Carbon in a real build's review rounds, "Reviewer G" below): its confirmed
+(Neon, Carbon spare, in a real build's review rounds, "Reviewer G" below): its confirmed
 items are findings, and it stands in for Reviewer A / B when Astra and Sol
 are out. A run whose gate seat is down follows "Reviewer fallback"
 in transport.md as before; Pro consult is not a fallback rung.
@@ -109,12 +109,16 @@ accepted or rejected, one line why.
 
 ## Gemini consult - the build-sheet seat
 
-A second seat beside Pro consult, advisory in every mode but Reviewer G (below): Gemini 4 Carbon (`gemini-carbon`), reached through
+A second seat beside Pro consult, advisory in every mode but Reviewer G (below): the default model (Gemini 4 Neon, `gemini-neon` -> `gemini-4-neon`, thinking_level medium via GEMINIPRO_NEON_THINKING), with Gemini 4 Carbon (`gemini-carbon`) as the spare ("Fallback ladder" below), reached through
 the `geminipro` wrapper (`~/bin/geminipro`; `geminipro.cmd` from cmd or
-PowerShell). Since 2026-11-18 the wrapper sends every Carbon or Hydrogen brief
+PowerShell). Why Neon (JC chose it 2026-11-19): two blind rounds found no
+detectable quality difference, Neon at medium answered in 62 s against
+Carbon's 90 s, and it costs about 28% less per call from 2026-12-01
+(`.fabstra/REPORT-neon-bakeoff.md`). Since 2026-11-18 the wrapper sends every Carbon or Hydrogen brief
 to the paid Gemini API first (`gemini-api` CLI, billed key; "API primary"
 below) and falls back to the consumer Gemini app on JC's Pro account only
-when the API provably did not answer. The app path is
+when the API provably did not answer; Neon is API-only and never takes the
+app path. The app path is
 unofficial access to gemini.google.com: a Google terms risk JC accepted on
 2026-11-13. Like Pro consult it sees only the brief, and "What
 it never does" applies to it in full, except as Reviewer G.
@@ -157,7 +161,7 @@ review. The diff source is Reviewer G's (below), and client work
 abstracts the whole brief per "Diff briefs". A diff or plan that cannot be
 abstracted (client data, secrets, an excluded category) skips it with the log line `seat=hydrogen mode=quick skipped: <reason> leads=0 real=0`.
 
-**Reviewer G - Carbon as co-reviewer (JC 2026-11-17).** Gemini 4 Carbon reviews every real build beside the pairing-rule seat(s) in every review round - round 1 and each re-review - in either mode and in Lane B. Launch it in the same message as that round's pairing-rule seat(s), name `review-r<N>` (N = the review round), default model (Carbon), the Launch form below:
+**Reviewer G - Gemini as co-reviewer (JC 2026-11-17; Neon its default model since 2026-11-19, Carbon the spare).** The Gemini seat reviews every real build beside the pairing-rule seat(s) in every review round - round 1 and each re-review - in either mode and in Lane B. Launch it in the same message as that round's pairing-rule seat(s), name `review-r<N>` (N = the review round), default model (Neon; Carbon per the fallback ladder), the Launch form below:
 
     geminipro <run-slug> review-r<N> --json --brief-file <scratch>/gemini-review-r<N>.md
 
@@ -176,14 +180,14 @@ new file - planned, or one a builder reports creating - diffs against
 empty) and diffs against it. With no snapshot, the
 brief carries the full text of the changed files (the review spec's non-git
 fallback, specs.md) and asks the same question.
-Its items are ledger rows `G<n>` with status OPEN: ordinary findings, ruled on under Rule 6 like Reviewer A's, with one difference - Carbon sees only the brief (no repository, no commands), so the lead confirms each item against the code (file:line or a repro) before routing a fix, and an item the lead cannot confirm is WITHDRAWN with one line. Reviewer G never passes a build alone and never replaces the pairing-rule seat - except as stand-in (below), when its confirmed items are that round's review: a round closes when the pairing-rule seat(s) have reported and Reviewer G has answered, been skipped or failed - each logged, and a skipped or failed launch never blocks the round. Skips (excluded category, a client brief that cannot be abstracted, the wrapper's cap, a latched slug) log `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its record, so leads weigh it: 2026-11-17 hit rate review 3 of 10, plan 13 of 63 (`scripts/gemini-hitrate.py`); 2026-11-13 every test answer carried a wrong mechanism claim. Contained and small changes keep the Hydrogen quick check, not Reviewer G.
+Its items are ledger rows `G<n>` with status OPEN: ordinary findings, ruled on under Rule 6 like Reviewer A's, with one difference - the Gemini seat sees only the brief (no repository, no commands), so the lead confirms each item against the code (file:line or a repro) before routing a fix, and an item the lead cannot confirm is WITHDRAWN with one line. Reviewer G never passes a build alone and never replaces the pairing-rule seat - except as stand-in (below), when its confirmed items are that round's review: a round closes when the pairing-rule seat(s) have reported and Reviewer G has answered, been skipped or failed - each logged, and a skipped or failed launch never blocks the round. Skips (excluded category, a client brief that cannot be abstracted, the wrapper's cap, a latched slug) log `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its record, so leads weigh it: 2026-11-17 hit rate review 3 of 10, plan 13 of 63 (`scripts/gemini-hitrate.py`); 2026-11-13 every test answer carried a wrong mechanism claim. Contained and small changes keep the Hydrogen quick check, not Reviewer G.
 
-**Reviewer G as stand-in (JC 2026-11-17).** When Astra and Sol are both cooling on every ChatGPT login and every fast native home (for both models: proxy 429 `All credentials ... cooling down`, 429 `usage_limit_reached`, or 503 `auth_unavailable: no auth available (providers=codex ...)` (seen 2026-11-17 with an upstream 402 `deactivated_workspace`); and `codex-fast-home` exit 3; confirmed as quota, not a 60-second transient cooldown: every login's usage endpoint shows >= 95% or `limit_reached` for both models, or one retry of the same seat after ~60 s fails the same way; transport.md, "Reviewer fallback" and "API seat (OpenAI credits)"), Reviewer G - already in the round - stands in as Reviewer A / B for that Phase 3 round. A round with no qualifying Carbon answer (skipped, failed, answered only through Hydrogen, or a `model_mismatch`) takes the API seat (transport.md, "API seat (OpenAI credits)"). A Carbon answer qualifies by either path (2026-11-18): through the paid API (`"via": "api"` with the response-derived `model` `gemini-4-carbon` and no `model_mismatch: true`; logged `seat=gemini ... via=api`) or through the app fallback (`"via": "app"`; logged `seat=gemini` with `via=app` or no `via=` token). A Hydrogen answer (the Carbon fallback, a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` answer whose reported model is `gemini-4-hydrogen`) is a lead, and the round takes the API seat; a `model_mismatch` answer with any other or no reported model is logged as a skip (record rule, "Handling the answer") and the round takes the API seat too. A contained change (which never launches Reviewer G) with Astra and Sol out takes the API seat for its one review. The design gate (Phase 1b) needs the repository, so it takes the API seat directly.
+**Reviewer G as stand-in (JC 2026-11-17).** When Astra and Sol are both cooling on every ChatGPT login and every fast native home (for both models: proxy 429 `All credentials ... cooling down`, 429 `usage_limit_reached`, or 503 `auth_unavailable: no auth available (providers=codex ...)` (seen 2026-11-17 with an upstream 402 `deactivated_workspace`); and `codex-fast-home` exit 3; confirmed as quota, not a 60-second transient cooldown: every login's usage endpoint shows >= 95% or `limit_reached` for both models, or one retry of the same seat after ~60 s fails the same way; transport.md, "Reviewer fallback" and "API seat (OpenAI credits)"), Reviewer G - already in the round - stands in as Reviewer A / B for that Phase 3 round. A round with no qualifying Neon (API) or Carbon (either path) answer (skipped, failed, answered only through Hydrogen, or a `model_mismatch`) takes the API seat (transport.md, "API seat (OpenAI credits)"). A Carbon answer qualifies by either path (2026-11-18): through the paid API (`"via": "api"` with the response-derived `model` `gemini-4-carbon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-carbon`) or through the app fallback (`"via": "app"`; logged `seat=gemini` with `via=app` or no `via=` token). A Neon answer qualifies too (JC 2026-11-19), through the API only: `"via": "api"` with the response-derived `model` `gemini-4-neon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-neon`. A Hydrogen answer never qualifies: it (the Hydrogen rung of the fallback ladder, a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` answer whose reported model is `gemini-4-hydrogen`) is a lead, and the round takes the API seat; a `model_mismatch` answer with any other or no reported model is logged as a skip (record rule, "Handling the answer") and the round takes the API seat too. A contained change (which never launches Reviewer G) with Astra and Sol out takes the API seat for its one review. The design gate (Phase 1b) needs the repository, so it takes the API seat directly.
 
-**Carbon report check (research and audit runs).** JC 2026-11-15. A
-research or audit run whose report makes claims gets one Carbon launch,
+**Gemini report check (research and audit runs).** JC 2026-11-15. A
+research or audit run whose report makes claims gets one Gemini launch,
 once, after the report draft and before the report file is final and before
-the chat report. Launch name `report-check`, default model (Carbon):
+the chat report. Launch name `report-check`, default model (Neon; Carbon per the fallback ladder):
 
     geminipro <run-slug> report-check --json --brief-file <scratch>/gemini-report-check.md
 
@@ -257,39 +261,52 @@ one line. A LEAD `G<n>` row never counts as Reviewer A, B or C, never passes or
 fails a build, and its absence, failure or a late answer never blocks. "What
 it never does" applies to these two modes in full.
 
-**Carbon fallback (2026-11-15).** The one fallback case: a Carbon launch
-that exits 4 with `status=model_not_available` - `pick_model` raises it
-(scripts/geminipro.py) before the `self.admit()` call in `job_async`,
-so nothing reached the app and the slug is not latched. Under "API primary" (below)
-it arises only once a launch has fallen back to the app (an unmapped model or
-an API 404 falls back to the app first); after an API rejection, an API
-request was sent and rejected, and nothing reached the app. Relaunch once with
-`--model gemini-4-hydrogen` under the same slug and brief, logged "carbon
-unavailable, hydrogen ran". A Carbon usage-limit or model-invalid error
-during the stream is exit 6 `status=failed` (the usage-limit `except` in
-`job_async`) and latches the slug (`stop_latch` in the terminal record that
-`record_terminal` writes, called from `finish`; `lanew_log.check()`
-refuses further launches): no
-fallback, no second attempt. Exit 2 or 8 (Chrome or account, on the app
-fallback) gets no relaunch from the lead either: the API attempt already ran
-or was skipped (the status line's `api_attempt`, next paragraph). An API exit
-6 `outcome_unknown` is never resent to the app or relaunched. Exit 1 (cap or
-latched slug) and exit 7 (brief gate) get no fallback.
+**Fallback ladder (Carbon fallback 2026-11-15; Neon rung 2026-11-19).** The
+only model-fallback relaunches the lead makes, each once, same brief, same slug (every
+launch counts toward the 12-per-run ceiling):
+- Neon -> Carbon: a Neon launch (`gemini-neon`) that exits 4 with
+  `status=model_not_available`. Neon is API-only, so wherever the wrapper
+  would otherwise enter the app (the API attempt `not_run`, `skipped`, or
+  failed with a proven rejection, or app-first mode with
+  `GEMINIPRO_API_PRIMARY=0`) a Neon launch exits 4 instead, with a reason
+  that names the API state and says "relaunch with --model gemini-carbon";
+  it never latches the slug. Relaunch with `--model gemini-carbon`, logged
+  "neon unavailable, carbon ran".
+- Carbon -> Hydrogen: a Carbon launch
+  that exits 4 with `status=model_not_available` - `pick_model` raises it
+  (scripts/geminipro.py) before the `self.admit()` call in `job_async`,
+  so nothing reached the app and the slug is not latched. Under "API primary" (below)
+  it arises only once a launch has fallen back to the app (an unmapped model or
+  an API 404 falls back to the app first); after an API rejection, an API
+  request was sent and rejected, and nothing reached the app. Relaunch once with
+  `--model gemini-4-hydrogen` under the same slug and brief, logged "carbon
+  unavailable, hydrogen ran". A Carbon usage-limit or model-invalid error
+  during the stream is exit 6 `status=failed` (the usage-limit `except` in
+  `job_async`) and latches the slug (`stop_latch` in the terminal record that
+  `record_terminal` writes, called from `finish`; `lanew_log.check()`
+  refuses further launches): no
+  fallback, no second attempt. Exit 2 or 8 (Chrome or account, on the app
+  fallback) gets no relaunch from the lead either: the API attempt already ran
+  or was skipped (the status line's `api_attempt`, next paragraph). An API exit
+  6 `outcome_unknown` is never resent to the app or relaunched. Exit 1 (cap or
+  latched slug) and exit 7 (brief gate) get no fallback. The same holds for a Neon launch: an exit 6, a guard denial,
+  an exit 7 or a local-fault refusal (exit 2, 3 or 5) takes no ladder rung;
+  each keeps its handling in "Failures" below.
 
-**API primary (2026-11-18).** The wrapper sends every Carbon or Hydrogen brief to the paid Gemini API first, through the `gemini-api` CLI, with the request not stored: `gemini-carbon` goes to the API model `gemini-4-carbon`, `gemini-4-hydrogen` to `gemini-4-hydrogen`; any other model has no API mapping and runs on the app. It falls back to the Gemini app (the app path on JC's Google AI Pro login, `GEMINIPRO_ACCOUNT`) only on positive evidence that the API did not answer: the CLI not found before spawn, the key missing, the API day ceiling reached, an unmapped model, or a proven rejection, which needs all of: the CLI exits non-zero and not 9 (the guard's exit), stdout is empty, and stderr is zero or more of the CLI's known progress or retry lines followed by exactly one error envelope and nothing after it, whose `error_type` is a rejection type (never `server_error`, never an unknown type) and whose status is 400, 401, 403, 404 or 429. A local fault never opens the app: an unreadable API ledger, or one with an unparseable line before the last (a torn last line, the crash-during-append case, is skipped), a reservation that cannot be written or locked, too little time left, a `gemini-api` path that exists but is not a file, or a `gemini-api` path that contains the key refuses the launch with no transport at all (exit 2 for a CLI path that is not a file, exit 3 for a ledger or logging fault, exit 5 for no time). Only a CLI path that does not exist, or `gemini-api` missing from PATH, counts as "CLI not found". A `gemini-api` guard content denial is terminal: the brief is never sent to the app. Primary mode turns off the CLI's own retries, so one admitted attempt is at most one upstream request. Everything else after a possible dispatch - a 5xx, a timeout, partial or invalid output, answer text that is not encodable UTF-8, an error envelope followed by other text, a mix of rejection and generation - is exit 6 `outcome_unknown`; an interrupt after a possible dispatch is recorded `outcome_unknown` (the exit stays 130). Neither is retried on either transport or resent to the app, and an API failure never latches the run slug. A brief that contains the key is refused on every route (never sent, never silently scrubbed). The wrapper does all of this inside one launch, so the lead launches nothing extra and never runs `gemini-api` by hand for a consult; the app account (and Chrome, "Launch" below) is needed only when the app path is entered.
+**API primary (2026-11-18).** The wrapper sends every Neon, Carbon or Hydrogen brief to the paid Gemini API first, through the `gemini-api` CLI, with the request not stored: `gemini-neon` goes to the API model `gemini-4-neon` (2026-11-19), `gemini-carbon` to `gemini-4-carbon`, `gemini-4-hydrogen` to `gemini-4-hydrogen`; any other model has no API mapping and runs on the app. For Neon only the request body adds `generation_config.thinking_level`, from `GEMINIPRO_NEON_THINKING` (`low`, `medium`, `high` or `xhigh`, default `medium`; any other value is exit 64 before admission); Carbon and Hydrogen bodies are unchanged. Neon has no app path: where the steps below would enter the app, a Neon launch exits 4 `model_not_available` instead ("Fallback ladder" above). It falls back to the Gemini app (the app path on JC's Google AI Pro login, `GEMINIPRO_ACCOUNT`) only on positive evidence that the API did not answer: the CLI not found before spawn, the key missing, the API day ceiling reached, an unmapped model, or a proven rejection, which needs all of: the CLI exits non-zero and not 9 (the guard's exit), stdout is empty, and stderr is zero or more of the CLI's known progress lines followed by exactly one error envelope and nothing after it, whose `error_type` is a rejection type (never `server_error`, never an unknown type) and whose status is 400, 401, 403, 404 or 429. The envelope is parsed strictly: NaN or Infinity refuses it, and the status counts only as an exact integer (a float such as 429.0, or a boolean, is no evidence). It is no evidence either when its `error` is not an object, when it has a `body` key, when any value nested anywhere in it carries a generation key (`steps`, `outputs`, `candidates`, `status=completed`, `object`), or when its `exit_code` key differs from the CLI's actual exit code. A local fault never opens the app: an unreadable API ledger, or a damaged one (decoded strictly: invalid UTF-8, a NUL, or an unparseable, blank or whitespace-only line before the last; a torn last line, the crash-during-append case, is skipped and the next row is marked `after_torn_line`, while a valid last row that only lacks its newline gets the newline back and no marker), a reservation that cannot be written or locked, too little time left, an explicitly configured `GEMINIPRO_API_CLI` path that cannot be stat'ed for any reason (a dangling link or an unreachable network path included) or is not a regular file, or a `gemini-api` path that contains the key refuses the launch with no transport at all (exit 2 for such a CLI path, exit 3 for a ledger or logging fault, exit 5 for no time). Ledger damage first found inside the locked reservation keeps its reason (the line number) up to the status line and exits 3 in both modes. Only the default lookup finding no `gemini-api` on PATH counts as "CLI not found". A `gemini-api` guard content denial is terminal: the brief is never sent to the app; with empty stdout it counts as a denial only when stderr is exactly the guard's pre-spawn denial line and its footer, and any other stderr around a denial-looking line is exit 6 `outcome_unknown`. Primary mode turns off the CLI's own retries, so one admitted attempt is at most one upstream request. Everything else after a possible dispatch - a 5xx, a timeout, partial or invalid output, answer text that is not encodable UTF-8, an error envelope followed by other text, a mix of rejection and generation - is exit 6 `outcome_unknown`; an interrupt after a possible dispatch is recorded `outcome_unknown` (the exit stays 130). Neither is retried on either transport or resent to the app, and an API failure never latches the run slug. A brief that contains the key is refused on every route (never sent, never silently scrubbed). The wrapper does all of this inside one launch, so the lead launches nothing extra and never runs `gemini-api` by hand for a consult; the app account (and Chrome, "Launch" below) is needed only when the app path is entered.
 
-Status line: an API answer is exit 0 with `"via": "api"`, `model` = the model the API response reports, and `requested_model`; when the reported model differs from the request it adds `model_mismatch: true`, and such an answer never counts as Carbon. An API exit 0 with an answer on stdout and an error on stderr keeps the answer and adds `api_stderr_warning: true`. An app-fallback answer is `"via": "app"` with `api_attempt` = `failed` | `skipped` | `not_run` and `api_reason`. An answer kept despite a failed report or terminal record is exit 3 with the answer on stderr under `--json`: use the answer and log the exit.
+Status line: an API answer is exit 0 with `"via": "api"`, `model` = the model the API response reports, and `requested_model`; when the reported model differs from the request it adds `model_mismatch: true`, and such an answer never counts as Neon or Carbon. An API exit 0 with an answer on stdout and an error on stderr keeps the answer and adds `api_stderr_warning: true`. An app-fallback answer is `"via": "app"` with `api_attempt` = `failed` | `skipped` | `not_run` and `api_reason`. An answer kept despite a failed report or terminal record is exit 3 with the answer on stderr under `--json`: use the answer and log the exit.
 
 Caps: the per-run ceiling (12 per run slug) counts a launch once, whichever path answered. `GEMINIPRO_API_DAY_CEILING` (default 40 per local day) counts wrapper-admitted API attempts (durable reservations in `<GEMINIPRO_LOG stem>-api-day.jsonl`, by default `~/.cli-proxy-api/geminipro-usage-api-day.jsonl`, counted per local day), not upstream HTTP calls; `0` means no paid call in either mode. Google's app usage meter gates only the app path. `--status` adds `api_day: <n>/<ceiling>`. `GEMINIPRO_API_PRIMARY=0` restores the 2026-11-15 app-first order with its Hydrogen API backup (an app exit 2 or 8 sends the same brief once to `gemini-4-hydrogen`), which still obeys `GEMINIPRO_API_BACKUP` (`0` = off) and the day ceiling.
 
-Data: the key is on a billed project (Tier 1 prepay, verified 2026-11-18); Google's paid tier does not use prompts to improve its products. The app path stays against Google's consumer terms (JC accepted that risk 2026-11-13) and is now the fallback only. Client briefs are abstracted by the existing brief rule, and on this machine the `gemini-api` guard still refuses private or signed links in the brief (a content denial: terminal, logged, never sent to the app). Outside Reviewer G an API answer is a list of leads like any Gemini answer; it never gates and never blocks a run. "no gemini" turns every Gemini launch off as before, both paths included. Log each answer by the record rule in "Handling the answer" below (`via=api` or `via=app`).
+Data: the key is on a billed project (Tier 1 prepay, verified 2026-11-18); Google's paid tier does not use prompts to improve its products. The app path stays against Google's consumer terms (JC accepted that risk 2026-11-13) and is now the fallback only. Client briefs are abstracted by the existing brief rule, and on this machine the `gemini-api` guard still refuses private or signed links in the brief (a content denial: terminal, logged, never sent to the app). Outside Reviewer G an API answer is a list of leads like any Gemini answer; it never gates and never blocks a run. "no gemini" turns every Gemini launch off as before, both paths included. Log each answer by the record rule in "Handling the answer" below (`via=api` or `via=app`, then `model=<status-line model>`).
 
 **Pair mode.** Every Pro consult launch (Triggers a-d) also launches one Gemini
 consult on the same question, in the same message.
 
 "no gemini" turns every Gemini launch off for the run: plan mode, the
 Hydrogen quick check, Reviewer G (each round logged `seat=gemini mode=review
-skipped: no gemini leads=0 real=0`), the Carbon report check and the
+skipped: no gemini leads=0 real=0`), the Gemini report check and the
 Hydrogen fix check included; "no pro" turns off Pro consult and its pair,
 never plan mode or the three review modes.
 
@@ -342,7 +359,7 @@ point the Pro consult did not raise is a lead to check. Log it in the "Pro
 consult" section of RUN.md with `seat=gemini`, the mode (plan, pair, solo,
 review or report), duration, status, and which items were used; plan mode also logs plan= on that line.
 The Hydrogen quick check logs there too, with `seat=hydrogen mode=quick`,
-and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The seat names the model that answered (the status line's `model`) and the token after the mode names the path: a Carbon answer through the API is logged `seat=gemini mode=<mode> via=api ...`, for example `seat=gemini mode=review via=api review-r1 41 s ok leads=4 real=1`; a Hydrogen answer through the API (a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` whose reported `model` is `gemini-4-hydrogen`) `seat=hydrogen mode=<mode> via=api ...`; a `model_mismatch` whose reported model is anything else or absent is never logged as Carbon: it logs the launched seat with `skipped: model_mismatch` right after the mode token (the hit-rate script reads `skipped:` only there) and `leads=0 real=0`, for example `seat=gemini mode=review skipped: model_mismatch via=api review-r1 reported model absent leads=0 real=0`; an app answer `via=app` or no `via=` token. The three review
+and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The seat names the model that answered (the status line's `model`): `seat=gemini` covers Neon and Carbon answers, `seat=hydrogen` Hydrogen ones. The token after the mode names the path, and after it a `model=<status-line model>` token (2026-11-19) names the model by the status line's `model` field - `gemini-4-neon`, `gemini-4-carbon` or `gemini-4-hydrogen`. The lead writes `model=` on every new record of a launch that returned a status line (answers, failures and `model_mismatch` skips alike; a skip logged before any launch has no model and carries none); `scripts/gemini-hitrate.py` splits rows by it, folding the short forms (`neon`, `carbon`, `hydrogen`) and the app slugs (`gemini-neon`, `gemini-carbon`) into those ids so older lines group correctly. A Neon or Carbon answer through the API is logged `seat=gemini mode=<mode> via=api model=<model> ...`, for example `seat=gemini mode=review via=api model=gemini-4-neon review-r1 41 s ok leads=4 real=1`; a Hydrogen answer through the API (a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` whose reported `model` is `gemini-4-hydrogen`) `seat=hydrogen mode=<mode> via=api model=gemini-4-hydrogen ...`; a `model_mismatch` whose reported model is anything else or absent is never logged as Neon or Carbon: it logs the launched seat with `skipped: model_mismatch` right after the mode token (the hit-rate script reads `skipped:` only there) and `leads=0 real=0`, for example `seat=gemini mode=review skipped: model_mismatch via=api model=<reported model> review-r1 leads=0 real=0` (with no reported model, `model=` is left out and the free text says `reported model absent`); an app answer `via=app` or no `via=` token, for example `seat=gemini mode=plan via=app model=gemini-carbon plan=... 48 s ok leads=6 real=2`. The three review
 modes handle their items as "Review-mode answers" above.
 
 **Failures.** A Gemini consult never blocks a run.
@@ -358,22 +375,24 @@ modes handle their items as "Review-mode answers" above.
   (b) A configuration exit 2 raised before the brief is read (a test-only
   variable without GEMINIPRO_TEST=1): no route is tried, and the status line
   has no `api_attempt` key. Skip, log, and tell JC.
-  (c) Exit 2 because the configured `gemini-api` path exists but is not a
-  file: a local fault, no transport tried. Skip and log.
+  (c) Exit 2 because an explicitly configured `GEMINIPRO_API_CLI` path
+  cannot be stat'ed (for any reason) or is not a regular file: a local
+  fault, no transport tried. Skip and log.
   An exit 0 with `"via": "api"` is a normal answer, handled like any other,
   `api_stderr_warning: true` included (the answer stands).
-- Exit 4 `model_not_available` on a Carbon launch: the Carbon fallback
-  above, once. Any other launch exiting 4 (Hydrogen itself included): skip
-  and log.
+- Exit 4 `model_not_available` on a Neon or Carbon launch: the next rung
+  of the "Fallback ladder" above, once. Any other launch exiting 4
+  (Hydrogen itself included): skip and log.
 - Exit 6 (Google blocked the request, or the outcome is unknown after
   dispatch: on the API path a 5xx, timeout, partial or invalid output, or
   answer text that is not encodable UTF-8, `outcome_unknown`, never resent
   to the app), 130 (interrupted; after a
   possible API dispatch recorded `outcome_unknown`), 1 (cap or latched
   run), 5 (slot or deadline, or too little time left for the API attempt)
-  or 3 (a logging fault, or an API ledger or reservation fault - an unparseable
-  API-day ledger line before the last included: refused before any
-  transport): skip and log; the run slug gets no second
+  or 3 (a logging fault, or an API ledger or reservation fault - a damaged
+  API-day ledger included, also when the damage is first found inside the
+  locked reservation, in either mode: refused before any transport, the
+  reason naming the line): skip and log; the run slug gets no second
   attempt. An exit 3 that carries the answer on stderr under `--json` (the
   report or terminal record failed) is used like an answer, the exit logged.
 - A `gemini-api` guard content denial (a private or signed link): terminal,
@@ -402,7 +421,8 @@ to be proven by live probes. Log
 (CONFINEMENT_PROVEN set), a new reviewed run must close these deferred items
 from review round 2 (2026-11-18):
 - Helper environments drop env values that contain a paid-key value, not
-  only equal ones; the bash shim's helpers run with the original environment.
+  only equal ones; the target: the bash shim's helpers (dirname, the
+  registry query) run without the paid key in their environment.
 - Identity evidence comes from one log file written by the `agy models` call
   itself (attributable, with a coherent email and method).
 - Final authorization runs after every blocking admission step (the
@@ -413,10 +433,12 @@ from review round 2 (2026-11-18):
 - The post-check and build-evidence flags are set only after the evidence
   is recorded; an unverified log is kept.
 - Build evidence includes ignored files (`--ignored`) and a before/after
-  listing of `.git/hooks` and `.git/config`.
-- The `--settings` deny list names no client folders outside the repo's own
-  drive tree, or a probe proves deny-rule paths never leave the machine;
-  seat repos stay off the user profile.
+  listing of `.git/hooks` and `.git/config`, plus a before/after content
+  hash of the ignored files and of `.git/hooks` and `.git/config` (names
+  alone miss in-place edits).
+- The `--settings` deny list must not name any denylisted (client) folder
+  on any drive - or a live probe must prove deny-rule paths never leave the
+  machine; seat repos stay off the user profile.
 - Test cleanup kills only retained process handles (no bare PIDs).
 
 **What it is.** Gemini 4 Carbon running inside Google's Antigravity CLI
@@ -509,7 +531,8 @@ ceilings, and the allow/deny paths and counts.
 post-check mismatch) the lead inspects tracked changes and untracked files
 before anything else: `git diff`, then
 `git status --porcelain --untracked-files=all --ignored`, reading each new
-file. A failed build job is never
+file, and compares a before/after content hash of the ignored files and of
+`.git/hooks` and `.git/config` (names alone miss in-place edits). A failed build job is never
 blindly relaunched.
 
 **Handling the answer.** A build answer is plain text with no findings file
@@ -594,9 +617,13 @@ here; the job cap is a proxy for it.
 
 Gemini API (geminipro's primary route, 2026-11-18): the `gemini-api` CLI with
 the paid key on a billed project (Tier 1 prepay, verified 2026-11-18). Prices
-per 1M tokens, input / output: Carbon (`gemini-4-carbon`) $2 / $10 through
+per 1M tokens, input / output (output includes thinking tokens): Neon
+(`gemini-4-neon`, the default model) $3 / $15 flat, no free tier (read
+2026-11-19 on aistudio.google.com/docs/pricing); Carbon (`gemini-4-carbon`,
+the spare) $2 / $10 through
 2026-11-30 and $4 / $20 from 2026-12-01 (verified 2026-11-18 on
-ai.google.dev/gemini-api/docs/pricing); Hydrogen (`gemini-4-hydrogen`)
+ai.google.dev/gemini-api/docs/pricing, re-read 2026-11-19 on
+aistudio.google.com/docs/pricing); Hydrogen (`gemini-4-hydrogen`)
 $1.50 / $7.50 (UNVERIFIED). The wrapper caps API attempts at 40 per local day
 (`GEMINIPRO_API_DAY_CEILING`). Google AI Pro's monthly developer credit can
 be claimed onto the billing account.

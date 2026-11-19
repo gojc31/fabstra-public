@@ -74,14 +74,18 @@ API reservation rows (added 2026-11-18 for geminipro's API primary path): a row 
 API attempt, written by reserve() into its own ledger file BEFORE the attempt starts and
 never followed by a terminal row. It is not a job record: check() and report() skip it
 wherever it appears, so it never starts, ends or latches a job (an orphaned job stays an
-orphan). count_reservations() counts the rows of one local date for a daily ceiling. Only a
-torn LAST line (no trailing newline: a crash mid-append) is skipped and reported in the
+orphan). count_reservations() counts the rows of one local date for a daily ceiling. The
+ledger is read in binary and each line decoded as strict UTF-8 (FIX-6, 2026-11-19): a line
+with an invalid byte, a NUL, or nothing but whitespace is not a row. Only a torn LAST line
+(no trailing newline: a crash mid-append) that is not a row is skipped and reported in the
 returned skipped count; reserve() terminates such a tail and stamps the row it writes next
-with TORN_MARK, so that known fragment stays skippable. Any other line that is not a JSON
-object - anywhere before the last line, or a last line WITH its newline - is damage to
-committed history: count_reservations() raises LedgerDamaged (an OSError, "API-day ledger
-damaged at line N") and reserve() returns "log_error" without appending (FIX-4 N6,
-2026-11-18: the spend guard never undercounts).
+with TORN_MARK, so that known fragment stays skippable. A valid last row that only lacks its
+newline gets the newline back and no TORN_MARK (the mark never excuses a counted row). Any
+other line that is not a JSON object (blank lines included) - anywhere before the last line,
+or a last line WITH its newline - is damage to committed history: count_reservations()
+raises LedgerDamaged (an OSError, "API-day ledger damaged at line N") and reserve() returns
+"log_error" without appending - or, with raise_damage=True, raises that LedgerDamaged so its
+line number reaches the caller (FIX-4 N6, 2026-11-18: the spend guard never undercounts).
 
 CLI: `record start|end|preflight-failed` (`record start` takes optional
 `--pid` and `--pid-created`), `check --run R`, `admit --run R ... [--pid P]
@@ -751,35 +755,47 @@ def is_reservation(entry) -> bool:
     return isinstance(entry, dict) and entry.get("kind") == RESERVATION_KIND
 
 
-def _read_rows_tolerant(path):
-    """(rows, skipped, ends_with_newline): every line of path that is a JSON object. Only a
-    known torn fragment is skipped (and counted): the LAST line when the file does not end
-    with a newline (a crash mid-append), or a line whose next row carries TORN_MARK (such a
-    tail, terminated later by reserve()). Any other line that is not a JSON object is damage
-    to committed history: LedgerDamaged (an OSError) with its line number - the count would
-    otherwise be too low. Blank lines are ignored. A missing file is ([], 0, True). Raises
-    OSError when the file cannot be read."""
+def _ledger_entry(raw):
+    """One ledger line (bytes, no newline) as a JSON object, or None when it is not a row:
+    invalid UTF-8 (strict decoding, FIX-6), a NUL, nothing but whitespace, not JSON, too deep,
+    or JSON that is not an object."""
+    if b"\x00" in raw:
+        return None
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            text = f.read()
+        line = raw.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        return None
+    if not line:
+        return None
+    try:
+        entry = json.loads(line)
+    except (ValueError, RecursionError):
+        return None
+    return entry if isinstance(entry, dict) else None
+
+
+def _read_rows_tolerant(path):
+    """(rows, skipped, ends_with_newline, tail_skipped): every line of path that is a JSON
+    object (_ledger_entry: read in binary, strict UTF-8; a NUL or a blank line is not a row).
+    Only a known torn fragment is skipped (and counted): the LAST line when the file does not
+    end with a newline (a crash mid-append) and it is not a row - tail_skipped is then True -,
+    or a line whose next row carries TORN_MARK (such a tail, terminated later by reserve()). A
+    valid newline-less last row is a row (tail_skipped False). Any other line that is not a
+    JSON object - a blank line included - is damage to committed history: LedgerDamaged (an
+    OSError) with its line number - the count would otherwise be too low. A missing file is
+    ([], 0, True, False). Raises OSError when the file cannot be read."""
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
     except FileNotFoundError:
-        return [], 0, True
-    whole = not text or text.endswith("\n")
-    parts = text.split("\n")
+        return [], 0, True, False
+    whole = not data or data.endswith(b"\n")
+    parts = data.split(b"\n")
     if whole:
         parts.pop()  # the empty text after the final newline
-    lines = []  # (line number, the object or None, is the torn last line)
-    for n, raw in enumerate(parts, 1):
-        line = raw.strip()
-        if not line:
-            continue
-        try:
-            entry = json.loads(line)
-        except ValueError:
-            entry = None
-        lines.append((n, entry if isinstance(entry, dict) else None,
-                      not whole and n == len(parts)))
-    rows, skipped = [], 0
+    lines = [(n, _ledger_entry(raw), not whole and n == len(parts))
+             for n, raw in enumerate(parts, 1)]  # (line number, object or None, torn last line)
+    rows, skipped, tail_skipped = [], 0, False
     for i, (n, entry, torn_tail) in enumerate(lines):
         if entry is not None:
             rows.append(entry)
@@ -787,9 +803,10 @@ def _read_rows_tolerant(path):
         nxt = lines[i + 1][1] if i + 1 < len(lines) else None
         if torn_tail or (isinstance(nxt, dict) and nxt.get(TORN_MARK) is True):
             skipped += 1
+            tail_skipped = tail_skipped or torn_tail
             continue
         raise LedgerDamaged(n)
-    return rows, skipped, whole
+    return rows, skipped, whole, tail_skipped
 
 
 def _local_day(entry):
@@ -821,25 +838,29 @@ def count_reservations(path, day=None):
     damaged (_read_rows_tolerant)."""
     if day is None:
         day = datetime.now().date()
-    rows, skipped, _ = _read_rows_tolerant(path)
+    rows, skipped, _, _ = _read_rows_tolerant(path)
     return _count_day(rows, day), skipped
 
 
-def reserve(path, row, ceiling, day=None):
+def reserve(path, row, ceiling, day=None, raise_damage=False):
     """Atomic daily-ceiling check + reservation append, under path's lock file (one critical
     section, like admit()): returns (status, count, skipped). "reserved": row was appended
     (fsync'd, verified by re-reading) and count is today's total including it; "refused":
     today's count is at or over ceiling, NOTHING appended; "log_error": the lock was not
     taken, the ledger could not be read or is damaged (LedgerDamaged: nothing appended), or
-    the append could not be verified (the caller must treat the day count as unknown). row
-    gets "kind" = RESERVATION_KIND. A ledger whose last line is torn (no trailing newline)
-    gets a newline first, so the new row stays whole, and the new row carries TORN_MARK: true
-    (the fragment before it is known, and stays skippable as an interior line).
+    the append could not be verified (the caller must treat the day count as unknown).
+    raise_damage=True: a LedgerDamaged found under the lock is raised (after the lock is
+    released, nothing appended) instead, so its line number reaches the caller. row gets
+    "kind" = RESERVATION_KIND. A ledger whose last line has no trailing newline gets a newline
+    first, so the new row stays whole; only when that tail was skipped (not a row: a torn
+    fragment) does the new row carry TORN_MARK: true (the fragment before it is known, and
+    stays skippable as an interior line) - a valid newline-less last row gets no mark.
     A row without "ts" is stamped here, under the lock, and the local date counted against is
     taken from that SAME clock read (a lock wait spanning midnight can never commit a
     yesterday-dated row today); a caller's own ts is kept, and the date is then read under the
     lock too. `day` (tests) overrides the date counted against."""
     entry = dict(row, kind=RESERVATION_KIND)
+    damage = []  # a LedgerDamaged seen under the lock (raise_damage)
 
     def critical():
         today = day
@@ -851,13 +872,16 @@ def reserve(path, row, ceiling, day=None):
         elif today is None:
             today = datetime.now().date()
         try:
-            rows, skipped, whole = _read_rows_tolerant(path)
-        except OSError:  # LedgerDamaged included: damaged history is never appended to
+            rows, skipped, whole, tail_skipped = _read_rows_tolerant(path)
+        except LedgerDamaged as exc:  # damaged history is never appended to
+            damage.append(exc)
+            return "log_error", None, 0
+        except OSError:
             return "log_error", None, 0
         count = _count_day(rows, today)
         if count >= ceiling:
             return "refused", count, skipped
-        if not whole:  # the torn last line becomes interior: mark it as a known fragment
+        if tail_skipped:  # the skipped torn last line becomes interior: mark it as known
             entry[TORN_MARK] = True
         line = json.dumps(entry, sort_keys=True) + "\n"
         if not _append_unlocked(path, ("" if whole else "\n") + line, durable=True):
@@ -867,6 +891,8 @@ def reserve(path, row, ceiling, day=None):
     if ceiling <= 0:
         return "refused", 0, 0
     locked, result = _with_log_lock(path, critical)
+    if damage and raise_damage:
+        raise damage[0]
     if not locked:
         return "log_error", None, 0
     return result

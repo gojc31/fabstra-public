@@ -16,6 +16,19 @@ app launch. The seat names the model that answered (`seat=gemini` for Carbon,
 `seat=hydrogen` for Hydrogen). App and API launches are separate rows
 (`via` = app | api); the totals cover every row.
 
+A record may also carry the whitespace-delimited token `model=<name>` anywhere
+after the seat token (same rule as `via=`; name is lower-case [a-z0-9.-]+,
+e.g. neon, carbon, hydrogen):
+`seat=gemini mode=review via=api model=neon review-r1 41 s ok leads=4 real=1`.
+The canonical value is the API id geminipro's status line reports
+(gemini-4-neon, gemini-4-carbon, gemini-4-hydrogen). Rows group on that id,
+folding the short names: neon and gemini-neon -> gemini-4-neon; carbon and
+gemini-carbon -> gemini-4-carbon; hydrogen -> gemini-4-hydrogen. Any other
+well-formed name stays as written.
+A record with no such token (every line logged before the token existed), or
+one whose token is not a whole lower-case token, gets model `-` (unknown).
+Each model is its own row (`model` column after `via`); totals cover every row.
+
     python scripts/gemini-hitrate.py [PATH ...] [--json]
 
 PATH is a folder (scans its .fabstra/RUN*.md) or a file. With no PATH it scans
@@ -24,7 +37,7 @@ PATH is a folder (scans its .fabstra/RUN*.md) or a file. With no PATH it scans
 GEMINI_HITRATE_ROOTS (os.pathsep-separated folders) replaces those defaults;
 each root is scanned as <root>/.fabstra/RUN*.md and <root>/*/.fabstra/RUN*.md.
 
-Per seat+mode+via: launches = scored + unscored + invalid + skipped.
+Per seat+mode+via+model: launches = scored + unscored + invalid + skipped.
   skipped  - `skipped:` directly after the mode=<m> token (a launch, never summed)
   scored   - terminal counts present and real <= leads (summed)
   invalid  - terminal counts present and real > leads (counted, not summed)
@@ -52,6 +65,14 @@ MODE_RE = re.compile(r"(?:^|\s)mode=([A-Za-z0-9_-]+)(\s+skipped:)?")
 COUNTS_RE = re.compile(r"(?:^|\s)leads=(\d+)\s+real=(\d+)\s*$")
 # an API-backup launch: the exact token via=api anywhere after the seat token
 VIA_RE = re.compile(r"(?:^|\s)via=api(?=\s|$)")
+# the answering model: the first whole model=<name> token after the seat token
+MODEL_RE = re.compile(r"(?:^|\s)model=([a-z0-9.-]+)(?=\s|$)")
+# short model names fold to the canonical API id geminipro reports
+MODEL_ALIASES = {
+    "neon": "gemini-4-neon", "gemini-neon": "gemini-4-neon",
+    "carbon": "gemini-4-carbon", "gemini-carbon": "gemini-4-carbon",
+    "hydrogen": "gemini-4-hydrogen",
+}
 COUNT_KEYS = ("launches", "scored", "unscored", "invalid", "skipped", "leads", "real")
 
 
@@ -103,7 +124,7 @@ def hit_rate(c: dict):
 
 
 def tally(files: list[Path]) -> dict:
-    rows: dict[tuple[str, str, str], dict] = {}
+    rows: dict[tuple[str, str, str, str], dict] = {}
     read = unreadable = 0
     for f in files:
         try:
@@ -119,7 +140,9 @@ def tally(files: list[Path]) -> dict:
             rest = rec.group(2)
             mode = MODE_RE.search(rest)
             via = "api" if VIA_RE.search(rest) else "app"
-            key = (rec.group(1), mode.group(1) if mode else "unknown", via)
+            model = MODEL_RE.search(rest)
+            key = (rec.group(1), mode.group(1) if mode else "unknown", via,
+                   MODEL_ALIASES.get(model.group(1), model.group(1)) if model else "-")
             c = rows.setdefault(key, empty_counts())
             c["launches"] += 1
             if mode and mode.group(2):
@@ -138,8 +161,8 @@ def tally(files: list[Path]) -> dict:
             c["real"] += m
     out_rows = []
     totals = empty_counts()
-    for (seat, mode, via), c in sorted(rows.items()):
-        out_rows.append({"seat": seat, "mode": mode, "via": via, **c, "hit_rate": hit_rate(c)})
+    for (seat, mode, via, model), c in sorted(rows.items()):
+        out_rows.append({"seat": seat, "mode": mode, "via": via, "model": model, **c, "hit_rate": hit_rate(c)})
         for k in COUNT_KEYS:
             totals[k] += c[k]
     totals["hit_rate"] = hit_rate(totals)
@@ -151,15 +174,15 @@ def fmt_rate(v) -> str:
 
 
 def print_table(data: dict) -> None:
-    head = ["seat", "mode", "via", "launches", "scored", "skipped", "leads", "real", "hit"]
-    body = [[r["seat"], r["mode"], r["via"], *(str(r[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
+    head = ["seat", "mode", "via", "model", "launches", "scored", "skipped", "leads", "real", "hit"]
+    body = [[r["seat"], r["mode"], r["via"], r["model"], *(str(r[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
              fmt_rate(r["hit_rate"])] for r in data["rows"]]
     t = data["totals"]
-    body.append(["TOTAL", "", "", *(str(t[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
+    body.append(["TOTAL", "", "", "", *(str(t[k]) for k in ("launches", "scored", "skipped", "leads", "real")),
                  fmt_rate(t["hit_rate"])])
     widths = [max(len(row[i]) for row in [head, *body]) for i in range(len(head))]
     for row in [head, *body]:
-        print("  ".join(cell.ljust(w) if i < 3 else cell.rjust(w)
+        print("  ".join(cell.ljust(w) if i < 4 else cell.rjust(w)
                         for i, (cell, w) in enumerate(zip(row, widths))).rstrip())
     print(f"unscored lines: {t['unscored']}")
     print(f"invalid lines (real > leads): {t['invalid']}")

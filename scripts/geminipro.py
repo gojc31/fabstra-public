@@ -2,7 +2,9 @@
 CLI (see "API primary (2026-11-18)"), else to the consumer Gemini web app (gemini.google.com)
 on the configured Google AI Pro account (GEMINIPRO_ACCOUNT, else EXPECTED_ACCOUNT below)
 through the gemini_webapi library (see "App fallback"); the answer goes to stdout and to a
-report file. A consult seat like astrapro, for Gemini (default model gemini-carbon).
+report file. A consult seat like astrapro, for Gemini (default model gemini-neon - Gemini 4
+Neon - API-only, see "API primary"; gemini-carbon is the spare: --model gemini-carbon /
+GEMINIPRO_MODEL=gemini-carbon is the rollback).
 GEMINIPRO_API_PRIMARY=0 restores the old order: the app first, the API only as its backup
 (see "API backup").
 
@@ -22,10 +24,13 @@ Exit codes:
        Google's usage meter at or above its limit (see "Usage meter")
   2    preflight refused (no account configured - in API primary job mode only once the app
        path is entered -, browser-harness / Chrome unreachable, no context with Google cookies;
-       in API primary mode a GEMINIPRO_API_CLI path carrying the key, or one that exists but is
-       not a regular file or cannot be inspected - no transport at all)
+       in API primary mode a GEMINIPRO_API_CLI path carrying the key, or one that cannot be
+       inspected for any reason - missing included - or is not a regular file - no transport)
   3    logging failure
-  4    model not available
+  4    model not available; for gemini-neon (API-only) every route that would enter the app -
+       api_attempt not_run / skipped / a proven rejection, or GEMINIPRO_API_PRIMARY=0 - ends
+       here instead, the reason naming the API state, the spelling the launch used
+       (gemini-neon or gemini-4-neon) and "relaunch with --model gemini-carbon"
   5    no free slot within the wait / deadline
   6    the request ran and did not end ok (Gemini error, empty answer, blocked, quota), or an
        API primary attempt whose outcome is unknown (never resent, never sent to the app)
@@ -57,7 +62,8 @@ Env: GEMINIPRO_ACCOUNT (the Google account the signed-in Gemini session must be;
   unset, EXPECTED_ACCOUNT below. Surrounding whitespace is stripped; an empty or
   whitespace-only value - set, or the default - is exit 2 preflight_refused before
   any browser, cookie or network step, and a set value never falls back to the default),
-  GEMINIPRO_MODEL (default gemini-carbon; --model wins), GEMINIPRO_RUN_JOB_CEILING
+  GEMINIPRO_MODEL (default gemini-neon; gemini-carbon is the spare and the rollback; --model
+  wins), GEMINIPRO_RUN_JOB_CEILING
   (default 12), GEMINIPRO_MAX_5H_PCT (default 80) and GEMINIPRO_MAX_WEEKLY_PCT (default 90):
   the usage-meter limits, numbers from 0 to 100 (anything else is exit 64; see "Usage
   meter"; the retired GEMINIPRO_DAILY_CAP is no longer read), GEMINIPRO_TOTAL_DEADLINE (s, default 900: one monotonic deadline over
@@ -71,9 +77,13 @@ Env: GEMINIPRO_ACCOUNT (the Google account the signed-in Gemini session must be;
   local day, both modes; a whole number >= 0, anything else exit 64 in every mode; 0 = no paid
   CLI attempt in either mode), GEMINI_API_KEY (read by the gemini-api CLI itself; 16+
   characters, else not a key), GEMINIPRO_API_CLI (an explicit CLI path; default `gemini-api`
-  on PATH), GEMINIPRO_API_TIMEOUT (s per attempt, default 300; a non-number is exit 64).
+  on PATH), GEMINIPRO_API_TIMEOUT (s per attempt, default 300; a non-number is exit 64),
+  GEMINIPRO_NEON_THINKING (gemini-neon launches only: generation_config.thinking_level, one of
+  low | medium | high | xhigh, case-insensitive, default medium; anything else is exit 64
+  before any admission; not read for other models or --status).
   Legacy backup only: GEMINIPRO_API_BACKUP (`0` turns it off; default on),
-  GEMINIPRO_API_MODEL (default gemini-4-hydrogen; API primary uses the API_MODELS table).
+  GEMINIPRO_API_MODEL (default gemini-4-hydrogen; API primary uses the API_MODELS table; a
+  Neon value - gemini-neon or gemini-4-neon, any case - is exit 64 in the legacy mode).
 Test-only, honoured ONLY with GEMINIPRO_TEST=1 (exit 2 otherwise):
   GEMINIPRO_EXPECT_ACCOUNT (replaces the expected account for the identity check;
   GEMINIPRO_ACCOUNT must still resolve non-empty), GEMINIPRO_TEST_CONTEXT
@@ -168,27 +178,42 @@ API directly.
   carrying the registered GEMINI_API_KEY value (exit 7, nothing admitted, no transport on any
   route) -, the slot (one job at a time, both paths), the per-run precheck; then the API step;
   the app path only if the API step did not answer.
-- Model: the requested model (--model, else GEMINIPRO_MODEL, else gemini-carbon), matched
-  case-insensitively in API_MODELS: gemini-carbon -> gemini-4-carbon, gemini-4-hydrogen ->
+- Model: the requested model (--model, else GEMINIPRO_MODEL, else gemini-neon - the default
+  since 2026-11-19; gemini-carbon is the spare: --model gemini-carbon /
+  GEMINIPRO_MODEL=gemini-carbon is the rollback), matched
+  case-insensitively in API_MODELS: gemini-carbon -> gemini-4-carbon, gemini-neon and its API
+  id gemini-4-neon -> gemini-4-neon (both spellings get every Neon rule), gemini-4-hydrogen ->
   gemini-4-hydrogen. Any other model never goes to the API (app path only).
+- Neon is API-only (2026-11-19; the app accounts have no Neon slug): a gemini-neon launch never
+  enters the app path. Wherever another model would go to the app (api_attempt not_run,
+  skipped, or failed with a proven rejection - the API off, no key, gemini-api not on PATH,
+  the day ceiling, a reservation the ceiling refuses, the CLI gone at the spawn, a 4xx
+  rejection - or GEMINIPRO_API_PRIMARY=0) it ends with exit 4 model_not_available, the reason
+  naming the API state, the spelling the launch used (gemini-neon or gemini-4-neon) and
+  "relaunch with --model gemini-carbon"; like every API failure it
+  never latches the run, so that Carbon relaunch under the same run is admitted (the per-run
+  ceiling counts both launches). Exit 6, 7 and the local-fault refusals (2 / 3 / 5) keep their
+  meaning for Neon. GEMINIPRO_MODEL=gemini-carbon (or --model gemini-carbon) is the Carbon
+  path (the rollback).
 - Preconditions, in order (a miss = api_attempt "not_run" or "skipped", nothing admitted, no
   reservation, the app path runs exactly as in the app-only design): a mapped model (not_run);
   GEMINIPRO_API_DAY_CEILING above 0 (skipped); GEMINI_API_KEY set, non-blank, 16+ characters
-  (not_run); the CLI resolves (GEMINIPRO_API_CLI, else gemini-api on PATH) (not_run: only a
-  GEMINIPRO_API_CLI path that provably does not exist, or gemini-api not on PATH); today's
-  reservations under the ceiling (skipped).
+  (not_run); the CLI resolves (GEMINIPRO_API_CLI, else gemini-api on PATH) (not_run: only
+  gemini-api not found on PATH; an explicit GEMINIPRO_API_CLI path is never "not found", see
+  below); today's reservations under the ceiling (skipped).
 - Local faults never reach the app (FIX-1, 2026-11-18): the launch is refused, no transport at
   all, nothing sent to the API or the app - a CLI path carrying the key: exit 2
   preflight_refused (api_attempt not_run, like the browser-harness path check), and so is
-  (FIX-4 N5) a GEMINIPRO_API_CLI path that exists but is not a regular file (a directory) or
-  whose inspection raised (permission / OS error); fewer than
+  (FIX-4 N5, FIX-6) a GEMINIPRO_API_CLI path that is not a regular file (a directory) or whose
+  inspection raised for any reason (a missing file, a dangling link, a network-path or
+  permission error); fewer than
   JOB_MIN seconds left, or no time left for the attempt's timeout after the reservation: exit 5
   deadline (not_run); an unreadable ledger, or a reservation that cannot be written (lock,
   write or verify failure): exit 3 log_failure (skipped); so is (FIX-4 N6) a damaged ledger -
   a line before the last that is not a JSON object (only a torn LAST line is skipped; see
   "Daily API ceiling"): exit 3 log_failure "API-day ledger damaged at line N" (skipped), checked
-  before admission, nothing written. After admission the job's terminal record is failed,
-  unlatched.
+  before admission, nothing written; damage first seen inside the locked reservation keeps
+  that reason (FIX-6). After admission the job's terminal record is failed, unlatched.
 - Admission: admit() once (the per-run ceiling; the started record names the API model). The
   app fallback reuses this job: an API attempt plus an app answer in one launch is ONE job.
   Refused or failed admission is the run's exit (1 / 3), api_attempt not_run.
@@ -198,7 +223,9 @@ API directly.
   against come from one clock read there) BEFORE the child is spawned; a reservation the
   ceiling now refuses (another launch took the last slot) is api_attempt "skipped" and the
   admitted job goes to the app path.
-- Call: body.json {"input": <brief>, "model": <API model>, "stream": false, "store": false} in
+- Call: body.json {"input": <brief>, "model": <API model>, "stream": false, "store": false} -
+  for gemini-4-neon plus "generation_config": {"thinking_level": <GEMINIPRO_NEON_THINKING>};
+  the other bodies carry no generation_config - in
   a new empty directory under geminipro.d/, `<cli> generate --output-format json --body
   @body.json --no-retries`, no shell, stdin DEVNULL, the environment inherited (the CLI reads
   the key; it is never in argv or the body), timeout min(GEMINIPRO_API_TIMEOUT, time left -
@@ -206,7 +233,8 @@ API directly.
   (--no-retries, a global flag the guard's usage table knows), so one admitted attempt is at
   most one upstream request. The child handling (tree kill, holder, backstop, body-directory
   removal, housekeeping) is the API backup's, below. Popen's own FileNotFoundError (the CLI
-  vanished between the lookup and the spawn: no child) is api_attempt not_run, the app follows.
+  vanished between the lookup and the spawn: no child) is api_attempt not_run, the app follows
+  (gemini-neon: exit 4).
 - Outcome classes (from the CLI's exit code, its stdout and its classified JSON error envelope
   on stderr - gemini-api v0.4.4 prints the API's own error body plus error_type, exit_code,
   message, hints, error_reason and status_code, the HTTP status):
@@ -228,20 +256,27 @@ API directly.
     frame character, a space, a prefix of "gemini-api generate" - and clears - CR, ESC [2K;
     the CLI has no retry or backoff lines, and prints the spinner only to a terminal outside
     machine mode) and
-    whitespace, then exactly ONE JSON error envelope (one line or indented, no duplicate key)
-    and nothing but whitespace after it (api_envelope); (4) its error_type is in
+    whitespace, then exactly ONE JSON error envelope (strict JSON - NaN / Infinity refused -,
+    one line or indented, no duplicate key) and nothing but whitespace after it
+    (api_envelope); (4) its error_type is in
     API_REJECT_TYPES (from classify.go: rate_limit_error, validation_error,
     authentication_error, authorization_error, not_found, service_disabled,
     billing_disabled - server_error and any unknown type never qualify); (5) its top-level
     status_code is a well-formed int 400 / 401 / 403 / 404 / 429 (missing, null, string,
-    float or bool: no evidence), and a numeric error.code, when there is one, equals it;
-    (6) it carries no interaction field (API_GENERATION_KEYS). api_attempt "failed",
+    float or bool: no evidence); `error`, when present, is an object (a list, string or null:
+    no evidence) whose code, when it is a number, is an exact int equal to it (a float, even
+    429.0, or a bool: no evidence); (6) it carries no interaction field (API_GENERATION_KEYS)
+    at the top level, no `body` key, and no nested object anywhere (lists walked) with steps,
+    outputs, candidates, object or status "completed" (FIX-6); (7) an exit_code field, when
+    present, is an exact int equal to the CLI's real exit code. api_attempt "failed",
     api_reason the scrubbed summary (<= 300 characters).
-  * guard content denial (terminal): exit 9 with a `gemini-guard: denied:` line AND an empty
-    stdout (private / signed links, client files: the real CLI never started): exit 7
+  * guard content denial (terminal): exit 9, an empty stdout and stderr EXACTLY the guard's
+    pre-spawn denial - the `gemini-guard: denied: <reason>` line, then its footer line
+    (GUARD_FOOTER), nothing else (private / signed links, client files: the real CLI never
+    started): exit 7
     brief_refused with the guard's reason; the brief is never sent to the app; terminal record
-    failed, unlatched. An exit 9 without that (a guard internal error, or output on stdout
-    beside a denial line) is outcome unknown.
+    failed, unlatched. An exit 9 without that (a guard internal error, output on stdout, or
+    any other stderr text beside a denial line) is outcome unknown.
   * everything else once the child was spawned - a timeout (the child killed), any error after
     the spawn (an unexpected internal error included), HTTP 5xx (500 / 502 / 503 / 504
     included), a connection or other error without an HTTP status, an error_type outside the
@@ -271,15 +306,18 @@ modes: the count is the reservation rows dated today in the ledger
 treats such a row as a job record), terminated or not; a row whose time cannot be read counts.
 It counts wrapper-admitted CLI attempts: in the primary mode one attempt is at most one upstream
 request (--no-retries); the legacy backup keeps the CLI's own backoff retries inside one
-attempt, which are not seen. A torn trailing ledger line (the LAST line, with no trailing
-newline: a crash mid-append) is skipped with a note on stderr, never a crash, and the next row
-is written on a new line and stamped (lanew_log.TORN_MARK) so the now-interior fragment stays
-skippable. Any other line that is not a JSON object - before the last line, or a last line
-with its newline - is damaged committed history (FIX-4 N6): the launch is refused, exit 3
-log_failure "API-day ledger damaged at line N", no transport, nothing written - in the
-legacy mode too (the backup is not run; exit 3 instead of the app path's exit); --status
-shows api_day "?/<ceiling>". --status
-prints "api_day: <n>/<ceiling>" (key api_day).
+attempt, which are not seen. The ledger is decoded as strict UTF-8 (FIX-6): a line with an
+invalid byte, a NUL or only whitespace is not a row. A torn trailing ledger line (the LAST
+line, with no trailing newline: a crash mid-append) that is not a row is skipped with a note
+on stderr, never a crash, and the next row is written on a new line and stamped
+(lanew_log.TORN_MARK) so the now-interior fragment stays skippable; a valid last row that only
+lacks its newline gets it back, unstamped. Any other line that is not a JSON object (a blank
+line included) - before the last line, or a last line with its newline - is damaged committed
+history (FIX-4 N6): the launch is refused, exit 3 log_failure "API-day ledger damaged at line
+N", no transport, nothing written - in the legacy mode too (the backup is not run; exit 3
+instead of the app path's exit), and in both modes also when the damage is first seen inside
+the locked reservation (FIX-6; legacy: terminal record failed, unlatched); --status shows
+api_day "?/<ceiling>". --status prints "api_day: <n>/<ceiling>" (key api_day).
 
 App fallback. When the API step did not answer and may not have (api_attempt not_run, skipped
 or failed - a proven rejection), the app path runs as described above (identity check, usage
@@ -288,7 +326,8 @@ step had admitted the job, the app path reuses it (no second admission) and an a
 refusal BEFORE any app POST (no account, harness / identity / meter / model / deadline / block)
 ends with that refusal's own exit, its terminal record failed and UNLATCHED; once the app
 POSTed, the app path's own latch rules apply. When the API answered, the app path is never
-entered (no browser-harness, no cookies).
+entered (no browser-harness, no cookies). gemini-neon never enters it at all (exit 4, see
+"API primary").
 
 API backup (2026-11-15) - the GEMINIPRO_API_PRIMARY=0 mode. When the app path cannot run for a
 Chrome or account reason, the same gate-passed brief goes ONCE to the Gemini API through the
@@ -328,7 +367,10 @@ below (the brief gate does not refuse it in this mode).
   `<cli> generate --output-format json --body @body.json` with no shell, stdin DEVNULL,
   cwd that directory, the environment inherited (the CLI reads the key; the key is never
   in argv or the body). Never --stdin or @- (the guard refuses them). The directory is
-  removed on every path. The --model / GEMINIPRO_MODEL choice is ignored on this path.
+  removed on every path. The --model / GEMINIPRO_MODEL choice is ignored on this path; a
+  gemini-neon launch in this mode is exit 4 model_not_available before any app work (Neon is
+  API-only; relaunch with --model gemini-carbon), and a Neon GEMINIPRO_API_MODEL (gemini-neon
+  or gemini-4-neon, any case) is exit 64 usage_error before any admission.
 - Timing: per attempt min(GEMINIPRO_API_TIMEOUT, time left - API_MARGIN); at most 2
   attempts, the 2nd only after a non-zero exit whose stderr JSON says error_type
   server_error or error.code service_unavailable, after API_RETRY_PAUSE, while JOB_MIN
@@ -438,7 +480,7 @@ TOOL = "geminipro"
 USAGE = ("usage: geminipro <run> <name> [--model <m>] [--json] [--brief-file <path>] < brief.md"
          " | geminipro --status [--json]")
 EXPECTED_ACCOUNT = ""  # default when GEMINIPRO_ACCOUNT is unset; "" refuses (exit 2)
-DEFAULT_MODEL = "gemini-carbon"
+DEFAULT_MODEL = "gemini-neon"
 LIB_VERSION = "2.1.1"  # the hardening patches are keyed on this release's private names
 NAME_RE = re.compile(r"[A-Za-z0-9._-]{1,80}")
 ATTEST_RE = re.compile(r"(?m)^brief-check: clean - (\S[^\r\n]*)")
@@ -481,7 +523,16 @@ KILL_WAIT = 12        # the backstop waits this long for its verified tree step;
 # the API primary path (module docstring, "API primary (2026-11-18)")
 # the requested model (an app slug or an API id, matched case-insensitively) -> the API model id;
 # a model not in this table never goes to the API (app path only)
-API_MODELS = {"gemini-carbon": "gemini-4-carbon", "gemini-4-hydrogen": "gemini-4-hydrogen"}
+API_MODELS = {"gemini-carbon": "gemini-4-carbon", "gemini-neon": "gemini-4-neon",
+              "gemini-4-neon": "gemini-4-neon", "gemini-4-hydrogen": "gemini-4-hydrogen"}
+# Gemini 4 Neon (2026-11-19): API-only - never the app path (module docstring, "API primary")
+API_NEON = "gemini-4-neon"
+NEON_RELAUNCH = "relaunch with --model gemini-carbon"
+# generation_config.thinking_level for gemini-4-neon (GEMINIPRO_NEON_THINKING), per Google's
+# thinking docs (aistudio.google.com/docs/thinking, read 2026-11-19: low, medium, high, xhigh;
+# Google's default is high, this wrapper's is medium - proven live through the guarded CLI)
+NEON_THINKING_LEVELS = ("low", "medium", "high", "xhigh")
+NEON_THINKING_DEFAULT = "medium"
 API_DAY_CEILING = 40  # GEMINIPRO_API_DAY_CEILING default: CLI attempts per local day, 0 = API off
 API_LEDGER_SUFFIX = "-api-day.jsonl"  # the reservation ledger, next to the usage log
 API_REJECT_STATUS = frozenset((400, 401, 403, 404, 429))  # proven rejections: the app may follow
@@ -511,8 +562,17 @@ API_PROGRESS_SHAPES = (
 )
 # interaction fields in an error envelope = generation evidence: never a proven rejection
 API_GENERATION_KEYS = ("steps", "outputs", "candidates", "status", "object")
+# FIX-6: the same evidence on any NESTED object (lists walked); a nested "status" counts only
+# as "completed" (the API's own error body carries status RESOURCE_EXHAUSTED and the like)
+API_NESTED_GENERATION_KEYS = ("steps", "outputs", "candidates", "object")
 GUARD_EXIT = 9                       # the gemini-api guard's deny / internal-error exit
 GUARD_DENIED = "gemini-guard: denied:"  # the guard's content-denial stderr line
+# the guard's pre-spawn denial, exactly (gemini-guard src/main.go run(): fmt.Fprintln of the
+# "gemini-guard: denied: " + oneLine(reason) line, then fmt.Fprintln(denyFooter), exit 9)
+GUARD_FOOTER = ("gemini-guard: client content is not sent to Gemini while the key tier is "
+                "unconfirmed (see the gemini-api skill).")
+GUARD_DENIAL_RE = re.compile(re.escape(GUARD_DENIED) + r" ([^\r\n]*)\n"
+                             + re.escape(GUARD_FOOTER) + r"\n")
 
 HARD_EXIT = os._exit  # the backstop's exit; tests replace it
 _ABSENT = object()    # "no such field" (distinct from a JSON null)
@@ -1476,10 +1536,14 @@ def _unspawned(exc):
     return isinstance(exc, FileNotFoundError) and getattr(exc, _UNSPAWNED, False) is True
 
 
-def api_body(text, model):
-    """The request body file's bytes: UTF-8 JSON of exactly the gate-passed text."""
-    return json.dumps({"input": text, "model": model, "stream": False, "store": False},
-                      ensure_ascii=False).encode("utf-8")
+def api_body(text, model, thinking=None):
+    """The request body file's bytes: UTF-8 JSON of exactly the gate-passed text. thinking (the
+    gemini-4-neon launch only): "generation_config": {"thinking_level": thinking} is added;
+    without it the body is byte-for-byte the Carbon / Hydrogen body."""
+    body = {"input": text, "model": model, "stream": False, "store": False}
+    if thinking is not None:
+        body["generation_config"] = {"thinking_level": thinking}
+    return json.dumps(body, ensure_ascii=False).encode("utf-8")
 
 
 def api_argv(cli, retries=True):
@@ -1746,6 +1810,11 @@ def _progress_end(text):
     return pos
 
 
+def _no_constant(name):
+    """json parse_constant: NaN, Infinity and -Infinity are not JSON (FIX-6): no envelope."""
+    raise ValueError("non-JSON constant %s" % name)
+
+
 def _unique_keys(pairs):
     """json object_pairs_hook: a duplicated key (at any depth) is not one well-formed envelope."""
     obj = dict(pairs)
@@ -1757,7 +1826,8 @@ def _unique_keys(pairs):
 def api_envelope(stderr):
     """API primary (FIX-4 N1): the CLI's error envelope when stderr is strict UTF-8 holding
     only known CLI progress text and whitespace (_progress_end), then exactly ONE JSON object
-    (one line or indented, no duplicate keys) and nothing but whitespace after it; else None."""
+    (strict JSON: NaN / Infinity refused - FIX-6; one line or indented, no duplicate keys) and
+    nothing but whitespace after it; else None."""
     if isinstance(stderr, bytes):
         try:
             text = stderr.decode("utf-8")
@@ -1769,7 +1839,7 @@ def api_envelope(stderr):
     if not rest.startswith("{"):
         return None
     try:
-        obj = json.loads(rest, object_pairs_hook=_unique_keys)
+        obj = json.loads(rest, object_pairs_hook=_unique_keys, parse_constant=_no_constant)
     except (ValueError, RecursionError):
         return None
     return obj if isinstance(obj, dict) else None
@@ -1782,28 +1852,53 @@ def api_stderr_extra(stderr):
     return _progress_end(text) < len(text)
 
 
-def api_rejection(obj):
+def _nested_generation(obj):
+    """True when any object nested in the envelope (any depth, lists walked) carries an
+    interaction field: API_NESTED_GENERATION_KEYS, or status "completed" (FIX-6)."""
+    stack = list(obj.values())
+    while stack:
+        v = stack.pop()
+        if isinstance(v, dict):
+            if any(k in v for k in API_NESTED_GENERATION_KEYS) or v.get("status") == "completed":
+                return True
+            stack.extend(v.values())
+        elif isinstance(v, list):
+            stack.extend(v)
+    return False
+
+
+def api_rejection(obj, rc):
     """Positive evidence that the API refused the request before generating (module docstring,
-    "Outcome classes"; FIX-4 N1), judged on the CLI's one error envelope (api_envelope; the
-    caller has checked a non-zero exit that is not the guard's 9 and a zero-byte stdout): its
-    error_type in API_REJECT_TYPES; no generation field (API_GENERATION_KEYS); a top-level
-    status_code that is a well-formed int in 400 / 401 / 403 / 404 / 429; and the API body's
-    error.code, when it is a number, equal to it. A missing or malformed status_code (null, a
-    string, a float, a bool) is no evidence, whatever a nested field says. Returns a short
-    label, or None: anything else is no evidence (server_error and 5xx included)."""
+    "Outcome classes"; FIX-4 N1, FIX-6), judged on the CLI's one error envelope (api_envelope;
+    the caller has checked a non-zero exit rc that is not the guard's 9 and a zero-byte
+    stdout): its error_type in API_REJECT_TYPES; no generation field at the top level
+    (API_GENERATION_KEYS), no `body` key, no nested object with an interaction field
+    (_nested_generation); an exit_code, when present, an exact int equal to rc; a top-level
+    status_code that is a well-formed int in 400 / 401 / 403 / 404 / 429; `error`, when
+    present, an object whose code, when it is a number, is an exact int equal to the status (a
+    float - even 429.0 - or a bool is no evidence; a string code is not compared). A missing or
+    malformed status_code (null, a string, a float, a bool) is no evidence, whatever a nested
+    field says. Returns a short label, or None: anything else is no evidence (server_error and
+    5xx included). When in doubt: no evidence, no app fallback."""
     if not isinstance(obj, dict):
         return None
     etype = obj.get("error_type")
     if not isinstance(etype, str) or etype not in API_REJECT_TYPES:
         return None
-    if any(k in obj for k in API_GENERATION_KEYS):
+    if any(k in obj for k in API_GENERATION_KEYS) or "body" in obj or _nested_generation(obj):
+        return None
+    if "exit_code" in obj and (_int(obj["exit_code"]) is None or obj["exit_code"] != rc):
         return None
     status = _int(obj.get("status_code"))
     if status is None or status not in API_REJECT_STATUS:
         return None
-    err = obj.get("error") if isinstance(obj.get("error"), dict) else {}
+    err = obj.get("error", _ABSENT)
+    if err is _ABSENT:
+        err = {}
+    elif not isinstance(err, dict):  # a list (even one the CLI would unwrap), string or null
+        return None
     nested = err.get("code")
-    if isinstance(nested, (int, float)) and not isinstance(nested, bool) and nested != status:
+    if isinstance(nested, (int, float)) and (_int(nested) is None or nested != status):
         return None
     return "HTTP %d" % status
 
@@ -1831,16 +1926,24 @@ def api_error_summary(rc, data):
 
 
 def guard_denial(rc, stderr):
-    """The gemini-api guard refused the request's content: exit 9 with a `gemini-guard: denied:`
-    line (the real CLI never started). Returns the guard's reason, else None (a guard internal
-    error, `gemini-guard: error:`, is not a denial)."""
+    """The gemini-api guard refused the request's content before the real CLI started: exit 9
+    and stderr EXACTLY the guard's pre-spawn denial (GUARD_DENIAL_RE: the `gemini-guard:
+    denied:` line, then GUARD_FOOTER, nothing else - FIX-6). Returns the guard's reason, else
+    None (a guard internal error, `gemini-guard: error:`, or any other stderr text beside a
+    denial line is not a denial)."""
     if rc != GUARD_EXIT:
         return None
-    text = stderr.decode("utf-8", "replace") if isinstance(stderr, bytes) else str(stderr or "")
-    for line in text.splitlines():
-        if line.startswith(GUARD_DENIED):
-            return line[len(GUARD_DENIED):].strip() or "no reason given"
-    return None
+    if isinstance(stderr, bytes):
+        try:
+            text = stderr.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    else:
+        text = str(stderr or "")
+    m = GUARD_DENIAL_RE.fullmatch(text)
+    if m is None:
+        return None
+    return m.group(1).strip() or "no reason given"
 
 
 def api_model_name(model):
@@ -2010,6 +2113,8 @@ class Wrapper:
         self.account_error = None   # API primary job mode: a blank account refuses only the app path
         self.pre_admitted = False   # the job was admitted by the API step, before the app path
         self.api_day = None         # --status: "<n>/<ceiling>"
+        self.neon = False           # config(): the requested model maps to gemini-4-neon (API-only)
+        self.neon_thinking = NEON_THINKING_DEFAULT  # config(): GEMINIPRO_NEON_THINKING
 
     # ---- config -----------------------------------------------------------------
     def parse_args(self):
@@ -2103,6 +2208,18 @@ class Wrapper:
         if cap and not re.fullmatch(r"[0-9]+", cap):
             raise Exit(64, "usage_error", "GEMINIPRO_API_DAY_CEILING must be a whole number >= 0")
         self.day_ceiling = int(cap) if cap else API_DAY_CEILING
+        self.neon = API_MODELS.get((self.model or "").strip().lower()) == API_NEON
+        if self.neon and not self.status_mode:  # read only for a Neon launch (Carbon unchanged)
+            level = (e.get("GEMINIPRO_NEON_THINKING") or "").strip().lower() or NEON_THINKING_DEFAULT
+            if level not in NEON_THINKING_LEVELS:  # the value is never echoed
+                raise Exit(64, "usage_error", "GEMINIPRO_NEON_THINKING must be one of %s"
+                           % ", ".join(NEON_THINKING_LEVELS))
+            self.neon_thinking = level
+        if (not self.primary_mode and not self.status_mode
+                and API_MODELS.get(self.api_model.strip().lower()) == API_NEON):
+            # Neon is API-only and never the legacy backup (either spelling; never echoed)
+            raise Exit(64, "usage_error", "GEMINIPRO_API_MODEL names Gemini 4 Neon, which is never "
+                       "the legacy API backup (GEMINIPRO_API_PRIMARY=0)")
         home = os.path.expanduser("~")
         self.cliproxy = e.get("CLIPROXY_DIR") or os.path.join(home, ".cli-proxy-api")
         self.usage_log = e.get("GEMINIPRO_LOG") or os.path.join(self.cliproxy, "geminipro-usage.jsonl")
@@ -2467,11 +2584,12 @@ class Wrapper:
 
     def api_cli_lookup(self):
         """The CLI path (GEMINIPRO_API_CLI, else gemini-api on PATH) and JOB_MIN seconds left:
-        (cli, None, None) or (None, why not, fault) - fault "missing" (no CLI, proven before any
-        spawn: an explicit path that does not exist, or gemini-api not on PATH), "key" (its
-        path carries the API key), "local" (FIX-4 N5: an explicit path that exists but is not a
-        regular file, or whose inspection raised - a local fault, never "not found") or "time"
-        (too little time left)."""
+        (cli, None, None) or (None, why not, fault) - fault "missing" (only gemini-api not found
+        on PATH, before any spawn), "key" (its path carries the API key), "local" (FIX-4 N5,
+        FIX-6: an explicit GEMINIPRO_API_CLI path that is not a regular file or whose
+        inspection raised for ANY reason - FileNotFoundError included: a missing file, a
+        dangling link, a network-path error - a local fault, never "not found") or "time" (too
+        little time left)."""
         e = self.env
         explicit = (e.get("GEMINIPRO_API_CLI") or "").strip()
         if explicit:
@@ -2479,8 +2597,10 @@ class Wrapper:
                 return None, "the CLI path contains the API key", "key"
             try:
                 mode = os.stat(explicit).st_mode
-            except FileNotFoundError:
-                return None, "GEMINIPRO_API_CLI (%s) was not found" % explicit, "missing"
+            except FileNotFoundError as exc:  # FIX-6: an explicit path is never "not found"
+                return None, ("GEMINIPRO_API_CLI (%s) was not found (%s) - an explicit CLI path "
+                              "that cannot be inspected is a local fault"
+                              % (explicit, fmt_exc(exc)[:200])), "local"
             except (OSError, ValueError) as exc:
                 return None, "GEMINIPRO_API_CLI (%s) could not be inspected (%s)" % (
                     explicit, fmt_exc(exc)[:200]), "local"
@@ -2519,10 +2639,12 @@ class Wrapper:
         since take_slot) and the ledger's own lock: lanew_log.reserve re-checks the day count
         and appends (fsync'd) in one critical section, and stamps the row's ts there - the ts
         and the local date it counts against come from one clock read under the ledger lock.
-        Returns (status, count)."""
+        Returns (status, count); raises lanew_log.LedgerDamaged when the damage is first seen
+        under the ledger lock (FIX-6: its line number reaches the status line)."""
         row = {"tool": TOOL, "run": self.run, "name": self.name,
                "job_id": self.job_id, "model": model, "mode": mode}
-        status, count, skipped = lanew_log.reserve(self.api_ledger, row, self.day_ceiling)
+        status, count, skipped = lanew_log.reserve(self.api_ledger, row, self.day_ceiling,
+                                                   raise_damage=True)
         self.ledger_note(skipped)
         return status, count
 
@@ -2575,6 +2697,8 @@ class Wrapper:
                 self.api_fail(exc.reason)
             except ApiFailure as exc:
                 self.api_fail(str(exc))
+            except lanew_log.LedgerDamaged as exc:  # FIX-6: before the generic catch below
+                self.api_damaged(exc)
             except Exception as exc:  # anything else after admission is an API failure too
                 self.api_fail(fmt_exc(exc))
         finally:
@@ -2602,6 +2726,20 @@ class Wrapper:
         self.record_terminal("failed", p.code, latch=False)
         log("API backup failed: %s" % msg)
         raise Exit(p.code, p.status, "%s; API backup failed: %s" % (p.reason, msg))
+
+    def api_damaged(self, exc):
+        """Legacy backup, FIX-6: ledger damage first seen inside the locked reservation of an
+        attempt: exit 3 log_failure with its reason (line number), never the app path's exit;
+        terminal record failed, never latched. That attempt was not made (an earlier attempt of
+        this launch may have been)."""
+        p = self.primary
+        msg = scrub(str(exc))[:API_REASON_MAX]
+        sent = ("an earlier attempt of this launch was sent" if self.api_started
+                else "nothing sent to the API")
+        self.record_terminal("failed", 3, latch=False)
+        log("API backup stopped at the reservation: %s - %s." % (msg, sent))
+        raise Exit(3, "log_failure", "%s; API backup failed: %s (seen at the reservation) - %s"
+                   % (p.reason, msg, sent))
 
     def api_call(self, cli, prompt):
         """Write body.json into a new empty directory under the state dir, run the CLI there
@@ -2652,14 +2790,17 @@ class Wrapper:
         admitted or not, or raises the run's exit (outcome unknown, guard denial, admission, or
         a local fault that refuses the launch). Only an unmapped model, the API off, a missing
         key, a CLI not found before the spawn (or at it: ApiNotStarted), the day ceiling and a
-        proven rejection reach the app; a local fault never does (refuse below)."""
+        proven rejection reach the app; a local fault never does (refuse below). For gemini-neon
+        those returns end in run_primary's exit 4 instead (API-only, never the app)."""
         requested = self.model
         api_model = API_MODELS.get((requested or "").strip().lower())
         self.trigger = {"api_attempt": "not_run", "api_reason": None, "requested_model": requested}
 
         def fallback(state, why):
             self.trigger.update(api_attempt=state, api_reason=scrub(why)[:API_REASON_MAX])
-            log("API attempt %s: %s - the app path follows." % (state.replace("_", " "), why))
+            log("API attempt %s: %s - %s." % (state.replace("_", " "), why, (
+                "gemini-neon is API-only, the app path is not entered" if self.neon
+                else "the app path follows")))
 
         def refuse(code, status, state, why):
             """A local fault: the launch is refused - no transport at all, never the app (exit 2
@@ -2708,6 +2849,9 @@ class Wrapper:
         self.pre_admitted = True
         try:
             status, used = self.api_reserve(api_model, "primary")
+        except lanew_log.LedgerDamaged as exc:  # FIX-6: damage first seen under the lock
+            self.via, self.model = "app", requested
+            refuse(3, "log_failure", "skipped", str(exc))
         except Exception as exc:  # the ledger raised: the day count is unknown
             status, used = "log_error", None
             log("API day reservation raised %s." % fmt_exc(exc)[:200])
@@ -2724,7 +2868,8 @@ class Wrapper:
             refuse(5, "deadline", "not_run", "the total deadline left no time for the API attempt")
         try:
             try:
-                self.api_primary_call(cli, prompt, api_model, timeout)  # the answer held first
+                self.api_primary_call(cli, prompt, api_model, timeout,  # the answer held first
+                                      self.neon_thinking if api_model == API_NEON else None)
             except ApiRejected as exc:
                 self.api_started = False  # proven: nothing answered, nothing outstanding
                 self.via, self.model = "app", requested
@@ -2742,16 +2887,17 @@ class Wrapper:
         return Exit(6, "outcome_unknown", "API attempt outcome unknown (%s) - not resent, not "
                     "sent to the app" % msg)
 
-    def api_primary_call(self, cli, prompt, api_model, timeout):
+    def api_primary_call(self, cli, prompt, api_model, timeout, thinking=None):
         """ONE CLI attempt (no wrapper retry; the CLI's own retries off: --no-retries): body.json
-        in a new empty directory under the state dir, the CLI run there; judged by api_judge
-        (the caller removes the directory). Popen's own FileNotFoundError (the CLI vanished
-        after the lookup) is ApiNotStarted; any other error once the child may have started is
-        outcome unknown."""
+        in a new empty directory under the state dir (thinking: gemini-4-neon's
+        generation_config.thinking_level, else no generation_config), the CLI run there; judged
+        by api_judge (the caller removes the directory). Popen's own FileNotFoundError (the CLI
+        vanished after the lookup) is ApiNotStarted; any other error once the child may have
+        started is outcome unknown."""
         argv = api_argv(cli, retries=False)
         self.api_dir = tempfile.mkdtemp(prefix="api-", dir=self.state_dir)
         with open(os.path.join(self.api_dir, API_BODY), "wb") as f:
-            f.write(api_body(prompt, api_model))
+            f.write(api_body(prompt, api_model, thinking))
         log("API primary: sending the brief (%d chars) to %s through %s (one attempt)."
             % (len(prompt), api_model, API_CLI_NAME))
         self.api_started = True
@@ -2821,7 +2967,7 @@ class Wrapper:
         if out:  # anything on stdout: answer content may have been produced before the failure
             raise self.api_unknown("the CLI wrote output before it failed - %s"
                                    % api_error_summary(rc, err))
-        if api_rejection(api_envelope(err)):
+        if api_rejection(api_envelope(err), rc):
             raise ApiRejected(api_error_summary(rc, err))
         raise self.api_unknown(api_error_summary(rc, err))
 
@@ -2847,6 +2993,9 @@ class Wrapper:
                 late.status if isinstance(late, Exit) else type(late).__name__))
         if self.answer is not None:
             return
+        if self.neon:  # the ONE Neon check: no API return without an answer enters the app
+            raise self.neon_refusal("API attempt %s: %s" % (self.trigger["api_attempt"],
+                                                            self.trigger["api_reason"]))
         if self.account_error is not None:
             raise Exit(2, "preflight_refused", "no Google account configured for the app "
                        "fallback: set %s to the account Chrome is signed in to on "
@@ -2861,6 +3010,16 @@ class Wrapper:
                 raise
             self.notes.append("%s after the answer arrived - answer kept" % (
                 exc.status if isinstance(exc, Exit) else type(exc).__name__))
+
+    def neon_refusal(self, why):
+        """gemini-neon is API-only: where another model would enter the app, exit 4
+        model_not_available naming the spelling the launch used, the API state (why) and the
+        Carbon relaunch. Never latches
+        (an API failure never does; the record of an admitted job is failed, unlatched)."""
+        used = (self.model or "").strip().lower()  # gemini-neon or gemini-4-neon (API_MODELS keys)
+        log("%s is API-only (%s) - the app path is not entered; %s." % (used, why, NEON_RELAUNCH))
+        return Exit(4, "model_not_available", "%s is API-only (%s) - the app path is not "
+                    "entered, nothing sent to the app; %s" % (used, why, NEON_RELAUNCH))
 
     def remove_api_dir(self):
         """Remove the body directory (3 tries). api_dir stays set until it is gone, so an
@@ -2995,6 +3154,9 @@ class Wrapper:
 
     def run_legacy(self, prompt):
         """GEMINIPRO_API_PRIMARY=0: the app path first, the API backup on its exit 2 / 8."""
+        if self.neon:  # API-only: before any app work (harden, harness, cookies)
+            raise self.neon_refusal("GEMINIPRO_API_PRIMARY=0 is the legacy app-first mode, which "
+                                    "would enter the app")
         try:
             harden()
             cands = self.candidates()

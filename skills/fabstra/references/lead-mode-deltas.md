@@ -48,7 +48,7 @@ Lead mode the lead launches and verifies each one.
 - Hydrogen quick check: small change -> on the diff after the build;
   contained change -> on its RUN.md plan before the build; advisory, never
   replaces the contained change's Sol review.
-- Reviewer G (Carbon): every real build, in the same message as the review
+- Reviewer G (Neon, Carbon spare): every real build, in the same message as the review
   gate seat(s) of every review round (round 1 and each re-review); its rows
   are OPEN findings you confirm against the code; pro-consult.md, "Reviewer G". Round scope: phases.md "Phase 4" (rounds 1-2
   the full diff from build start, from round 3 the diff since the last reviewed
@@ -56,7 +56,7 @@ Lead mode the lead launches and verifies each one.
   pre-build commit plus the build's new untracked files
   (`git ls-files --others --exclude-standard`); a non-git project copies the
   plan's files to `<scratch>/fabstra-prebuild/` before the first build starts.
-- Carbon report check: a research or audit run whose report makes claims
+- Gemini report check: a research or audit run whose report makes claims
   gets one, after the draft and before the report file and the chat report;
   each item is checked against a primary source and logged in RUN.md's
   "Pro consult" section.

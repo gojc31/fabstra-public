@@ -176,10 +176,10 @@ def test_json_shape_and_table(tmp_path):
     data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
     assert set(data) == {"rows", "totals", "files_read", "unreadable"}
     assert data["unreadable"] == 0
-    keys = {"seat", "mode", "via", "launches", "scored", "unscored", "invalid", "skipped",
+    keys = {"seat", "mode", "via", "model", "launches", "scored", "unscored", "invalid", "skipped",
             "leads", "real", "hit_rate"}
     assert set(data["rows"][0]) == keys
-    assert set(data["totals"]) == keys - {"seat", "mode", "via"}
+    assert set(data["totals"]) == keys - {"seat", "mode", "via", "model"}
     assert data["rows"][0]["hit_rate"] is None
     res = run([tmp_path], tmp_path=tmp_path)
     assert res.returncode == 0
@@ -374,3 +374,120 @@ def test_b5_table_aligned_with_via_column(tmp_path):
     col = head.index("via")
     vias = [ln[col:].split()[0] for ln in table[1:-1]]
     assert sorted(vias) == ["api", "app", "app"]
+
+
+# ---- model split: the optional model=<name> record token ----
+
+LEGACY = [
+    "seat=gemini mode=review via=api r1 ok leads=3 real=1",
+    "seat=gemini mode=review r2 ok leads=4 real=4",
+    "- seat=hydrogen mode=fix via=api fix-r1 leads=5 real=2",
+    "seat=hydrogen mode=quick skipped: none",
+    "seat=gemini mode=plan no counts here",
+    "seat=gemini mode=plan leads=1 real=3",
+]
+
+
+def test_m1_model_token_split(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review via=api model=neon review-r1 41 s ok leads=3 real=1",
+        "seat=gemini mode=review via=api model=carbon review-r2 30 s ok leads=2 real=2",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = sorted((r["model"], r["via"], r["launches"], r["leads"], r["real"]) for r in data["rows"])
+    assert got == [("gemini-4-carbon", "api", 1, 2, 2), ("gemini-4-neon", "api", 1, 3, 1)]
+    assert (data["totals"]["leads"], data["totals"]["real"]) == (5, 3)
+    assert "model" not in data["totals"]
+
+
+def test_m2_no_token_legacy_matches_pre_change(tmp_path):
+    # expected values captured from the pre-change script on this exact fixture
+    write_run(tmp_path, "RUN.md", LEGACY)
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = [(r["seat"], r["mode"], r["via"], r["model"], r["launches"], r["scored"], r["unscored"],
+            r["invalid"], r["skipped"], r["leads"], r["real"]) for r in data["rows"]]
+    assert got == [
+        ("gemini", "plan", "app", "-", 2, 0, 1, 1, 0, 0, 0),
+        ("gemini", "review", "api", "-", 1, 1, 0, 0, 0, 3, 1),
+        ("gemini", "review", "app", "-", 1, 1, 0, 0, 0, 4, 4),
+        ("hydrogen", "fix", "api", "-", 1, 1, 0, 0, 0, 5, 2),
+        ("hydrogen", "quick", "app", "-", 1, 0, 0, 0, 1, 0, 0),
+    ]
+    assert data["totals"] == {"launches": 6, "scored": 3, "unscored": 1, "invalid": 1, "skipped": 1,
+                              "leads": 12, "real": 7, "hit_rate": 58.3}
+    res = run([tmp_path], tmp_path=tmp_path)
+    lines = res.stdout.splitlines()
+    assert lines[0].split()[:4] == ["seat", "mode", "via", "model"]
+    total = [ln for ln in lines if ln.startswith("TOTAL")][0]
+    assert total.split() == ["TOTAL", "6", "3", "1", "12", "7", "58.3%"]
+
+
+def test_m3_not_a_model_token(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        'seat=gemini mode=plan via=api "model=neon" leads=1 real=1',
+        "seat=gemini mode=plan via=api notmodel=neon leads=1 real=1",
+        "seat=gemini mode=plan via=api model=NEON leads=1 real=1",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    assert [(r["model"], r["launches"]) for r in data["rows"]] == [("-", 3)]
+
+
+def test_m4_model_token_anywhere_after_seat(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini model=neon mode=review via=api ok leads=1 real=1",
+        "seat=hydrogen mode=fix fix-r1 model=hydrogen ok leads=2 real=1",
+        "model=neon seat=gemini mode=review leads=9 real=9",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = sorted((r["seat"], r["mode"], r["via"], r["model"]) for r in data["rows"])
+    assert got == [("gemini", "review", "api", "gemini-4-neon"), ("hydrogen", "fix", "app", "gemini-4-hydrogen")]
+
+
+def test_m5_table_model_column_aligned(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review via=api model=neon ok leads=3 real=1",
+        "seat=gemini mode=review via=api model=carbon ok leads=2 real=2",
+        "seat=gemini mode=review ok leads=4 real=4",
+    ])
+    res = run([tmp_path], tmp_path=tmp_path)
+    assert res.returncode == 0, res.stderr
+    lines = res.stdout.splitlines()
+    head = lines[0]
+    table = [ln for ln in lines if ln.split() and ln.split()[0] in ("seat", "gemini", "TOTAL")]
+    assert len(table) == 5
+    assert len({len(ln) for ln in table}) == 1
+    col = head.index("model")
+    assert sorted(ln[col:].split()[0] for ln in table[1:-1]) == ["-", "gemini-4-carbon", "gemini-4-neon"]
+
+
+# ---- model fold: aliases normalize to the API id geminipro reports ----
+
+def test_m6_fold_aliases(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review via=api model=carbon ok leads=1 real=1",
+        "seat=gemini mode=review via=api model=gemini-carbon ok leads=2 real=1",
+        "seat=gemini mode=review via=api model=gemini-4-carbon ok leads=3 real=2",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = [(r["model"], r["launches"], r["scored"], r["leads"], r["real"]) for r in data["rows"]]
+    assert got == [("gemini-4-carbon", 3, 3, 6, 4)]
+
+
+def test_m7_fold_neon(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review via=api model=neon ok leads=2 real=1",
+        "seat=gemini mode=review via=api model=gemini-neon ok leads=1 real=1",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = [(r["model"], r["launches"], r["leads"], r["real"]) for r in data["rows"]]
+    assert got == [("gemini-4-neon", 2, 3, 2)]
+
+
+def test_m8_unknown_model_kept(tmp_path):
+    write_run(tmp_path, "RUN.md", [
+        "seat=gemini mode=review via=api model=gemini-9-x ok leads=2 real=1",
+        "seat=gemini mode=review via=api model=carbon ok leads=1 real=1",
+    ])
+    data = as_json(run([tmp_path, "--json"], tmp_path=tmp_path))
+    got = sorted((r["model"], r["launches"], r["leads"]) for r in data["rows"])
+    assert got == [("gemini-4-carbon", 1, 1), ("gemini-9-x", 1, 2)]

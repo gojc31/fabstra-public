@@ -326,6 +326,9 @@ def env(tmp_path):
     # 2026-11-18 (R8): every test written before the API primary path runs in the legacy
     # app-first mode; the API primary tests (primary_env) drop the switch
     e["GEMINIPRO_API_PRIMARY"] = "0"
+    # 2026-11-19 (Neon, design-gate finding 1): every test written before Neon pins Carbon, so a
+    # later DEFAULT_MODEL flip changes none of them; the Neon tests drop it or pass --model
+    e["GEMINIPRO_MODEL"] = "gemini-carbon"
     return e
 
 
@@ -3618,7 +3621,8 @@ NOT_RUN = {
     "key_unset": ({"GEMINI_API_KEY": None}, "GEMINI_API_KEY is not set"),
     "key_blank": ({"GEMINI_API_KEY": "   "}, "GEMINI_API_KEY is blank"),
     "key_short": ({"GEMINI_API_KEY": "Ab3" * 5}, "too short"),
-    "cli_missing": ({"GEMINIPRO_API_CLI": "MISSING"}, "not found"),
+    # FIX-6 item 5: "cli_missing" (an explicit GEMINIPRO_API_CLI path that does not exist) moved
+    # to test_fix6_an_explicit_cli_path_that_cannot_be_inspected_refuses_the_launch (exit 2)
     "cli_not_on_path": ({"GEMINIPRO_API_CLI": None}, "gemini-api is not on PATH"),
 }
 
@@ -4382,8 +4386,8 @@ FIX4_REJECTIONS = {
     "n1_billing_disabled_403": _fix1_err(_fix1_env_fields(
         error_type="billing_disabled", status_code=403, error_reason="BILLING_DISABLED",
         error=google_err(403, "PERMISSION_DENIED"))),
-    "n1_nested_code_float_equal": _fix1_err(_fix1_env_fields(
-        error={"code": 429.0, "message": "x", "status": "RESOURCE_EXHAUSTED"})),
+    # FIX-6 item 1: "n1_nested_code_float_equal" (error.code 429.0) moved to FIX6_UNKNOWN as
+    # "nested_code_429_float" - numeric codes compare as exact ints only
 }
 
 
@@ -4530,3 +4534,466 @@ def test_fix4_n7_an_answer_with_a_lone_surrogate_is_outcome_unknown(world, env, 
     assert st["report"] is None or not os.path.exists(st["report"]), st
     assert "KEPT" not in out + err and len(WORLD.api.calls) == 1 and _app_untouched()
     assert [r["status"] for r in log_entries(e)] == ["started", "outcome_unknown"]
+
+
+# --------------------------------------------------------------------------
+# FIX-6 (2026-11-19, review round 3): rejection evidence hardening (items 1-4), an explicit
+# CLI path that cannot be inspected is a local fault (item 5), the API-day ledger is read
+# strictly (items 6-7) and damage first seen under the reservation lock keeps its reason (8).
+# Principle: when in doubt, NO app fallback.
+# --------------------------------------------------------------------------
+
+def _q429_with(**over):
+    """Q429's envelope (stderr) with fields replaced."""
+    obj = json.loads(Q429[2])
+    obj.update(over)
+    return obj
+
+
+_GUARD_FOOTER = (b"gemini-guard: client content is not sent to Gemini while the key tier is "
+                 b"unconfirmed (see the gemini-api skill).")
+
+FIX6_UNKNOWN = {
+    # item 2: `error` must be an object when present; a `body` key; generation keys at any depth
+    "error_array_503": (1, b"", json.dumps(_q429_with(
+        error=[{"code": 503, "message": "unavailable"}])).encode()),
+    "error_array_429": (1, b"", json.dumps(_q429_with(
+        error=[google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG)])).encode()),
+    "error_string": (1, b"", json.dumps(_q429_with(error="quota exceeded")).encode()),
+    "nested_completed_under_body": (1, b"", json.dumps(_q429_with(body=[_COMPLETED])).encode()),
+    "body_key_only": (1, b"", json.dumps(_q429_with(body="upstream text")).encode()),
+    "nested_completed_in_error_details": (1, b"", json.dumps(_q429_with(error=dict(
+        google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG),
+        details=[{"status": "completed", "id": "x"}]))).encode()),
+    "nested_steps_key": (1, b"", json.dumps(_q429_with(error=dict(
+        google_err(429, "RESOURCE_EXHAUSTED", QUOTA_MSG), details=[{"steps": []}]))).encode()),
+    "nested_object_key": (1, b"", json.dumps(_q429_with(
+        hints=[{"object": "interaction"}])).encode()),
+    # item 1: NaN / Infinity are not JSON; numeric codes compare as exact ints only
+    "nan_constant": (1, b"", json.dumps(_q429_with(extra=float("nan"))).encode()),
+    "infinity_constant": (1, b"", json.dumps(_q429_with(extra=float("inf"))).encode()),
+    "nested_code_429_00000000000001": (1, b"", Q429[2].replace(
+        b'"code": 429,', b'"code": 429.00000000000001,')),
+    "nested_code_429_float": _fix1_err(_fix1_env_fields(
+        error={"code": 429.0, "message": "x", "status": "RESOURCE_EXHAUSTED"})),
+    "nested_code_bool": _fix1_err(_fix1_env_fields(
+        error={"code": True, "message": "x", "status": "RESOURCE_EXHAUSTED"})),
+    # item 3: the envelope's exit_code must be the child's real exit code (an exact int)
+    "exit_code_mismatch": (1, b"", json.dumps(_q429_with(exit_code=0)).encode()),
+    "exit_code_float": (1, b"", json.dumps(_q429_with(exit_code=1.0)).encode()),
+    "exit_code_bool": (1, b"", json.dumps(_q429_with(exit_code=True)).encode()),
+    # item 4: a guard denial counts only as EXACTLY the guard's pre-spawn shape
+    "guard_completed_then_denial_line": (9, b"", _COMPLETED_LINE
+                                         + b"\ngemini-guard: denied: content\n"),
+    "guard_denial_without_footer": (9, b"", b"gemini-guard: denied: a signed link\n"),
+    "guard_denial_footer_then_more": (9, b"", b"gemini-guard: denied: a signed link\n"
+                                      + _GUARD_FOOTER + b"\nextra\n"),
+    "guard_text_before_denial": (9, b"", b"note\ngemini-guard: denied: a signed link\n"
+                                 + _GUARD_FOOTER + b"\n"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIX6_UNKNOWN))
+def test_fix6_doubtful_rejection_evidence_is_outcome_unknown_never_the_app(world, env, capfd,
+                                                                           tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [FIX6_UNKNOWN[case], api_ok(model="gemini-4-carbon")]
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 6 and st["status"] == "outcome_unknown", st
+    assert st["via"] == "api" and st["api_attempt"] == "failed" and st["api_reason"], st
+    assert len(WORLD.api.calls) == 1 and _app_untouched()
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "outcome_unknown"], recs
+    assert recs[1]["stop_latch"] is False and _ledger_count(e) == 1
+
+
+def test_fix6_clean_rejections_and_the_exact_guard_shape_still_classify(world):
+    # a string error.code (the live 2026-11-18 shape) and a matching exit_code stay evidence
+    live = json.loads(REJECTIONS["429_live_shape_2026_11_18"][2])
+    assert gp.api_rejection(live, 1) == "HTTP 429"
+    assert gp.api_rejection(json.loads(Q429[2]), 1) == "HTTP 429"
+    assert gp.api_rejection(json.loads(Q429[2]), 2) is None  # exit_code 1 vs the child's 2
+    no_exit = json.loads(Q429[2])
+    del no_exit["exit_code"]
+    assert gp.api_rejection(no_exit, 1) == "HTTP 429"  # no exit_code key: nothing to contradict
+    assert gp.api_envelope(b'{"error_type": "rate_limit_error", "x": NaN}') is None
+    shape = b"gemini-guard: denied: a signed link\n" + _GUARD_FOOTER + b"\n"
+    assert gp.guard_denial(9, shape) == "a signed link"
+    assert gp.guard_denial(9, shape.replace(b"\n", b"\r\n")) is None
+    assert gp.guard_denial(1, shape) is None
+
+
+@pytest.mark.parametrize("kind", ["missing", "dangling_symlink", "winerror_53"])
+def test_fix6_an_explicit_cli_path_that_cannot_be_inspected_refuses_the_launch(
+        world, env, capfd, tmp_path, monkeypatch, kind):
+    e = primary_env(env, tmp_path)
+    target = tmp_path / "explicit-cli.exe"
+    e["GEMINIPRO_API_CLI"] = str(target)
+    if kind == "dangling_symlink":
+        try:
+            target.symlink_to(tmp_path / "removed.exe")
+        except (OSError, NotImplementedError) as exc:  # no symlink privilege on this host
+            pytest.skip("symlinks unavailable: %s" % exc)
+        assert os.path.lexists(target) and not os.path.exists(target)
+    elif kind == "winerror_53":
+        import ctypes
+        real = os.stat
+        made = getattr(ctypes, "WinError", None)
+        boom = made(53) if made else FileNotFoundError(2, "The network path was not found")
+        assert isinstance(boom, FileNotFoundError)
+
+        def stat(p, *a, **k):
+            if str(p) == str(target):
+                raise boom
+            return real(p, *a, **k)
+        monkeypatch.setattr(gp.os, "stat", stat)
+    code, st, out, err = run(capfd, tmp_path, e)
+    assert code == 2 and st["status"] == "preflight_refused", st
+    assert st["api_attempt"] == "not_run" and "GEMINIPRO_API_CLI" in st["api_reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert not os.path.exists(_ledger(e))
+
+
+def test_fix6_only_gemini_api_missing_from_path_is_not_found_and_falls_back(world, env, capfd,
+                                                                            tmp_path):
+    e = primary_env(env, tmp_path)
+    e.pop("GEMINIPRO_API_CLI")
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["via"] == "app" and st["api_attempt"] == "not_run", st
+    assert "not on PATH" in st["api_reason"] and WORLD.generate_calls == 1
+
+
+def _history_row():
+    return json.dumps({"kind": "api_reservation", "ts": lanew_log._now_iso()}).encode() + b"\n"
+
+
+@pytest.mark.parametrize("case", ["non_utf8_kind", "blank_row", "valid_pre_marker"])
+def test_fix6_ledger_damage_refuses_at_the_ceiling(world, env, capfd, tmp_path, case):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="40")
+    p = pathlib.Path(_ledger(e))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    row = _history_row()
+    if case == "valid_pre_marker":
+        p.write_bytes((row * 39).rstrip(b"\n"))  # a valid last row missing only its newline
+        assert lanew_log.reserve(str(p), {}, 40)[:2] == ("reserved", 40)
+        data = p.read_bytes().splitlines(keepends=True)
+        data[38] = b"{damaged}\n"  # the counted row whose newline was restored
+        p.write_bytes(b"".join(data))
+    else:
+        data = [row] * 40
+        data[5] = {"non_utf8_kind": row.replace(b"api_reservation", b"api_reservatio\xff"),
+                   "blank_row": b" \n"}[case]
+        p.write_bytes(b"".join(data))
+    before = p.read_bytes()
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure", st
+    assert "API-day ledger damaged at line" in st["reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and p.read_bytes() == before
+
+
+@pytest.mark.parametrize("mode", ["primary", "legacy"])
+def test_fix6_damage_first_seen_under_the_reservation_lock_keeps_its_reason(
+        world, env, capfd, tmp_path, monkeypatch, mode):
+    e = (primary_env if mode == "primary" else api_env)(env, tmp_path)
+    if mode == "legacy":
+        _harness_down()
+    p = pathlib.Path(_ledger(e))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    row = _history_row()
+    p.write_bytes(row * 2)
+    orig = gp.Wrapper.api_reserve
+
+    def reserve(self, *a):
+        p.write_bytes(b"not json\n" + row)  # damage lands after the precheck read
+        return orig(self, *a)
+
+    monkeypatch.setattr(gp.Wrapper, "api_reserve", reserve)
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 3 and st["status"] == "log_failure", st
+    assert "API-day ledger damaged at line 1" in st["reason"], st
+    assert WORLD.api.calls == [] and WORLD.generate_calls == 0
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"], recs
+    assert recs[1]["stop_latch"] is False and recs[1]["exit"] == 3
+    assert lanew_log.check("t1", log_path=e["GEMINIPRO_LOG"], ceiling=12)[0]
+
+
+# --------------------------------------------------------------------------
+# Gemini 4 Neon (2026-11-19): gemini-neon -> gemini-4-neon on the API only, with
+# generation_config.thinking_level (GEMINIPRO_NEON_THINKING, default medium); every route that
+# would enter the app is exit 4 model_not_available instead, never latching the run
+# --------------------------------------------------------------------------
+
+NEON_ARGS = ("t1", "neon", "--model", "gemini-neon")
+RELAUNCH = "relaunch with --model gemini-carbon"
+
+
+def _neon_body(level="medium"):
+    return {"input": CLEAN.decode(), "model": "gemini-4-neon", "stream": False, "store": False,
+            "generation_config": {"thinking_level": level}}
+
+
+NEON_SPELLINGS = ("gemini-neon", "gemini-4-neon")
+
+
+def _neon_refused(st, state, spelling="gemini-neon"):
+    """The Neon exit 4: model_not_available, naming the API state, the spelling the launch used
+    (never the other one) and the Carbon relaunch."""
+    assert st["exit"] == 4 and st["status"] == "model_not_available", st
+    assert st["api_attempt"] == state and state in st["reason"], st
+    assert RELAUNCH in st["reason"] and _app_untouched(), st
+    other, = [s for s in NEON_SPELLINGS if s != spelling]
+    assert "%s is API-only" % spelling in st["reason"], st
+    assert "%s is API-only" % other not in st["reason"], st
+
+
+def test_neon_api_models_table(world):
+    # DEFAULT_MODEL (gemini-neon since the 2026-11-19 flip) is pinned by test_default_is_neon
+    assert gp.API_MODELS == {"gemini-carbon": "gemini-4-carbon", "gemini-neon": "gemini-4-neon",
+                             "gemini-4-neon": "gemini-4-neon",
+                             "gemini-4-hydrogen": "gemini-4-hydrogen"}
+
+
+def _neon_api_id_checks(capfd, tmp_path, e, args):
+    """The API id spelling gets every Neon rule: the Neon body, then on a proven rejection the
+    API-only exit 4 with the Carbon relaunch hint, the harness never called."""
+    WORLD.api.script = [api_ok("NEON-391", model="gemini-4-neon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=args)
+    assert code == 0 and st["model"] == "gemini-4-neon" and _app_untouched(), st
+    body = json.loads(WORLD.api.calls[0]["body_raw"])
+    assert body == _neon_body() and list(body) == list(_neon_body()), body
+    WORLD.api.script = [cli_error(1, 404, "not_found", None, "models/gemini-4-neon not found",
+                                  google_err(404, "NOT_FOUND", "models/gemini-4-neon not found"))]
+    code, st, _, _ = run(capfd, tmp_path, e, args=args)
+    _neon_refused(st, "failed", "gemini-4-neon")
+    assert WORLD.harness_calls == 0 and log_entries(e)[-1]["stop_latch"] is False
+
+
+@pytest.mark.parametrize("spelling", ["gemini-4-neon", " GEMINI-4-Neon "])
+def test_neon_api_id_is_neon(world, env, capfd, tmp_path, spelling):
+    e = primary_env(env, tmp_path)
+    _neon_api_id_checks(capfd, tmp_path, e, ("t1", "neon", "--model", spelling))
+
+
+def test_neon_api_id_env(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_MODEL="GEMINI-4-NEON")
+    _neon_api_id_checks(capfd, tmp_path, e, ("t1", "neon"))
+
+
+def test_neon_bare_name_stays_unmapped(world, env, capfd, tmp_path):
+    assert "neon" not in gp.API_MODELS  # not a documented name: no Neon rules, no API id
+
+
+@pytest.mark.parametrize("api_model", ["gemini-4-neon", "gemini-neon", " Gemini-4-NEON "])
+def test_legacy_backup_never_neon(world, env, capfd, tmp_path, api_model):
+    e = api_env(env, tmp_path, GEMINIPRO_API_MODEL=api_model)  # GEMINIPRO_API_PRIMARY=0
+    _harness_down()  # the app path would end exit 2 and hand over to the backup
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 64 and st["status"] == "usage_error", st
+    assert "GEMINIPRO_API_MODEL" in st["reason"] and api_model.strip() not in st["reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert not os.path.exists(_ledger(e)) and _api_dirs(e) == []
+
+
+def test_legacy_backup_refusal_is_legacy_only(world, env, capfd, tmp_path):
+    # API primary ignores GEMINIPRO_API_MODEL (it uses API_MODELS): a Carbon launch still answers
+    e = primary_env(env, tmp_path, GEMINIPRO_API_MODEL="gemini-4-neon")
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "c", "--model", "gemini-carbon"))
+    assert code == 0 and st["model"] == "gemini-4-carbon", st
+
+
+@pytest.mark.parametrize("spelling", ["gemini-neon", "Gemini-Neon"])
+def test_neon_body(world, env, capfd, tmp_path, spelling):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("NEON-391", model="gemini-4-neon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "neon", "--model", spelling))
+    assert code == 0, st
+    (c,) = WORLD.api.calls
+    body = json.loads(c["body_raw"])
+    assert body == _neon_body() and list(body) == list(_neon_body()), body
+
+
+def test_neon_answer(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok("NEON-391", model="gemini-4-neon")]
+    code, st, out, _ = run(capfd, tmp_path, e, args=NEON_ARGS, json_mode=False)
+    assert code == 0 and st["status"] == "ok" and st["via"] == "api", st
+    assert st["model"] == "gemini-4-neon" and st["requested_model"] == "gemini-neon", st
+    assert st["api_attempt"] == "ok" and st["model_mismatch"] is False, st
+    assert out.strip() == "NEON-391" and _app_untouched()
+    assert WORLD.api.calls[0]["argv"][-1] == "--no-retries"
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "ok"] and recs[0]["model"] == "gemini-4-neon"
+    assert _ledger_count(e) == 1
+
+
+@pytest.mark.parametrize("raw,level", [("XHigh", "xhigh"), ("low", "low"), (" HIGH ", "high"),
+                                       ("", "medium")])
+def test_neon_thinking_env(world, env, capfd, tmp_path, raw, level):
+    e = primary_env(env, tmp_path, GEMINIPRO_NEON_THINKING=raw)
+    WORLD.api.script = [api_ok(model="gemini-4-neon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    assert code == 0, st
+    assert json.loads(WORLD.api.calls[0]["body_raw"])["generation_config"] == {
+        "thinking_level": level}
+
+
+def test_neon_thinking_env_invalid_is_a_usage_error_before_admission(world, env, capfd,
+                                                                     tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_NEON_THINKING="turbo")
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    assert code == 64 and st["status"] == "usage_error", st
+    assert "GEMINIPRO_NEON_THINKING" in st["reason"], st
+    assert WORLD.api.calls == [] and _app_untouched() and log_entries(e) == []
+    assert not os.path.exists(_ledger(e)) and _api_dirs(e) == []
+
+
+def test_neon_thinking_env_never_changes_a_carbon_launch(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_NEON_THINKING="turbo")
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "c", "--model", "gemini-carbon"))
+    assert code == 0 and st["model"] == "gemini-4-carbon", st
+    assert "generation_config" not in json.loads(WORLD.api.calls[0]["body_raw"])
+
+
+def test_carbon_body_unchanged(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [api_ok(model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "c", "--model", "gemini-carbon"))
+    assert code == 0, st
+    assert WORLD.api.calls[0]["body_raw"] == json.dumps(
+        {"input": CLEAN.decode(), "model": "gemini-4-carbon", "stream": False, "store": False},
+        ensure_ascii=False).encode("utf-8")
+
+
+def test_neon_rejection_no_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    long_msg = "models/gemini-4-neon is not found for API version v1beta. " * 12  # > 300 chars
+    WORLD.api.script = [cli_error(1, 404, "not_found", None, long_msg,
+                                  google_err(404, "NOT_FOUND", long_msg))]
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "failed")
+    assert len(WORLD.api.calls) == 1 and "HTTP 404" in st["reason"], st
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"], recs
+    assert recs[1]["stop_latch"] is False
+    # never latched: the lead's Carbon relaunch under the same run is admitted and answers
+    WORLD.api.script = [api_ok("CARBON-391", model="gemini-4-carbon")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "neon", "--model", "gemini-carbon"))
+    assert code == 0 and st["via"] == "api" and st["model"] == "gemini-4-carbon", st
+    assert [r["status"] for r in log_entries(e)] == ["started", "failed", "started", "ok"]
+
+
+def test_neon_ceiling_no_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="2")
+    _reserve_today(e, 2)
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "skipped")
+    assert "2/2" in st["reason"] and WORLD.api.calls == [] and log_entries(e) == []
+
+
+def test_neon_api_switched_off_no_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_API_DAY_CEILING="0")
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "skipped")
+    assert "GEMINIPRO_API_DAY_CEILING=0" in st["reason"] and WORLD.api.calls == []
+
+
+def test_neon_reservation_refused_after_admission_no_app(world, env, capfd, tmp_path,
+                                                         monkeypatch):
+    monkeypatch.setattr(gp.lanew_log, "reserve", lambda *a, **k: ("refused", 40, 0))
+    e = primary_env(env, tmp_path)
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "skipped")
+    assert WORLD.api.calls == []
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+
+
+def test_neon_cli_gone_at_spawn_no_app(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [gp._mark_unspawned(FileNotFoundError(2, "The system cannot find the file"))]
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "not_run")
+    recs = log_entries(e)
+    assert [r["status"] for r in recs] == ["started", "failed"] and recs[1]["stop_latch"] is False
+
+
+def test_neon_missing_key(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    e.pop("GEMINI_API_KEY")
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "not_run")
+    assert "GEMINI_API_KEY" in st["reason"] and log_entries(e) == []
+
+
+def test_neon_cli_not_found(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    e.pop("GEMINIPRO_API_CLI")  # gemini-api not on PATH (an explicit missing path is exit 2)
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "not_run")
+    assert "not on PATH" in st["reason"] and log_entries(e) == []
+
+
+def test_neon_no_account_still_exit_4_not_the_account_refusal(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path, GEMINIPRO_ACCOUNT="", GEMINIPRO_API_DAY_CEILING="0")
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    _neon_refused(st, "skipped")
+
+
+@pytest.mark.parametrize("case", ["http_503", "timeout"])
+def test_neon_outcome_unknown(world, env, capfd, tmp_path, case):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [SERVER[503] if case == "http_503" else
+                        subprocess.TimeoutExpired(["gemini-api"], 5)]
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    assert code == 6 and st["status"] == "outcome_unknown" and code != 4, st
+    assert RELAUNCH not in st["reason"] and _app_untouched() and len(WORLD.api.calls) == 1
+
+
+def test_neon_guard_denial_and_local_fault_keep_their_exits(world, env, capfd, tmp_path):
+    e = primary_env(env, tmp_path)
+    WORLD.api.script = [(9, b"", b"gemini-guard: denied: a signed link\n" + _GUARD_FOOTER + b"\n")]
+    code, st, _, _ = run(capfd, tmp_path, e, args=NEON_ARGS)
+    assert code == 7 and st["status"] == "brief_refused" and _app_untouched(), st
+    e2 = primary_env(env, tmp_path, GEMINIPRO_API_CLI=str(tmp_path / "no-such-cli.exe"))
+    code, st, _, _ = run(capfd, tmp_path, e2, args=("t2", "neon", "--model", "gemini-neon"))
+    assert code == 2 and st["status"] == "preflight_refused" and _app_untouched(), st
+
+
+@pytest.mark.parametrize("model,spelling", [("gemini-neon", "gemini-neon"),
+                                            (" GEMINI-4-Neon ", "gemini-4-neon")])
+def test_neon_legacy_mode(world, env, capfd, tmp_path, model, spelling):
+    e = api_env(env, tmp_path)  # GEMINIPRO_API_PRIMARY=0: the app-first order
+    code, st, _, _ = run(capfd, tmp_path, e, args=("t1", "neon", "--model", model))
+    assert code == 4 and st["status"] == "model_not_available", st
+    assert RELAUNCH in st["reason"] and "GEMINIPRO_API_PRIMARY=0" in st["reason"], st
+    other, = [s for s in NEON_SPELLINGS if s != spelling]
+    assert "%s is API-only" % spelling in st["reason"], st
+    assert "%s is API-only" % other not in st["reason"], st
+    assert _app_untouched() and WORLD.api.calls == [] and log_entries(e) == []
+
+
+def test_default_flip_ready(world, env, capfd, tmp_path, monkeypatch):
+    monkeypatch.setattr(gp, "DEFAULT_MODEL", "gemini-neon")
+    e = primary_env(env, tmp_path)
+    e.pop("GEMINIPRO_MODEL")
+    WORLD.api.script = [api_ok(model="gemini-4-neon")]
+    code, st, _, _ = run(capfd, tmp_path, e)  # no --model, no GEMINIPRO_MODEL
+    assert code == 0 and st["model"] == "gemini-4-neon", st
+    assert json.loads(WORLD.api.calls[0]["body_raw"]) == _neon_body()
+    capfd.readouterr()
+    assert gp.main(["--status", "--json"], e) == 0  # --status still works after the flip
+
+
+def test_default_is_neon(world, env, capfd, tmp_path):
+    # the release flip (2026-11-19): no --model and no GEMINIPRO_MODEL sends the Neon body
+    e = primary_env(env, tmp_path)
+    e.pop("GEMINIPRO_MODEL")
+    WORLD.api.script = [api_ok(model="gemini-4-neon")]
+    code, st, _, _ = run(capfd, tmp_path, e)
+    assert code == 0 and st["model"] == "gemini-4-neon", st
+    assert st["requested_model"] == "gemini-neon", st
+    body = json.loads(WORLD.api.calls[0]["body_raw"])
+    assert body == _neon_body() and list(body) == list(_neon_body()), body

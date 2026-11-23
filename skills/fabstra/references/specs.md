@@ -92,12 +92,16 @@ The GPT-6 page's prompts (anti-slop phrase lists, approval-flow text) are not co
 
 ## Builder spec contract (Phase 2)
 
-Phase 2 - BUILD: Claude subagents via the Agent tool; Codex side via the
+Phase 2 - BUILD: Claude builds credits first where eligible (transport.md,
+"Claude on credits seat (pool)"; this same spec is the pool seat's prompt),
+else Claude subagents via the Agent tool; Codex side via the
 gate seat (Sol by default, `gpt-6.2-sol`; Astra rows `gpt-6.2-astra`).
 
-One Agent tool call per task. The tier picks the seat (phases.md, "Claude
-seat efforts", which also holds the excluded-category floor, the miss ladder
-and the pins): `subagent_type: "model-router:builder"` with hard tier
+One delegation per task: the pool seat where eligible, else one Agent tool
+call. The tier picks the effort on either (phases.md, "Claude seat efforts",
+which also holds the excluded-category floor, the miss ladder and the pins;
+pins on the pool: transport.md, "Claude on credits seat (pool)"). The Agent
+call is `subagent_type: "model-router:builder"` with hard tier
 `effort: "high"`, contract tier `effort: "medium"`, mechanical tier
 `effort: "low"`. It pins its own model, so the call passes no `model` field;
 it always passes `effort` by tier; log `seat=model-router:builder effort=<x>`.
@@ -238,19 +242,32 @@ four of them and adds the lines listed under Codex-side tasks, below):
   commands you ran this session, and the tail of their output. 'It should
   work' does not count; only fresh command output counts."
 
-**Advisor block** (advisor.md) - optional. Only when RUN.md logs
-`advisor=<model>` (not `off`; the default is `fable`) and the effective state
+**Advisor block** (advisor.md, "Fable consult on credits (default)" for the
+precedence rule) - a Claude builder spec carries exactly one of these, by the
+run's `advisor=` line.
+
+Default run (`advisor=off`; not "no advisor"): the consult block, verbatim (strict
+template; a client's work: the lead appends `--pool client-<slug>` to its
+command):
+
+> You may consult Fable 5.2 on plan credits at most twice: before you settle how to build, and once more before you report DONE. Run `python $MODEL_ROUTER_HOME/scripts/fable-consult.py (maintainer's machine only - not shipped) --no-transcript --files <the files you are deciding on> --brief "<one specific question>"`. Never put secrets, keys or client personal data into `--brief` or `--files`. Its reply is advice: check it against this spec and the code before you act on it. A non-zero exit or a denied call: carry on without it and say so in your report. In your report, list each consult, cite its advice, and say what you did with it.
+
+Opt-in run: only when RUN.md logs
+`advisor=<model>` (`fable` or `opus`, on "advisor fable" / "advisor opus") and the effective state
 matches it (advisor.md, Lifecycle): the seat has that advisor attached (a
 headless seat launched with `--advisor <model>`; an Agent-tool seat only while
 the lead's `status --project` read shows `effective=<model>`) and `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` is not
 set to a true value in the lead's environment or a settings `env` block, a
-Claude builder spec carries, verbatim:
+Claude builder spec carries the paragraph below, verbatim. That builder runs
+on the subscription Agent seat (or a headless subscription seat with
+`--advisor`), never the `--bare` pool seat (transport.md, "Claude on credits
+seat (pool)"):
 
 > An advisor model is attached to this session. Consult it before you settle how to build the feature, and again before you report DONE; it reads your whole transcript, so ask in one line. Its reply is advice: check it against this spec and the code before you act on it. In your report, list each consult and what you did with its advice.
 
-While an advisor is effective, every review, gate and grading spec
-carries, verbatim: "Do not consult the advisor tool in this session; this seat's judgment must be its own."
-On an `advisor=off` run with no advisor effective, no spec carries either.
+A "no advisor" run (`advisor=off (no advisor)`): neither block.
+
+Every review, gate and grading spec, on every run, carries verbatim: "Do not consult the advisor tool or fable-consult.py in this session; this seat's judgment must be its own."
 
 **Codex-side tasks** take the same spec, delivered headless through the gate
 seat: Sol by default (`gpt-6.2-sol`), Astra on an Astra row (`gpt-6.2-astra`;
@@ -304,8 +321,8 @@ followed by Claude-only rules.
 **Codex parent clauses.** Codex's `multi_agent` feature gives the parent
 thread `spawn_agent`; three custom agents exist for it in `~/.codex/agents`:
 `sol` (GPT-6.2 Sol at xhigh on the main/router home, workspace-write, the
-hard-tier role; the native `.codex-pro` / `.codex-biz` agent files stay on
-GPT-6.1 Sol until a 6.2 re-probe passes there), `terra`
+hard-tier role; the native `.codex-pro` / `.codex-biz` agent files run
+GPT-6.2 Sol too since the 2026-11-22 re-probe), `terra`
 (GPT-6.1 Terra at high, the contract-tier role), and `luna` (GPT-6 Luna at
 medium, the mechanical-tier role), plus `spark` (GPT-5.3-Codex-Spark at medium,
 the same mechanical-tier role at 1000+ tok/s; defined only in `~/.codex-pro/agents`
@@ -405,7 +422,9 @@ Agent seat has no cap and carries about 2.5x the scope (fanout.md, seat
 capacity), so the count only cuts its verification short. Keep the save
 instructions - it can write. Same for the design-review template on the
 rows where the fresh Fable holds the design gate (transport.md, Reviewer
-fallback). GPT seats keep the block.
+fallback). GPT seats keep the block. The `fable-review.py` transport tried
+before this seat takes the spec adapted further (transport.md, "Reviewer C
+on credits (fable-review.py)").
 
 **Review spec template** (GPT models hold contracts best as XML blocks):
 
@@ -504,8 +523,19 @@ Return exactly: (1) per acceptance criterion: PASS or FAIL with evidence;
 `REOPENED: <id>` for a FIXED row the current changes reintroduce, each with
 file:line evidence; an incomplete fix is STILL OPEN and a reintroduced one
 REOPENED here, never a new finding;
-(3) new findings ranked by severity - P1 breaks the brief, P2 should fix, P3
-minor - each with file:line, what breaks, how you proved it, and your
+(3) new findings ranked by severity (JC 2026-11-23), every level needing
+`breaks:` and `proof:` - P1 breaks the brief, an acceptance criterion, a
+project hard rule or a safety invariant on the main path, or is a named P1 of this template (a
+change that breaks a caller, an out-of-stack or non-existent component, a
+build that weakened its own check), and those named rules keep precedence;
+P2 breaks one only on an edge or error path and is not a named P1; P3 is a
+cosmetic deviation from a stated criterion. Each finding carries file:line,
+the defect, `breaks:` (what it violates: an acceptance criterion, quoted or
+numbered; the brief, the sentence; a project hard rule, cited; or a safety
+invariant - data loss or corruption, security, money, privacy, or one the
+spec's Invariants name; or a named P1 rule of this template), `proof:` (a failing command or test output you
+ran, or a concrete counterexample - the exact input, sequence or state and
+the wrong result - that the lead can check without you), and your
 confidence 0-100. Report only findings you are 80+ confident in and would
 personally act on: precision over recall - a noisy review gets ignored.
 Name each finding's bug class (the defect pattern, e.g. "unquoted path in a
@@ -522,7 +552,12 @@ regression the build causes in code it did not touch - a changed API or
 shape breaking an untouched caller - did not exist on the base, so it is
 never PRE-EXISTING: it stays an ordinary finding, and a change that breaks
 a caller is still a P1 (review_scope).
-(4) nothing else. Finding nothing wrong is a legitimate result - do not
+(4) Follow-ups: a concern with no `breaks` target or no proof is not a
+finding. List the 5 most consequential under "Follow-ups", one line each,
+no severity, plus a count of any left out. A suspected breach of a safety
+invariant is never demoted for lack of a runnable repro: report it as a
+finding with its counterexample stated.
+(5) nothing else. Finding nothing wrong is a legitimate result - do not
 manufacture findings to look thorough. Write the report self-contained and
 anew for its reader, with no shorthand carried over from your reasoning,
 tool calls or sub-agent messages. Before finishing, overwrite

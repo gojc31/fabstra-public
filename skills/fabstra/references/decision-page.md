@@ -8,6 +8,8 @@ decision or approval is asked in chat with AskUserQuestion (below). No
 Artifact is published for a decision or a report unless JC explicitly asks
 for a page.
 
+In T3 Code the same short report may also render its status lines as one `html_render` card (theme variables, no outer background) - t3-code.md, "Replies in T3"; questions stay AskUserQuestion buttons.
+
 ## Report file
 
 The run's report file pairs with its logbook: `RUN.md` -> `.fabstra/REPORT.md`,

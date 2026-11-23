@@ -101,9 +101,9 @@ effective one (the rubric row's or the user's effort word; xhigh on an
 excluded-category build - phases.md, "Effort rubric (Sol and Astra)"):
 `--model gpt-6.2-sol` by default, `gpt-6.2-astra` on an Astra row. A cooling
 or rejected surface job hops by the hop rules (transport.md, Model pins)
-with one local change: the plugins exist only on the Pro home, which is not
-proven for 6.2 until a re-probe on or after 2026-11-21 15:27 passes, so a
-surface job never moves to the router - a rejected 6.2 launch relaunches on
+with one local change: the plugins exist only on the Pro home, which passed
+the 6.2 re-probe on 2026-11-22; a
+surface job still never moves to the router - a rejected 6.2 launch relaunches on
 the Pro home with the fallback pin (`gpt-6-astra` for Astra, `gpt-6.1-sol`
 for Sol), logged - and when no route is left on the Pro home the surface is
 reported unavailable (no Fable or Claude seat stands in for a surface).

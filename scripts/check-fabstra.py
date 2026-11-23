@@ -73,9 +73,11 @@ REF_RE = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/([A-Za-
 REF_SHORT_RE = re.compile(r"`(?:\$\{CLAUDE_PLUGIN_ROOT\}/skills/fabstra/references/)?([A-Za-z0-9_.-]+\.md)`")
 # each Claude seat file and the frontmatter lines it must hold (contract D2, 2026-11-10;
 # merged roster 2026-11-16: one builder and one reviewer, effort passed per call, fallback high)
+# builder context and turn caps (2026-11-23, JC): plain integers - frontmatter reads `400k` as 400
 SEAT_PINS = {
-    "builder.md": {"model": "claude-opus-5-5", "effort": "high"},
-    "reviewer.md": {"model": "claude-fable-5-2", "effort": "high"},
+    "builder.md": {"model": "claude-opus-5-5", "effort": "high",
+                   "autoCompactWindow": "400000", "maxTurns": "400"},
+    "reviewer.md": {"model": "claude-opus-5-5", "effort": "high"},
 }
 # retired by the 2026-11-16 roster merge (effort now passed per call to builder.md / reviewer.md)
 RETIRED_AGENTS = ("builder-low.md", "builder-medium.md", "builder-high.md", "reviewer-xhigh.md")

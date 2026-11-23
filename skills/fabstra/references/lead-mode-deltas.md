@@ -15,7 +15,9 @@ lane-b.md is the text; on a Lead-mode session only this differs.
   on its behalf.
 - Part 5(d): you take a fix yourself only when it needs something the solo
   session cannot reach (a plugin skill with `disable-model-invocation`, a
-  Claude-only MCP tool); log it, and the active set re-reviews it.
+  Claude-only MCP tool); log it, and the active set re-reviews it while
+  rounds remain under the 3-round review cap or the build is excluded
+  (no cap) (after the cap you verify it yourself: lane-b.md part 5(e), phases.md "Phase 4").
 
 ## Lead mode delta - transports
 
@@ -48,9 +50,12 @@ Lead mode the lead launches and verifies each one.
 - Hydrogen quick check: small change -> on the diff after the build;
   contained change -> on its RUN.md plan before the build; advisory, never
   replaces the contained change's Sol review.
-- Reviewer G (Neon, Carbon spare): every real build, in the same message as the review
-  gate seat(s) of every review round (round 1 and each re-review); its rows
-  are OPEN findings you confirm against the code; pro-consult.md, "Reviewer G". Round scope: phases.md "Phase 4" (rounds 1-2
+- Reviewer G (Neon attack seat, Carbon spare; excluded builds too: Neon API only, redacted, no spare; thinking high on xhigh rows; in T3 only on t3-code.md's "Paid Reviewer G in T3" cases, Reviewer AG first): every real build, in the same message as the review
+  gate seat(s) of round 1 only (JC 2026-11-23); a re-review round launches no
+  Neon seat, except Reviewer G as stand-in; its rows
+  are OPEN findings you confirm against the code, and you supply or verify
+  their `breaks` target and proof before any fix (phases.md "Phase 4", fix
+  threshold); pro-consult.md, "Reviewer G". Round scope: phases.md "Phase 4" (rounds 1-2
   the full diff from build start, from round 3 the diff since the last reviewed
   state). The full diff: a git repo sends the diff against the
   pre-build commit plus the build's new untracked files
@@ -62,8 +67,8 @@ Lead mode the lead launches and verifies each one.
   "Pro consult" section.
 - Hydrogen fix check: only on a code-changing fix round that gets no
   re-review, after its smoke-gate re-run passes, on that round's diff
-  (snapshot before the fixes launch); a re-reviewed real-build round gets
-  Reviewer G instead; a contained change keeps the Hydrogen fix check.
+  (snapshot before the fixes launch); a contained change keeps the Hydrogen
+  fix check, re-review or not.
 - Reviewer G rows are OPEN findings (above). The other seats' items are
   `G<n>` leads you verify before they become findings; never Reviewer
   A/B/C, never a pass/fail, never a blocker.

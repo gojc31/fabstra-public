@@ -25,7 +25,7 @@ parent also spawns Sol) for routed tasks, and adversarially reviews
 Claude-built work; a fresh Fable context reviews Codex-built work; when the
 seat's model is cooling on every login, the other model reviews at the same
 effort (hop rules: transport.md, Model pins). The lead (the session model, in either mode) decides every disagreement and logs why.
-Claude build seats are Opus 5.5 on `model-router:builder`, effort passed by tier on every call; Reviewer C is a fresh Fable 5.2 on `model-router:reviewer` (effort high, xhigh on an excluded-category build) (the skill's Claude seat efforts).
+Claude build seats are Opus 5.5, effort passed by tier on every call, on the credits pool first from a plain terminal or scheduled task, else `model-router:builder` (the skill's transport.md, "Claude on credits seat (pool)"); Reviewer C is a fresh Fable 5.2 on `model-router:reviewer` (effort high, xhigh on an excluded-category build) (the skill's Claude seat efforts); every fresh-Fable seat, the design gate included, runs first on `scripts/fable-review.py` on plan credits, with that Agent seat as the fallback (the skill's transport.md, "Reviewer C on credits").
 Effort for Astra and Sol follows the skill's effort rubric unless the brief
 names one (an `xhigh`, `high`, or `medium` word in the brief pins every
 Astra and Sol call the orchestrator issues in this run, except that an

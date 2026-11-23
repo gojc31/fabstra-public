@@ -43,8 +43,8 @@ claude-sonnet-5`. The proxy serves no Anthropic models by design (routing a
 Claude subscription login through it is banned), so in Lane D `model: "opus"`,
 `"sonnet"`, `"haiku"` and the Claude-pinned agents
 (`model-router:builder`, `model-router:reviewer`,
-`model-router:designer`) are all unreachable through the Agent tool. The one legitimate way to a Claude seat
-from a routed session is headless delegation on the user's own Claude login -
+`model-router:designer`) are all unreachable through the Agent tool. The legitimate ways to a Claude seat
+from a routed session are the credits routes (Credits first, below) and headless delegation on the user's own Claude login -
 Claude Code calling Claude Code, which is not a third-party tool - by stripping
 the proxy env from the child (VERIFIED 2026-09-11: from a proxied env,
 `env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY claude -p
@@ -60,13 +60,19 @@ the credits-pool route keeps its own deliberate
 replaces its leading `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` (after the `KEY=`
 statement) with
 `env -u CLAUDE_CODE_MAX_CONTEXT_TOKENS CLAUDE_CODE_DISABLE_1M_CONTEXT=1`.
-Shape, one background Bash call per task, cwd = the project:
+
+**Credits first** (2026-11-21): from a Lane D session launched in a plain
+terminal or a scheduled task, a Claude build runs first on the pool seat
+(transport.md, "Claude on credits seat (pool)", in the pool-route form
+above) and a fresh-Fable review on `fable-review.py` (Reviewer rule, below);
+the stripped-env launch on the Claude login is the fallback. Its shape, one
+background Bash call per task, cwd = the project:
 
 ```bash
 env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY -u CLAUDE_CODE_MAX_CONTEXT_TOKENS -u CLAUDE_CODE_DISABLE_1M_CONTEXT timeout 1500 claude -p --model claude-opus-5-5 --effort <low|medium|high|xhigh> --permission-mode acceptEdits --max-turns 60 --output-format json < <scratch>/lane-d-task-N.md > <scratch>/lane-d-task-N.md.out 2>&1
 ```
 
-Advisor state (advisor.md): every run logs `advisor=fable` unless the brief opts out (`advisor=off`) or asks for `advisor=opus`; on a run that logs `advisor=<model>` add `--advisor <model>`, only after that launch's state check found `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` not set to a true value in the lead's environment or a settings `env` block - that preflight covers the on-form, so the child inherits no disable variable and the form adds no `-u` for it; on an `advisor=off` run add `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` after the five `-u` flags. The designer and reviewer launches below take the off form.
+Advisor state (advisor.md): every run logs `advisor=off` by default (JC 2026-11-20), `advisor=fable` or `advisor=opus` only when the brief says "advisor fable" or "advisor opus"; on a default run each builder spec carries the consult block (specs.md, "Advisor block"; these headless seats call `fable-consult.py --no-transcript`); on a run that logs `advisor=fable|opus` add `--advisor <model>`, only after that launch's state check found `CLAUDE_CODE_DISABLE_ADVISOR_TOOL` not set to a true value in the lead's environment or a settings `env` block - that preflight covers the on-form, so the child inherits no disable variable and the form adds no `-u` for it; on an `advisor=off` run (any form) add `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` after the five `-u` flags. The designer and reviewer launches below take the off form.
 
 No `--bare` here: on Claude Code 2.1.280 bare mode disables the subscription
 login and the child answers 'Not logged in' (verified 2026-09-23); the child
@@ -91,7 +97,7 @@ window is the problem, say so instead of burning it.
 | SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-6.1-terra` |
 | MECHANIC - trivial, fully specified | `model-router:mechanic-routed` | `gpt-6-luna` |
 | ASTRA as a fresh-context seat (design gate / review fallback / hardest slice) | `model-router:astra-routed` | `gpt-6.2-astra` |
-| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | stripped-env headless `claude -p`, see above | the user's Claude login |
+| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | credits first (Credits first, above), else stripped-env headless `claude -p` | the credits pool, else the user's Claude login |
 
 **Routed build briefs (specs.md rules a and g).** Every build brief this
 lane sends to a routed seat (`worker`, `support-routed`, `mechanic-routed`,
@@ -115,11 +121,12 @@ runs as a headless proxy `claude -p` launch with that model's context
 variable (transport.md, Model pins), not through the Agent tool. A
 cooling or model-rejected seat hops by the hop rules (transport.md, Model
 pins); where they reach a fresh Fable or the Claude builders, in this lane
-those are the stripped-env launches above.
+those are the credits routes, then the stripped-env launches above.
 
 **Reviewer rule (2026-11-15).** Every proxy seat is GPT, so no cross-family
-proxy reviewer exists. The reviewer is the stripped-env headless Fable
-command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
+proxy reviewer exists. The reviewer runs first on `scripts/fable-review.py`
+(credits; transport.md, "Reviewer C on credits (fable-review.py)", attempt
+order); its fallback is the stripped-env headless Fable command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
 a build in an excluded category), logged `login: claude`. Fable unavailable:
 `pool/claude-fable-5-2` (a client's work: `client-<slug>/claude-fable-5-2`
 with its own `client-<slug>: usable` line, haiku mapping on the same prefix)

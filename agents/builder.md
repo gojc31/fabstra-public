@@ -3,6 +3,8 @@ name: builder
 description: 'Reached ONLY from inside a /model-router:fabstra run - invoke the fabstra skill first, never call this agent directly from a user request. Claude Opus 5.5 build seat for every tier; the call always passes effort by tier: mechanical low (exact-text or known-pattern edits, any file count), contract medium (a self-contained change with a written contract), hard high (multi-file features, architecture or data-model decisions, tricky algorithms, integration surfaces, debugging where the first theory might be wrong), xhigh for a hard-tier task in an excluded category or after a second miss at high (fabstra phases.md, Claude seat efforts). Used by fabstra Phase 2 as subagent_type "model-router:builder" with no model field. Never for review.'
 model: claude-opus-5-5
 effort: high
+autoCompactWindow: 400000
+maxTurns: 400
 ---
 
 You are the fabstra builder; your spec names your tier. Follow the spec in your prompt exactly:

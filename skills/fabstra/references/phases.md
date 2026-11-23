@@ -61,7 +61,7 @@ Reviewer C the CODEX tasks and every seam with the BUILDER tasks; each
 acceptance criterion goes to exactly one reviewer (lead-mode.md, the review
 gate, has the wording). A contained change (Phase 1) has no gate seat and
 takes one review: Claude built -> Sol high; Codex side built -> fresh Fable.
-Every real-build review round also runs Reviewer G (Gemini Neon, Carbon spare) beside the pairing-rule seat(s) (pro-consult.md, "Reviewer G").
+Round 1 of every real-build review, excluded categories included, also runs Reviewer G (Gemini Neon, Carbon spare; excluded: Neon API only, redacted brief) beside the pairing-rule seat(s) (pro-consult.md, "Reviewer G"); in T3, Reviewer AG goes first and G launches only on t3-code.md's "Paid Reviewer G in T3" cases. A re-review round runs no Neon seat, except Reviewer G as stand-in (JC 2026-11-23).
 Fix rounds are different: the Codex column may fix a Claude build (Phase 4
 default), and the re-review rule there handles the family change. The
 orchestrator never builds under any pairing; Fable 5.2 never builds at all.
@@ -210,10 +210,12 @@ passes no `model` field and always passes `effort` by tier.
 | Reviewer C, on a build in an excluded category | `model-router:reviewer` (Fable 5.2, fresh context) | xhigh | JC's decision, 2026-11-10: there a missed defect costs more than the tokens |
 | Design block | `model-router:designer` | xhigh | carried over, not yet measured |
 
+- **Credits first.** From a plain terminal or a scheduled task with a usable pool, every builder tier above runs first on `pool/claude-opus-5-5` (a client's work: `client-<slug>/claude-opus-5-5`) at the same effort - a pinned seat keeps its pin ("Pins" below), with this Agent seat as the fallback; a VS Code or desktop launch takes the Agent seat (transport.md, "Claude on credits seat (pool)"). In T3 Code, a builder overflows to another of JC's own Claude logins when this one is near its limit - t3-code.md, "Claude login overflow".
+- **Builder caps.** `model-router:builder` auto-compacts at 400,000 tokens (`autoCompactWindow: 400000`) and stops at 400 turns (`maxTurns: 400`); a capped stop follows Phase 2's hand-off rule. The credits-pool seat is unaffected: it is a headless session already pinned to a 200k window.
 - **Excluded-category floor.** A task in an excluded category (SKILL.md) builds on `model-router:builder` at effort xhigh when it is hard tier and at effort high when it is contract or mechanical tier.
-- **Reviewer C seat.** Reviewer C is `model-router:reviewer`. When the reviewed build is in an excluded category (SKILL.md) it runs at `effort: "xhigh"`, wherever Reviewer C runs: the review of Codex-built work, the parallel second review, the fallback rows of transport.md, Lane B, and the Lane D headless command (`--effort xhigh`). A review that covers several tasks takes effort xhigh when any of them is in an excluded category. Transport: `scripts/fable-review.py` on plan credits first, at the same effort, and this Agent seat as the fallback (transport.md, "Reviewer C on credits (fable-review.py)").
+- **Reviewer C seat.** Reviewer C is `model-router:reviewer`. When the reviewed build is in an excluded category (SKILL.md) it runs at `effort: "xhigh"`, wherever Reviewer C runs: the review of Codex-built work, the parallel second review, the fallback rows of transport.md, Lane B, and the Lane D headless command (`--effort xhigh`). A review that covers several tasks takes effort xhigh when any of them is in an excluded category. Transport: `scripts/fable-review.py` on plan credits first, at the same effort, for every fresh-Fable seat, the design gate included (`--plan-file`), and this Agent seat as the fallback (transport.md, "Reviewer C on credits (fable-review.py)", attempt order).
 - **Miss ladder.** A miss is a task that fails its check, or that comes back from a review round with an accepted finding; one round is one miss for that task, however many findings it holds. First miss: the work goes back with the evidence - a failed build to the seat that built it, a review fix to the seat the Phase 4 fix table picks from what the fix looks like. Second miss on the same task: the next attempt goes one step up from the seat and effort that last worked on it - on `model-router:builder` an effort ladder low -> medium -> high -> xhigh; Codex children `spark` / `luna` -> `terra` -> `sol` -> `model-router:builder` at xhigh. A second miss at `model-router:builder` at xhigh, or an open-finding count that did not go down after a round, means the approach is wrong: re-diagnose and re-spec first (Phase 4), because more effort fixes a missed edge case, not a wrong approach; the corrected spec then goes one step up, or starts again at its tier's effort when there is no step above. A pinned seat keeps its first miss too; its second miss releases the pin for that task - a pinned Sonnet or Haiku seat hands it to `model-router:builder` at effort high, a pinned Opus seat hands it one effort up - and the release is logged and named in the report.
-- **Pins.** "sonnet max" sends the run's contract-tier tasks to `model-router:sonnet-max` (routing rubric). A Claude model the user names for builds ("use sonnet", "haiku for the mechanical work") sends that tier's tasks to `general-purpose` with `model: "sonnet"` / `"haiku"` for that run. A seat or effort the user names ("opus xhigh", "builder at medium") pins that effort on `model-router:builder` for the tasks the user names. Log every pin in RUN.md. The excluded-category floor outranks a pin that sits below it: that task takes the floor effort, and the plan JC sees says so in one line, so JC can restate the pin for that task by name.
+- **Pins.** "sonnet max" sends the run's contract-tier tasks to `model-router:sonnet-max` (routing rubric). A Claude model the user names for builds ("use sonnet", "haiku for the mechanical work") sends that tier's tasks to `general-purpose` with `model: "sonnet"` / `"haiku"` for that run. A seat or effort the user names ("opus xhigh", "builder at medium") pins that effort on `model-router:builder` for the tasks the user names. Log every pin in RUN.md. A pin holds on the credits pool too (transport.md, "Claude on credits seat (pool)", pins). The excluded-category floor outranks a pin that sits below it: that task takes the floor effort, and the plan JC sees says so in one line, so JC can restate the pin for that task by name.
 - **Any other Claude seat** (a research or audit seat in fanout.md that is none of the agents above): `general-purpose`, `model: "opus"`, `effort: "medium"`; `effort: "high"` when its findings decide the plan of an excluded-category build.
 - **The lead's own effort** is the session setting, which JC owns. The design point is `high` on Fable 5.2 and on Opus 5.5: on Fable 5.2 most of the gain is in by `high`, and `xhigh` or `max` add tokens and self-review subagents with no gain measured on this flow.
 - Evidence and dates: effort-trial.md.
@@ -303,8 +305,8 @@ before the report, and when it stops early, after a status read shows
 `advisor-wrote=no`, log the status, tell JC); a run that never wrote the
 setting (`advisor-wrote=no`, an `advisor=off` run) never runs `off`.
 Contents: the brief, the approved plan (tasks, tiers,
-acceptance criteria) with its `advisor=fable|opus|off` line (advisor.md; `fable` by default,
-`off` on "no advisor", `opus` on "advisor opus"; a logbook with no line counts as off; an auto run adds `advisor-wrote=yes|no` and `advisor-phase=build|post-build`), the design-review ledger (each gate-seat finding ->
+acceptance criteria) with its `advisor=fable|opus|off` line (advisor.md; `off` by default (JC 2026-11-20: the Fable consult on credits applies, logged `consult-plan=yes`),
+`off (no advisor)` on "no advisor", `fable` on "advisor fable", `opus` on "advisor opus"; a logbook with no line counts as off; an auto run adds `advisor-wrote=yes|no` and `advisor-phase=build|post-build`), the design-review ledger (each gate-seat finding ->
 spec revised / rejected + one-line reason), one status line per task,
 smoke-gate result, review findings ledger (each finding, with an id and its
 file:line -> fixed/rejected + one-line reason), and what is still open. You are the only writer -
@@ -315,10 +317,9 @@ Each task line carries `tier` (hard, contract or mechanical), `seat` (the
 `subagent_type` or the Codex child that built it, for example
 `model-router:builder effort=high` or `terra`), `effort`, `elapsed` (minutes from
 launch to accepted), and
-`first_pass` (yes/no - accepted with no fix round), plus `consults=<n>` on an
-advisor run (advisor.md). Each review finding
-carries its task number and `repro: yes|no|na` (a failing reproduction
-existed before the fix).
+`first_pass` (yes/no - accepted with no fix round), plus `consults=<n>` when
+the builder consulted (the advisor tool or `fable-consult.py`; advisor.md). Each review finding
+carries its task number and `repro: yes|no|na` (Phase 4, fix threshold).
 
 On invocation, run the checker:
 `python ${CLAUDE_PLUGIN_ROOT}/skills/fabstra/scripts/logbooks.py "<project dir>"`.
@@ -369,7 +370,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   budget-crew ask runs Lane A, and the report says the budget crew is
   retired (2026-11-15).
 - Pro consult (pro-consult.md), advisory, under its cap and unless JC said "no pro": launch it for a research or audit run whose report makes claims,
-  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan; Reviewer G (Neon, Carbon spare) reviews in every review round of a real build (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), and two advisory review modes run - the Gemini report check of a research or audit report, the Hydrogen fix check after a code-changing fix round that gets no re-review (pro-consult.md).
+  for an xhigh-row plan (in parallel with Phase 1b, never instead of it), or when JC says "pro consult". Gemini consult runs beside every Pro consult and on every real-build plan; Reviewer G (Neon, Carbon spare; excluded builds: no spare) reviews round 1 of a real build, re-reviews only as stand-in (a non-git project first copies the plan's files to `<scratch>/fabstra-prebuild/` before any builder launches), and two advisory review modes run - the Gemini report check of a research or audit report, the Hydrogen fix check after a code-changing fix round that gets no re-review (pro-consult.md).
 - A brief that already states the goal and what done looks like needs no
   question round: restate done in one line and go to the plan. Otherwise
   open with one batched round aimed at the real gaps - scope, constraints,
@@ -459,7 +460,7 @@ keeps every run's record; the orchestrator never deletes a logbook.
   gate as for a real build, then
   exactly one review - Claude-built -> Sol at `--effort high` through the
   Sol review command (transport.md, same transport as the Sol row, only the
-  effort differs); Codex-built -> a fresh Fable (`model-router:reviewer`, effort high; xhigh on an excluded-category build),
+  effort differs); Codex-built -> a fresh Fable (`model-router:reviewer`, effort high; xhigh on an excluded-category build; credits first: transport.md, "Reviewer C on credits (fable-review.py)"),
   per the pairing rule. No parallel second reviewer. Phase 4 rules apply
   unchanged. A P1 in the review, or the change growing past any criterion
   mid-run, makes it a real build from that point: log the reclassification
@@ -502,6 +503,26 @@ question in a REVISED spec - never resend the same spec unchanged. BLOCKED
 -> re-diagnose yourself before re-routing, and spot-check the claim first
 (builders misreport failure as well as success).
 
+A builder that stops at its turn cap is neither a failure nor a retry: the
+Agent result holds no report, only that the agent "stopped at its N-turn
+limit before finishing", and the agent stays resumable by SendMessage.
+Send it exactly one message asking only for a hand-off note - what is done,
+what is half-applied, what is left - and no further work. Then read the
+diff yourself and run the task's checks, trusting them over the note, and
+launch a fresh builder on a spec for the remainder only. Never resume the
+capped builder to finish the work: that keeps the bloated context the cap
+exists to end. Two capped stops on one task go back to Phase 1 to split it.
+
+A stuck seat: at any checkpoint the lead reaches anyway (a seat lands, a
+spec is done), a builder or delegate build child whose transcript or T3
+`updatedAt`/`itemCount` has not moved for 20 minutes is stuck - never poll
+for it. Stop it (TaskStop / task_cancel), re-spec the task smaller, relaunch.
+Exempt: one long call in progress (an xhigh review, a Pro consult, a test or
+build command). Stuck and capped stops count together: two on one task, in
+any mix, go back to Phase 1 to split it. A review seat is never re-specced:
+relaunch it once, then go to its fallback seat. Log
+`stuck: <seat> <task> <minutes>`.
+
 Task sizing: a feature and its own test belong in one task - the builder
 then runs the test as its verification. Split into parallel tasks only work
 that is genuinely disjoint: different files, no run-time dependency.
@@ -522,11 +543,32 @@ discovering what a build command finds for free. Log the result.
 
 ## Phase 4 - FIX AND SHIP (you arbitrate)
 
-- Arbitrate every finding yourself: real -> route a fix delegation (finding
-  verbatim with its bug class and the instances the reviewer listed, plus
-  the relevant spec, starting with a failing repro test; the fixer greps the
-  build's files for that class, fixes every instance, and lists each one in
-  its report) to
+- **Fix threshold (JC 2026-11-23).** A finding gets a fix only when you have
+  confirmed both its `breaks` target and its `proof` (specs.md, Review spec),
+  on every fix path: a fix delegation, a Lane B fix brief, a Lead-mode inline
+  fix. Reviewer G and Reviewer AG items carry neither field: you supply or
+  verify both before any fix, as you confirm each item against the code.
+  Ledger `repro`: `yes` when a failing check existed before the fix, or when
+  you verified the counterexample yourself - by running it, or by inspection
+  where running the affected code is not permitted; `na` for a deliverable
+  that cannot run (docs, prompts, skills, config), with the failed criterion
+  or the contradicting lines cited at file:line; `no` when no failing check
+  existed and no counterexample was verified. It records evidence, not the
+  row's disposition. A credible breach of a safety invariant that you cannot safely verify
+  goes to JC as a decision (decision-page.md): never dropped, never fixed
+  blind. Any other submitted finding that fails the threshold is ledgered WITHDRAWN
+  with the reason `follow-up: no broken requirement` or `follow-up: no
+  proof`, listed in the report's follow-ups, and buys no fix round, as
+  PRE-EXISTING below; a reviewer's own "Follow-ups" lines are not ledger
+  rows and go straight to the report's follow-ups. On 2026-11-23 the
+  logbooks showed 94% of findings accepted with a repro and 93% without one.
+- Arbitrate every finding yourself: real and past the fix threshold -> route
+  a fix delegation (finding verbatim with its bug class and the instances
+  the reviewer listed, plus the relevant spec, starting with the failing
+  repro test where the code can run, otherwise carrying the verified
+  counterexample or the cited lines as the check the fix must satisfy; the
+  fixer greps the build's files for that class, fixes every instance, and
+  lists each one in its report) to
   the builder tier; a design error means you correct the blueprint first,
   and the delegation carries the corrected blueprint rather than a patch
   hint; wrong -> record it as rejected with a one-line reason in the
@@ -558,7 +600,8 @@ discovering what a build command finds for free. Log the result.
 - After each fix round, recount open findings in the logbook. Count did not
   go down? The approach is wrong - stop immediately, re-diagnose with the
   full history, correct the spec, and only then send it one step up (miss
-  ladder); do not spend another round on the same theory.
+  ladder); do not spend another round on the same theory (after the review
+  cap, its post-cap paths below take precedence over this recount).
   Two rounds on the same finding is the hard ceiling either way.
 - On that ceiling, before re-diagnosing, launch one Pro consult on the failure
   evidence (pro-consult.md); it advises, it does not replace the re-diagnosis.
@@ -568,9 +611,13 @@ discovering what a build command finds for free. Log the result.
   three attempts with their evidence, and your best theory go to JC as a
   decision (decision-page.md). A check that survives three rounds is the
   signal that a person needs to look.
-- Re-run the reviewer when fixes touched more than one file or resolved any
-  P1 - the reviewer actually logged in RUN.md for that scope (a Reviewer B
-  stand-in included; never re-picked by the pairing rule), unless the
+- While rounds remain under the review cap (below), re-run the reviewer
+  when fixes touched more than one file or resolved any P1 - the reviewer actually logged in RUN.md for that scope (a Reviewer B
+  stand-in included; never re-picked by the pairing rule; a logged Reviewer G stand-in is replayed only
+  through the stand-in rule: a recovered gate seat reviews instead, and when
+  Astra and Sol are both out for the round, pro-consult.md "Reviewer G as
+  stand-in" picks the seat, whatever was logged, ahead of the Sol-miss move
+  below), unless the
   fixes moved the build across the pairing line (Codex-column fixes on a
   Claude build -> Reviewer C for the re-review), or the P1 is a Sol miss: a
   P1 that a Sol gate or review round on this build passed and a later seat,
@@ -584,24 +631,59 @@ discovering what a build command finds for free. Log the result.
   Review spec). Rounds 1-2 keep the Phase 3 scope rules (`scope=full`). From
   round 3 (`scope=diff`) the `<context>` carries only the diff since the
   last reviewed state plus `<prior_findings>`, and `<review_scope>` takes
-  its round-3 text from the template. Reviewer G's brief takes the same scope (pro-consult.md, "Reviewer G"). For that diff, snapshot the build's
+  its round-3 text from the template. A stand-in Reviewer G's brief takes the same scope (pro-consult.md, "Reviewer G"). For that diff, snapshot the build's
   files to `<scratch>/fabstra-review-r<N>/` as each review launches and diff
   the next round against the latest snapshot. A `REOPENED: <id>` line sets
   that FIXED row back to OPEN under its own id; it stays the same finding,
   so the two-rounds-on-one-finding ceiling counts its earlier rounds.
+- **Review cap: 3 rounds per build (JC 2026-11-23).** An excluded-category
+  build (SKILL.md) is exempt: it keeps re-reviewing under the re-review
+  trigger until clean (late-round audit 2026-11-23: 7 of 29 sampled round-4+
+  findings were real harm, all on money, customer-facing, client-data or PII
+  builds; none on internal tooling). Round 1 is the Phase 3
+  review, rounds 2 and 3 are re-reviews. A round is one review of one
+  reviewed state of the build, in every lane, by all the seats launched for
+  it; a call that completes or arbitrates the same state belongs to that
+  round - a hop or retry, the Agent completion of a partial credits review,
+  a Lane B rebuttal re-check, a Lead-mode rebuttal call. A review of a new
+  post-fix state is the next round. The per-finding limits (two rounds on
+  one finding; a third failed round -> JC) count separately and are
+  unchanged. The re-review trigger and the Sol-miss move to Astra (above)
+  apply only while rounds remain under the cap. After round 3's findings
+  are arbitrated and their fixes land there is no round 4: re-run the smoke
+  gate and the plan's acceptance checks, verify each round-3 fix yourself
+  with targeted slices, and the Hydrogen fix check runs under its own
+  trigger (below); log `review-cap: 3 reached` in RUN.md. After the cap
+  nothing buys a review round, and these paths take precedence over the
+  recount rule above (count did not go down -> re-diagnose, one seat up): a
+  red smoke gate or acceptance check caused by an open finding follows that
+  finding's path (JC); one with no open finding behind it takes the
+  smoke-gate fix path (still red after three fix rounds -> JC, above);
+  a defect that passes the fix threshold and that you confirm during final
+  verification (your own slices, or a confirmed Hydrogen lead) gets one fix
+  delegation, which you verify against its failing check, and if it is
+  still open it goes to JC as a decision (decision-page.md); so does a
+  finding that passed the threshold and is still open after the round-3
+  fix round. A fourth round runs only on JC's go, one round per go, logged
+  `round=4 jc-go`; it keeps the round-3 diff scope, and the per-finding
+  ceilings keep counting. An ESCALATED finding that JC orders fixed, or
+  carries into a fourth round, returns to OPEN under its own id with its
+  history - its rounds and fix attempts keep counting - so
+  `<prior_findings>` carries it. On 2026-11-23, 73 of 254 logged builds had gone
+  to round 4 or later.
 - Re-run the smoke gate (the same command set the first gate used, under the
   same isolation condition, one Bash call) after every fix round that changed code, whether or not a re-review
   follows; individually verified fixes are where integration regressions
   hide, and the reviewer is not the smoke gate. Log the result.
 - Hydrogen fix check (pro-consult.md, "Gemini consult - the build-sheet
-  seat"), only on a fix round that gets no re-review (a re-reviewed real-build
-  round gets Reviewer G instead; a contained change keeps the Hydrogen fix check): before its delegations launch, snapshot the build's
+  seat"), only on a fix round that gets no re-review (a contained change keeps the Hydrogen fix check, re-review or not): before its delegations launch, snapshot the build's
   files to `<scratch>/fabstra-fix-r<N>/`; once that round changed code and
   its smoke-gate re-run passed, launch `fix-r<N>` (Hydrogen) on the round's
   diff and the findings it fixed. Its items are `G<n>` leads you verify; it never counts as a
   reviewer, never passes or fails the round, never blocks.
-- Advisor off: on an `advisor=fable|opus` run logged `advisor-wrote=yes`,
-  once the last builder has landed, run the switch-off and its status read
+- Advisor off: on an `advisor=fable|opus` run (opt-in only since 2026-11-20) logged `advisor-wrote=yes`,
+  once the last builder has landed and the lead's pre-done checkpoint has
+  run, run the switch-off and its status read
   (advisor.md, Lifecycle), log the result and `advisor-phase=post-build`
   before the report; a run that never wrote the setting, or whose status
   read shows `user_advisorModel` no longer equal to the run's model, skips

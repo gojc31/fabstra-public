@@ -38,14 +38,18 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra 
 
 ## The fast pin (last bullet of the effort rubric)
 
-- **Standing fast window (builds AND reviews, always on - JC 2026-11-01), on since 2026-09-28, no end date - JC 2026-10-03:
+- **Standing fast window (reviews, always on - JC 2026-11-01; builds rotate on the router since 2026-11-22), on since 2026-09-28, no end date - JC 2026-10-03:
   stays on until JC says stop (opened by JC 2026-09-28 to spend weekly
   quota before the reset).** `.codex-pro` (the Pro login) and
   `.codex-biz` ($CODEX_BIZ_LOGIN) both hold `service_tier = "fast"` for
   the whole window: no `fast` word needed, and runs do not end with
-  `codex-fast off`. Every Codex-transport launch (Codex-side builds,
-  Codex-column fixes, the Codex review fallback) goes native, round-robin
-  over the two homes, builds (`--write`) included: `H=$(codex-fast-home) || H=`,
+  `codex-fast off`. **Builds rotate (JC 2026-11-22):** Codex-side builds, Codex-column fixes
+  and their write probes (`--write`) launch on the router - prefix line
+  `unset CODEX_HOME CODEX_DIRECT`, no picker, standard tier - so the proxy
+  spreads them over every ChatGPT login (`proxy-pin both`) instead of
+  draining gojc31 Pro; log `router (builds rotate)`. Read-only
+  Codex-transport launches (the Codex review fallback) go native, round-robin
+  over the two homes: `H=$(codex-fast-home) || H=`,
   then `CODEX_HOME="$H" CODEX_DIRECT=1 node "$C" task ...` only when `H` is
   non-empty (an empty `H` first runs `unset CODEX_HOME CODEX_DIRECT`, so an
   inherited native selection cannot survive; `~/bin/codex-fast-home` alternates .codex-pro / .codex-biz and
@@ -84,8 +88,8 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra 
   the `codex-pro` shim) - the config switch alone does nothing if the job
   runs through the router. Fast is a service tier, not an effort: the Codex
   catalogue advertises the fast tier for both `gpt-6.2-sol` and
-  `gpt-6.2-astra` (2026-11-18; speed-up not yet measured), and a native home
-  is not proven for 6.2 until the re-probe (a rejected launch hops by the
+  `gpt-6.2-astra` (2026-11-18; speed-up not yet measured), and both native homes
+  passed the 6.2 re-probe on 2026-11-22 (a rejected launch still hops by the
   hop rules, transport.md, Model pins). Earlier
   measurements: Astra streamed about 2x faster, `gpt-6.1-sol` about 2x (advertised and verified 2026-10-13; it ran at standard speed before), GPT-6 Sol / Terra / Luna 1.5x, every request on that
   login's pool costs 2.5x, and children the parent spawns inherit it (`spark`

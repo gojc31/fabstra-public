@@ -1,6 +1,6 @@
-# Advisor - automatic per run
+# Advisor - Fable consult by default, the tool on opt-in
 
-Reached from: SKILL.md References (every run, before each Claude seat), specs.md "Advisor block", phases.md "The run logbook" (the `advisor=` line, parking and the report), lead-mode-deltas.md (the senior seat), lane-d.md (headless seats)
+Reached from: SKILL.md References (every run, before each Claude seat), the global CLAUDE.md "Fable consult" section (the precedence rule), specs.md "Advisor block", phases.md "The run logbook" (the `advisor=` line, parking and the report), lead-mode-deltas.md (the senior seat), lane-d.md (headless seats)
 
 ## What it is
 
@@ -16,17 +16,67 @@ a brief, and cannot read the repo.
 
 ## The run's line
 
-Every run logs one line with the plan in RUN.md (JC 2026-11-12):
+Every run logs one line with the plan in RUN.md (JC 2026-11-12; default
+flipped to off by JC 2026-11-20):
 
-- `advisor=fable` - the default; no word about it in the brief.
+- `advisor=off` - the default; no word about it in the brief. The Fable
+  consult on credits applies (below).
+- `advisor=fable` - the brief says "advisor fable".
 - `advisor=opus` - the brief says "advisor opus".
-- `advisor=off` - the brief says "no advisor", or the switch-on fell back
-  (`advisor=off (cli below 2.1.321)`, below).
+- `advisor=off (no advisor)` - the brief says "no advisor": neither the tool
+  nor the consult.
+- `advisor=off (cli below 2.1.321)` - an opt-in run whose switch-on fell back
+  (below); the consult does not replace the tool there.
 
 A logbook with no `advisor=` line (a run started before 1.13.0) counts as
-`advisor=off`. An auto run is one logged `advisor=fable` or `advisor=opus`;
-an opt-out run is one logged `advisor=off`. Review and experiment seats stay
-advisor-free on every run (Who must not consult).
+`advisor=off`. An auto run is one logged `advisor=fable` or `advisor=opus`
+(opt-in only since 2026-11-20); an opt-out run is one logged `advisor=off`
+in any form. Review and experiment seats stay advisor-free on every run (Who
+must not consult).
+
+## Fable consult on credits (default)
+
+`scripts/fable-consult.py` asks Fable 5.2 over the plain Messages API on the
+pool's plan credits, not the subscription (JC 2026-11-20). It is a plain API
+call, not Claude Code, so it works from VS Code too. Command shape:
+`python $MODEL_ROUTER_HOME/scripts/fable-consult.py (maintainer's machine only - not shipped) (--brief "<question>" | --brief-file <path>) [--transcript <jsonl> | --session-id <id> | --no-transcript] [--files <path> ...] [--effort high] [--max-usd 2] [--pool pool|client-<slug>] [--out <file>] [--dry-run]`.
+By default it attaches this session's transcript (condensed: tool results
+trimmed to 2k/8k, thinking dropped). Exit 0 advice; 2 bad arguments or config, no
+account, transcript not found, or a pre-flight bound over `--max-usd`
+(nothing sent); 3 refusal, max_tokens or empty; 4 API, network, or every
+account out of credit. Ledger rows are `"kind": "consult"` in fable-review's
+ledger. A client's work bills `--pool client-<slug>`.
+
+**Precedence** (JC 2026-11-20; the single statement of it):
+
+1. Default (`advisor=off`): no subscription advisor tool. The consult
+   checkpoints of the global CLAUDE.md "Fable consult" section apply to every
+   top-level session, a FabStra lead included. FabStra's plan call (below)
+   IS that section's "before committing to a plan" checkpoint, not an extra
+   one.
+2. "advisor fable" or "advisor opus" in the brief or from JC
+   (`advisor=fable|opus`): the subscription tool at those checkpoints INSTEAD
+   of the script, never both; the rest of this file runs it, switched on
+   before the first checkpoint and off only after the last (Lifecycle). A
+   default run never switches the tool on.
+3. "no advisor" (`advisor=off (no advisor)`): neither.
+
+A `fable-consult.py` call at a checkpoint that exits 0: weigh the advice under
+Rule 6. Any non-zero exit (2, 3 or 4): log it, tell JC once in that reply,
+carry on without it, and never switch the tool on as a substitute.
+
+- **The lead's plan call.** An Opus 5.5 orchestrator or lead on a default run
+  makes its one plan call (Lifecycle: after the plan and task split, before
+  the gate) as `fable-consult.py --brief "<the plan question>" --files
+  <scratch>/fabstra-plan-<name>.md` with the session transcript, and logs
+  `consult-plan=yes` (a failed call: `consult-plan=failed (exit <n>)`). A
+  Fable 5.2 lead skips it.
+- **Builders.** A builder may call `fable-consult.py --no-transcript --files
+  <the files it is deciding on> --brief "..."` at most twice - before
+  settling the approach and before DONE - as the builder spec's consult block
+  says (specs.md, "Advisor block"); the lead logs the count as `consults=<n>`.
+- **Never.** Review, gate and grading seats never consult (Who must not
+  consult).
 
 ## The switch
 
@@ -58,11 +108,11 @@ status read.
 ## Lifecycle
 
 An Opus 5.5 orchestrator or lead on an auto run makes one advisor call per
-plan: after drafting the plan and task split, before the plan goes to the
+plan (a default run makes it through `fable-consult.py`, above): after drafting the plan and task split, before the plan goes to the
 gate seat (JC 2026-11-16). It weighs the reply under Rule 6 and logs
 `advisor-plan=yes` in RUN.md. A Fable orchestrator skips it, since a Fable 5.2
-advisor adds nothing to a Fable 5.2 lead. Past that call the tool stays a
-builder's (Who must not consult); the lead session holds it while it is on
+advisor adds nothing to a Fable 5.2 lead. Past that call the lead consults
+only at the global checkpoints (Precedence above); the lead session holds it while it is on
 (verified 2026-11-12). Only auto runs switch. An opt-out run never runs
 `on` or `off` - not at a mismatch, not when it stops early, not when it
 parks: the shared setting may belong to another live run.
@@ -81,8 +131,10 @@ advisor-free, logs `advisor=off (cli below 2.1.321)`, writes nothing, does
 not clear an existing setting, never sends the builder paragraph, tells JC
 once, and is an opt-out run from then on (no `on`, no `off`).
 
-**Switch on** - an auto run, after plan approval and before the first Claude
-seat, starts with the status read and writes nothing before it:
+**Switch on** - an auto run switches on before its first checkpoint: before
+the lead's plan call (after drafting the plan, before the gate; a Fable lead,
+which makes no plan call: before its first Claude seat). It starts with the
+status read and writes nothing before it:
 
 - `user_advisorModel=unset`, no project or local override, the disable
   variable unset in both places and no `invalid` scope: `on <model>`, then
@@ -130,10 +182,10 @@ another run or JC may have changed it since the last seat.
     disable variable silently.
 - Auto run, before a seat that is not a builder (reviewers, gates, graders),
   and before any seat in the post-build phase: the status read only, never
-  `on`. An advisor effective -> the spec carries the do-not-consult line.
+  `on`. The spec carries the do-not-consult line on every run.
 - A post-build fix round that needs a builder again re-enters the build
-  phase through the switch-on path (log `advisor-phase=build`) and switches
-  off again after that builder lands.
+  phase through the switch-on path (log `advisor-phase=build`); it switches
+  off only as Switch off says (below).
 - Opt-out run, an advisor effective: stop before that launch and ask JC. It
   must not switch off a setting another live run may need.
 - Headless `claude -p` Claude seats always carry an explicit state:
@@ -144,14 +196,15 @@ another run or JC may have changed it since the last seat.
 The builder paragraph (specs.md "Advisor block") goes into a builder spec only
 when the effective state matches the run's line; otherwise the lead asks JC
 before launching and never sends the paragraph to a seat without an advisor.
-Review, gate and grading seats launched while an advisor is effective get the
-do-not-consult line (below).
+Review, gate and grading seats get the do-not-consult line (below) on every
+run.
 
 **Switch off** - an auto run logged `advisor-wrote=yes` runs `off`, then the
 status read:
 
-- after its last builder has landed (after the final accepted fix round),
-  before the report; once cleanup is confirmed it logs
+- after its last builder has landed (after the final accepted fix round)
+  and the lead's pre-done checkpoint has run (global CLAUDE.md), before the
+  report; once cleanup is confirmed it logs
   `advisor-phase=post-build`;
 - whenever it parks (logbook `parked`, `/clear-prep`) or stops early.
 
@@ -200,11 +253,13 @@ run's seats; the switch-off steps above end that.
 ## Who must not consult
 
 Review seats (Reviewer A/B/C, the design gate, the gate's re-check calls),
-blind graders, experiment and trial seats, and the orchestrator itself past
-its one plan call (Lifecycle). When
-an advisor is effective, their specs carry this line, verbatim:
+blind graders, and experiment and trial seats. On every run, their specs carry
+this line, verbatim:
 
-"Do not consult the advisor tool in this session; this seat's judgment must be its own."
+"Do not consult the advisor tool or fable-consult.py in this session; this seat's judgment must be its own."
+
+The orchestrator consults only at the global checkpoints (Precedence), its
+plan call (Lifecycle) being one.
 
 A Haiku lead asks it first on a judgment call (lead-mode-deltas.md, the
 senior seat).
@@ -217,7 +272,8 @@ carries the advisor block (specs.md), verbatim:
 > An advisor model is attached to this session. Consult it before you settle how to build the feature, and again before you report DONE; it reads your whole transcript, so ask in one line. Its reply is advice: check it against this spec and the code before you act on it. In your report, list each consult and what you did with its advice.
 
 The builder lists each consult and what it did with the advice in its report;
-the lead logs the count on the task line (`consults=<n>`).
+the lead logs the count on the task line (`consults=<n>`). On a default run the
+builder spec carries the consult block instead (specs.md, "Advisor block").
 
 ## Evidence
 
@@ -235,6 +291,7 @@ Every advisor run consulted twice. The blind grade found no behaviour changes
 in any arm. Under the bar set before the pilot (2 or more additional passing
 runs) neither advisor showed a measured gain.
 
-Decision (JC, 2026-11-12): the advisor runs automatically on every run, with
-Fable 5.2 as the default. That is JC's choice, not a recommendation the data
-makes.
+Decision (JC, 2026-11-12, superseded 2026-11-20): the advisor ran
+automatically on every run with Fable 5.2 - JC's choice, not a recommendation
+the data made. Since 2026-11-20 the tool is opt-in and the Fable consult on
+credits takes its place (The run's line).

@@ -2,7 +2,7 @@
 
 Contents: What it is; What it never does; Triggers; Launch; The brief; Handling the answer; Gemini consult - the build-sheet seat; Antigravity seat (agyseat) - Carbon that reads the repo; Failures; Setup facts and cost
 
-Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Reviewer G, Gemini report check, Hydrogen fix check); Reviewer AG and the Antigravity builder (agyseat)
+Reached from: fabstra SKILL.md - research claims, xhigh plans, 2 failed fix rounds, "pro consult", or "gemini consult"; the Gemini seats (plan mode, Hydrogen quick check, Reviewer G, Gemini report check, Hydrogen fix check); Reviewer AG and the Antigravity builder (agyseat); their T3 route: t3-code.md
 
 Related:
 > The crew table rows for this seat and for Gemini consult are in transport.md.
@@ -37,9 +37,9 @@ What the wrapper does, fixed:
 
 It never closes Phase 1b or Phase 3, never counts as Reviewer A, B or C, never
 builds, never gates. The same holds for every Gemini mode except Reviewer G
-(Neon, Carbon spare, in a real build's review rounds, "Reviewer G" below): its confirmed
+(Neon, Carbon spare, in a real build's round 1 and its stand-in rounds, "Reviewer G" below): its confirmed
 items are findings, and it stands in for Reviewer A / B when Astra and Sol
-are out. A run whose gate seat is down follows "Reviewer fallback"
+are out (never on an excluded-category build: "Reviewer G on excluded builds" below). A run whose gate seat is down follows "Reviewer fallback"
 in transport.md as before; Pro consult is not a fallback rung.
 The Antigravity seat's own limits: "Antigravity seat (agyseat)" below.
 
@@ -161,13 +161,21 @@ review. The diff source is Reviewer G's (below), and client work
 abstracts the whole brief per "Diff briefs". A diff or plan that cannot be
 abstracted (client data, secrets, an excluded category) skips it with the log line `seat=hydrogen mode=quick skipped: <reason> leads=0 real=0`.
 
-**Reviewer G - Gemini as co-reviewer (JC 2026-11-17; Neon its default model since 2026-11-19, Carbon the spare).** The Gemini seat reviews every real build beside the pairing-rule seat(s) in every review round - round 1 and each re-review - in either mode and in Lane B. Launch it in the same message as that round's pairing-rule seat(s), name `review-r<N>` (N = the review round), default model (Neon; Carbon per the fallback ladder), the Launch form below:
+**Reviewer G - Gemini as co-reviewer (JC 2026-11-17; Neon its default model since 2026-11-19, Carbon the spare).** The Gemini seat reviews every real build beside the pairing-rule seat(s) in round 1, in either mode and in Lane B. Round 1 only (JC 2026-11-23, narrowing JC's 2026-11-22 every-round choice): a re-review round launches no Neon seat (Reviewer G or Reviewer AG), writes no skip record and waits for none, except Reviewer G as stand-in (below). In a T3 session Reviewer AG goes first and Reviewer G launches only on the cases in t3-code.md, "Paid Reviewer G in T3" (JC 2026-11-23). Launch it in the same message as that round's pairing-rule seat(s), name `review-r<N>` (N = the review round), this pinned form (never the bare "Launch" form below; Carbon only as the fallback ladder's relaunch, never on an excluded build):
 
-    geminipro <run-slug> review-r<N> --json --brief-file <scratch>/gemini-review-r<N>.md
+Every row except xhigh (thinking medium):
 
-The brief carries the acceptance criteria and that round's diff under the diff-brief rule (below) - scoped by the Phase 4 round rule (phases.md, "Phase 4", review rounds: rounds 1-2 the full diff from build start, from round 3 the diff since the last reviewed state), re-reviews adding the ledger rows the round's `<prior_findings>` carries - with the question "Which bugs does this diff introduce, and which acceptance criterion does it leave untested?" (re-reviews add "and is each listed finding fixed?"), and on the line above its `brief-check:` line the `<review_sheet>` tail below (strict template, in place of `<build_sheet>`):
+    GEMINIPRO_NEON_THINKING=medium geminipro <run-slug> review-r<N> --json --model gemini-neon --brief-file <scratch>/gemini-review-r<N>.md
 
-    <review_sheet>List each suspected bug with file and line where the brief gives them, and each untested criterion. Mark every claim you did not derive from the diff above UNVERIFIED. Hard limit 400 words.</review_sheet>
+An xhigh row (thinking high; Bash `timeout: 1700000`):
+
+    GEMINIPRO_NEON_THINKING=high GEMINIPRO_TOTAL_DEADLINE=1500 GEMINIPRO_API_TIMEOUT=1200 geminipro <run-slug> review-r<N> --json --model gemini-neon --brief-file <scratch>/gemini-review-r<N>.md
+
+The brief carries the acceptance criteria and that round's diff under the diff-brief rule (below) - scoped by the Phase 4 round rule (phases.md, "Phase 4", review rounds: rounds 1-2 the full diff from build start, from round 3 the diff since the last reviewed state), stand-in rounds after round 1 adding the ledger rows the round's `<prior_findings>` carries - with the attack question (JC 2026-11-22) "Try to break this diff: which inputs, orderings or states make it fail - races, edge cases, error paths, security holes (injection, auth or permission bypass, leaked secrets, unchecked input) - and which acceptance criterion does it leave untested? Nothing found is a valid answer." (stand-in rounds after round 1 add "and is each listed finding fixed?"), and on the line above its `brief-check:` line the `<review_sheet>` tail below (strict template, in place of `<build_sheet>`):
+
+    <review_sheet>List each suspected bug with file and line where the brief gives them, the input or sequence that triggers it, and each untested criterion. Mark every claim you did not derive from the diff above UNVERIFIED. If nothing real is found, answer NONE FOUND; never pad the list. Hard limit 400 words.</review_sheet>
+
+Launch settings (JC 2026-11-22), the two forms above: every Neon Reviewer G launch pins `--model gemini-neon` and sets `GEMINIPRO_NEON_THINKING` explicitly - `medium` by default; `high` on an xhigh row (SKILL.md Effort: excluded categories, multi-file architecture, P1 re-review, "break it"), never `xhigh` - so an inherited `GEMINIPRO_MODEL` or thinking value never decides it (a ladder relaunch on Carbon swaps the model flag and sends no thinking level). The high form's deadline and timeout follow Google's advice that hard Neon prompts can take minutes (allow 15 minutes or more); its Bash call takes `timeout: 1700000`, the medium form the "Launch" defaults. Every record of a Neon launch (requested `gemini-neon`, whatever model the status line reports: answers, skips and `model_mismatch` records alike) adds `thinking=<medium|high>` (the level sent; the status line does not echo it) right after the `model=` token, or after `via=api` when there is no `model=`; records of a Carbon relaunch or a Hydrogen launch carry none. Neon records always write `via=api`: Neon has no app path, and the status line's `via` reads `app` on an API rejection or a local refusal although the app was never entered. High-thinking trial: after ten scored records `seat=gemini mode=review via=api model=gemini-4-neon thinking=high` (answered, not skipped; skips and failures stay listed beside them), the lead compares real/leads for those against the `thinking=medium` Neon API review records and reports it to JC as observational (xhigh rows are harder work, so it is not a controlled test; the 2026-11-17 3-of-10 is history, Carbon on the app); until JC rules, high stays on xhigh rows only. `scripts/gemini-hitrate.py` does not split by `thinking=`: count with grep.
 
 Diff source (the full diff from build start, rounds 1-2; from round 3 the diff against the latest
 `<scratch>/fabstra-review-r<N>/` snapshot, phases.md "Phase 4"): a git repo sends `git diff <pre-build commit>` plus the full
@@ -180,9 +188,15 @@ new file - planned, or one a builder reports creating - diffs against
 empty) and diffs against it. With no snapshot, the
 brief carries the full text of the changed files (the review spec's non-git
 fallback, specs.md) and asks the same question.
-Its items are ledger rows `G<n>` with status OPEN: ordinary findings, ruled on under Rule 6 like Reviewer A's, with one difference - the Gemini seat sees only the brief (no repository, no commands), so the lead confirms each item against the code (file:line or a repro) before routing a fix, and an item the lead cannot confirm is WITHDRAWN with one line. Reviewer G never passes a build alone and never replaces the pairing-rule seat - except as stand-in (below), when its confirmed items are that round's review: a round closes when the pairing-rule seat(s) have reported and Reviewer G has answered, been skipped or failed - each logged, and a skipped or failed launch never blocks the round. Skips (excluded category, a client brief that cannot be abstracted, the wrapper's cap, a latched slug) log `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its record, so leads weigh it: 2026-11-17 hit rate review 3 of 10, plan 13 of 63 (`scripts/gemini-hitrate.py`); 2026-11-13 every test answer carried a wrong mechanism claim. Contained and small changes keep the Hydrogen quick check, not Reviewer G.
+Its items are ledger rows `G<n>` with status OPEN: ordinary findings, ruled on under Rule 6 like Reviewer A's, with one difference - the Gemini seat sees only the brief (no repository, no commands), so the lead confirms each item against the code (file:line or a repro) before routing a fix, and an item the lead cannot confirm is WITHDRAWN with one line, except a credible safety-invariant breach the lead cannot safely verify, which goes to JC (phases.md "Phase 4", fix threshold). Reviewer G never passes a build alone and never replaces the pairing-rule seat - except as stand-in (below), when its confirmed items are that round's review: a round Reviewer G was scheduled in closes when the pairing-rule seat(s) have reported and Reviewer G has answered, been skipped or failed - each logged, and a skipped or failed launch never blocks the round. Skips (a client brief that cannot be abstracted, an excluded build's skip below, the wrapper's cap, a latched slug) log `seat=gemini mode=review skipped: <reason> leads=0 real=0`. Its record, so leads weigh it: 2026-11-17 hit rate review 3 of 10, plan 13 of 63 (`scripts/gemini-hitrate.py`); 2026-11-13 every test answer carried a wrong mechanism claim; Google's Neon card (2026-11-18) claims a security lead (CWE-Bench v2, SEC-bench Pro, vendor numbers) and warns of hallucinations. Contained and small changes keep the Hydrogen quick check, not Reviewer G.
 
-**Reviewer G as stand-in (JC 2026-11-17).** When Astra and Sol are both cooling on every ChatGPT login and every fast native home (for both models: proxy 429 `All credentials ... cooling down`, 429 `usage_limit_reached`, or 503 `auth_unavailable: no auth available (providers=codex ...)` (seen 2026-11-17 with an upstream 402 `deactivated_workspace`); and `codex-fast-home` exit 3; confirmed as quota, not a 60-second transient cooldown: every login's usage endpoint shows >= 95% or `limit_reached` for both models, or one retry of the same seat after ~60 s fails the same way; transport.md, "Reviewer fallback" and "API seat (OpenAI credits)"), Reviewer G - already in the round - stands in as Reviewer A / B for that Phase 3 round. A round with no qualifying Neon (API) or Carbon (either path) answer (skipped, failed, answered only through Hydrogen, or a `model_mismatch`) takes the API seat (transport.md, "API seat (OpenAI credits)"). A Carbon answer qualifies by either path (2026-11-18): through the paid API (`"via": "api"` with the response-derived `model` `gemini-4-carbon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-carbon`) or through the app fallback (`"via": "app"`; logged `seat=gemini` with `via=app` or no `via=` token). A Neon answer qualifies too (JC 2026-11-19), through the API only: `"via": "api"` with the response-derived `model` `gemini-4-neon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-neon`. A Hydrogen answer never qualifies: it (the Hydrogen rung of the fallback ladder, a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` answer whose reported model is `gemini-4-hydrogen`) is a lead, and the round takes the API seat; a `model_mismatch` answer with any other or no reported model is logged as a skip (record rule, "Handling the answer") and the round takes the API seat too. A contained change (which never launches Reviewer G) with Astra and Sol out takes the API seat for its one review. The design gate (Phase 1b) needs the repository, so it takes the API seat directly.
+**Reviewer G on excluded builds (JC 2026-11-22).** An excluded-category real build (SKILL.md) gets Reviewer G too, on three conditions. The usual eligibility checks come first (`no gemini`, Gemini-built work, the wrapper's caps, a latched slug); for an eligible launch this paragraph wins over every other Gemini rule:
+- Neon on the paid API only. Outcomes: exit 0 with `"via": "api"`, reported `model` `gemini-4-neon` and no `model_mismatch` -> the answer (an exit 3 that still carries such an answer: use it and log the exit, as "Status line" says); exit 7 from the local brief gate (stderr `brief gate REFUSED - <why>`: secret scan, size or attestation) -> repair what it names (redaction, trimming, the attestation line) and relaunch once; every other result - exit 4 `model_not_available`, a `gemini-api` guard content denial (also exit 7 `brief_refused`, reason starting `the gemini-api guard denied the brief`; terminal), a `model_mismatch`, any other non-zero exit, a second exit 7 - ends Reviewer G for that round, logged `seat=gemini mode=review skipped: excluded, <exit and status> via=api model=<status-line model> thinking=<level> review-r<N> leads=0 real=0` (`model=` only when the status line reports a model). No Carbon, app or Hydrogen rung, ever ("Fallback ladder" does not apply).
+- Redaction covers the whole assembled brief - acceptance criteria, file paths, ledger and `<prior_findings>` text, removed and added diff lines, new-file contents, full changed files, the omitted-file list. JC's own non-client repo: replace every secret, credential, token, private or signed URL, real personal datum (names, emails, phones, addresses, IDs) and real money figure or account number with a numbered token `[R1]`, `[R2]` ... and one legend line `Redactions: R1 credential, R2 email, ...` (kinds only, never values); code structure stays. Use exactly that token form: `"<REDACTED:token>"`-style text and bare `REDACTED_1` trip the wrapper's secret scan (probe 2026-11-22). A client project abstracts the whole brief by the client rule ("Diff briefs"; client-E through `airlock`). A brief the lead cannot redact or abstract with confidence skips before any launch, logged `seat=gemini mode=review skipped: excluded, cannot redact leads=0 real=0`.
+- Advisory only: on an excluded build Reviewer G never stands in for Reviewer A / B, and its answer never satisfies a "qualifying Neon or Carbon answer" condition in transport.md - with Astra and Sol out the excluded-work fallback rows run whatever Reviewer G returned. The pairing-rule seat plus the xhigh row's fresh Fable remain the review.
+The excluded skip stays, unchanged, for the Hydrogen quick check, the Hydrogen fix check, Reviewer AG and the agyseat CLI; plan mode and the report check keep their abstracted-brief rule.
+
+**Reviewer G as stand-in (JC 2026-11-17).** When Astra and Sol are both cooling on every ChatGPT login and every fast native home (for both models: proxy 429 `All credentials ... cooling down`, 429 `usage_limit_reached`, or 503 `auth_unavailable: no auth available (providers=codex ...)` (seen 2026-11-17 with an upstream 402 `deactivated_workspace`); and `codex-fast-home` exit 3; confirmed as quota, not a 60-second transient cooldown: every login's usage endpoint shows >= 95% or `limit_reached` for both models, or one retry of the same seat after ~60 s fails the same way; transport.md, "Reviewer fallback" and "API seat (OpenAI credits)"), Reviewer G - already in the round - stands in as Reviewer A / B for that Phase 3 round, except on an excluded-category build, which takes the transport.md excluded-work rows whatever Reviewer G returned ("Reviewer G on excluded builds"). Re-review rounds (JC 2026-11-23): the lead re-evaluates this eligibility for each round; when Astra and Sol are both out for that round, Reviewer G launches as its stand-in (never on an excluded-category build, whose excluded-work fallback rows proceed without waiting for G); when an accountable GPT seat has recovered, it reviews the round and G does not launch, even where round 1 was reviewed by the stand-in - an exception to phases.md's "re-run the reviewer logged for that scope". A round with no qualifying Neon (API) or Carbon (either path) answer (skipped, failed, answered only through Hydrogen, or a `model_mismatch`) takes the API seat (transport.md, "API seat (OpenAI credits)"). A Carbon answer qualifies by either path (2026-11-18): through the paid API (`"via": "api"` with the response-derived `model` `gemini-4-carbon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-carbon`) or through the app fallback (`"via": "app"`; logged `seat=gemini` with `via=app` or no `via=` token). A Neon answer qualifies too (JC 2026-11-19), through the API only: `"via": "api"` with the response-derived `model` `gemini-4-neon` and no `model_mismatch: true`; logged `seat=gemini ... via=api model=gemini-4-neon`. A Hydrogen answer never qualifies: it (the Hydrogen rung of the fallback ladder, a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` answer whose reported model is `gemini-4-hydrogen`) is a lead, and the round takes the API seat; a `model_mismatch` answer with any other or no reported model is logged as a skip (record rule, "Handling the answer") and the round takes the API seat too. A contained change (which never launches Reviewer G) with Astra and Sol out takes the API seat for its one review. The design gate (Phase 1b) needs the repository, so it takes the API seat directly.
 
 **Gemini report check (research and audit runs).** JC 2026-11-15. A
 research or audit run whose report makes claims gets one Gemini launch,
@@ -212,8 +226,7 @@ narrowed 2026-11-17. After a Phase 4 fix round that changed code and gets no
 re-review (a point fix the lead verifies) - any lane, real build or
 contained change - and after that round's smoke-gate re-run passes (a
 failing smoke gate means another fix round first), launch one Hydrogen check
-of the fix round's diff. A re-reviewed real-build round gets Reviewer G
-instead; a contained change keeps the Hydrogen fix check, re-review or not. Before the round's fix delegations launch, the lead
+of the fix round's diff. A contained change keeps the Hydrogen fix check, re-review or not. Before the round's fix delegations launch, the lead
 snapshots the build's files to `<scratch>/fabstra-fix-r<N>/`; the diff is
 taken against that snapshot (a file the round creates diffs against
 empty). Launch name `fix-r<N>` (N = the review round whose findings the
@@ -244,7 +257,7 @@ any doubt) abstracts the whole brief instead - acceptance criteria, file
 paths (neutral labels such as "file A"), the omitted-file list, ledger text
 and the diff alike, keeping only finding ids: no client names, data, money
 figures or code verbatim; client-E work through `airlock` first. This governs Reviewer G and the Hydrogen fix check alike (and the
-Hydrogen quick check, which points here). An excluded category (SKILL.md) or a brief that cannot be abstracted skips the launch with the log line `seat=gemini mode=<mode> skipped: <reason> leads=0 real=0`
+Hydrogen quick check, which points here). An excluded category (SKILL.md) - except Reviewer G, which follows "Reviewer G on excluded builds" - or a brief that cannot be abstracted skips the launch with the log line `seat=gemini mode=<mode> skipped: <reason> leads=0 real=0`
 (Hydrogen: `seat=hydrogen mode=<mode> skipped: <reason> leads=0 real=0`). A wrapper exit 7 on a secret hit:
 abstract the hunk and relaunch, as for any exit 7 (Failures, below).
 
@@ -264,6 +277,8 @@ it never does" applies to these two modes in full.
 **Fallback ladder (Carbon fallback 2026-11-15; Neon rung 2026-11-19).** The
 only model-fallback relaunches the lead makes, each once, same brief, same slug (every
 launch counts toward the 12-per-run ceiling):
+- Not on an excluded-category Reviewer G launch: it has no rungs
+  ("Reviewer G on excluded builds").
 - Neon -> Carbon: a Neon launch (`gemini-neon`) that exits 4 with
   `status=model_not_available`. Neon is API-only, so wherever the wrapper
   would otherwise enter the app (the API attempt `not_run`, `skipped`, or
@@ -305,7 +320,7 @@ Data: the key is on a billed project (Tier 1 prepay, verified 2026-11-18); Googl
 consult on the same question, in the same message.
 
 "no gemini" turns every Gemini launch off for the run: plan mode, the
-Hydrogen quick check, Reviewer G (each round logged `seat=gemini mode=review
+Hydrogen quick check, Reviewer G (each round it was scheduled in logged `seat=gemini mode=review
 skipped: no gemini leads=0 real=0`), the Gemini report check and the
 Hydrogen fix check included; "no pro" turns off Pro consult and its pair,
 never plan mode or the three review modes.
@@ -339,8 +354,9 @@ back to the app while they are not available exits 2 (Failures, below).
 
 **The brief** (every mode) follows "The brief" above: the wrapper applies the
 same gate (the `brief-check:` line, 20,000 characters, the secret scan), and an
-excluded-category run sends only an abstracted brief (Reviewer G and
-the Hydrogen fix check skip instead, per "Diff briefs"). Write it to
+excluded-category run sends only an abstracted brief (the Hydrogen quick
+and fix checks skip instead, per "Diff briefs"; Reviewer G sends the
+redacted brief of "Reviewer G on excluded builds"). Write it to
 `<scratch>/gemini-<name>.md` - in pair mode a copy of the Pro consult's brief -
 and, except in the three review modes (their `<review_sheet>` tail above),
 put this tail on the line above its `brief-check:` line (strict template;
@@ -359,7 +375,7 @@ point the Pro consult did not raise is a lead to check. Log it in the "Pro
 consult" section of RUN.md with `seat=gemini`, the mode (plan, pair, solo,
 review or report), duration, status, and which items were used; plan mode also logs plan= on that line.
 The Hydrogen quick check logs there too, with `seat=hydrogen mode=quick`,
-and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The seat names the model that answered (the status line's `model`): `seat=gemini` covers Neon and Carbon answers, `seat=hydrogen` Hydrogen ones. The token after the mode names the path, and after it a `model=<status-line model>` token (2026-11-19) names the model by the status line's `model` field - `gemini-4-neon`, `gemini-4-carbon` or `gemini-4-hydrogen`. The lead writes `model=` on every new record of a launch that returned a status line (answers, failures and `model_mismatch` skips alike; a skip logged before any launch has no model and carries none); `scripts/gemini-hitrate.py` splits rows by it, folding the short forms (`neon`, `carbon`, `hydrogen`) and the app slugs (`gemini-neon`, `gemini-carbon`) into those ids so older lines group correctly. A Neon or Carbon answer through the API is logged `seat=gemini mode=<mode> via=api model=<model> ...`, for example `seat=gemini mode=review via=api model=gemini-4-neon review-r1 41 s ok leads=4 real=1`; a Hydrogen answer through the API (a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` whose reported `model` is `gemini-4-hydrogen`) `seat=hydrogen mode=<mode> via=api model=gemini-4-hydrogen ...`; a `model_mismatch` whose reported model is anything else or absent is never logged as Neon or Carbon: it logs the launched seat with `skipped: model_mismatch` right after the mode token (the hit-rate script reads `skipped:` only there) and `leads=0 real=0`, for example `seat=gemini mode=review skipped: model_mismatch via=api model=<reported model> review-r1 leads=0 real=0` (with no reported model, `model=` is left out and the free text says `reported model absent`); an app answer `via=app` or no `via=` token, for example `seat=gemini mode=plan via=app model=gemini-carbon plan=... 48 s ok leads=6 real=2`. The three review
+and the Hydrogen fix check with `seat=hydrogen mode=fix`. Each Gemini and Hydrogen launch is one record on one physical line: the line starts with `seat=` (a `- ` list marker before it is fine) and ends with `leads=<n> real=<m>`: n is the items the answer raised, m the items the lead verified and used (folded into a spec or the report, or a verified finding); ledger rows written below that line carry no counts and are not read; a skipped or failed launch logs `leads=0 real=0` with its skip reason (`scripts/gemini-hitrate.py` totals them). The seat names the model that answered (the status line's `model`): `seat=gemini` covers Neon and Carbon answers, `seat=hydrogen` Hydrogen ones. The token after the mode names the path, and after it a `model=<status-line model>` token (2026-11-19) names the model by the status line's `model` field - `gemini-4-neon`, `gemini-4-carbon` or `gemini-4-hydrogen`. The lead writes `model=` on every new record of a launch that returned a status line (answers, failures and `model_mismatch` skips alike; a skip logged before any launch has no model and carries none); `scripts/gemini-hitrate.py` splits rows by it, folding the short forms (`neon`, `carbon`, `hydrogen`) and the app slugs (`gemini-neon`, `gemini-carbon`) into those ids so older lines group correctly. A Neon or Carbon answer through the API is logged `seat=gemini mode=<mode> via=api model=<model> ...`, for example `seat=gemini mode=review via=api model=gemini-4-neon thinking=medium review-r1 41 s ok leads=4 real=1`; a Hydrogen answer through the API (a Hydrogen launch, a `GEMINIPRO_API_PRIMARY=0` backup, or a `model_mismatch` whose reported `model` is `gemini-4-hydrogen`) `seat=hydrogen mode=<mode> via=api model=gemini-4-hydrogen ...`; a `model_mismatch` whose reported model is anything else or absent is never logged as Neon or Carbon: it logs the launched seat with `skipped: model_mismatch` right after the mode token (the hit-rate script reads `skipped:` only there) and `leads=0 real=0`, for example `seat=gemini mode=review skipped: model_mismatch via=api model=<reported model> thinking=medium review-r1 leads=0 real=0` (with no reported model, `model=` is left out and the free text says `reported model absent`); an app answer `via=app` or no `via=` token, for example `seat=gemini mode=plan via=app model=gemini-carbon plan=... 48 s ok leads=6 real=2`. The three review
 modes handle their items as "Review-mode answers" above.
 
 **Failures.** A Gemini consult never blocks a run.
@@ -381,7 +397,8 @@ modes handle their items as "Review-mode answers" above.
   An exit 0 with `"via": "api"` is a normal answer, handled like any other,
   `api_stderr_warning: true` included (the answer stands).
 - Exit 4 `model_not_available` on a Neon or Carbon launch: the next rung
-  of the "Fallback ladder" above, once. Any other launch exiting 4
+  of the "Fallback ladder" above, once (an excluded-category Reviewer G
+  launch: skip, no rung). Any other launch exiting 4
   (Hydrogen itself included): skip and log.
 - Exit 6 (Google blocked the request, or the outcome is unknown after
   dispatch: on the API path a 5xx, timeout, partial or invalid output, or
@@ -405,6 +422,8 @@ modes handle their items as "Review-mode answers" above.
   it); it is skipped the same way.
 
 ## Antigravity seat (agyseat) - Carbon that reads the repo
+
+**T3 route (2026-11-22).** In a T3 Code session (`CLAUDE_CODE_ENTRYPOINT=t3-code`) Reviewer AG and the Antigravity builder run through T3's Antigravity integration (`delegate_task`); models and pools: t3-code.md. Any repo, per JC 2026-11-22; rules, triggers and pairing there too. The parked status below covers the `agy` CLI wrapper only.
 
 **Parked 2026-11-18.** No account with Google AI Ultra is signed in to `agy`
 (the dedicated account's Ultra was revoked the same day), so Reviewer AG and
@@ -485,12 +504,12 @@ What the wrapper does, fixed:
   timeout `AGYSEAT_TIMEOUT` (900 s; a timeout is exit 6).
 
 **Triggers.**
-- While parked (above), none of these fire.
+- While parked (above), none of these fire. They describe the parked CLI only; the T3 route runs Reviewer AG in round 1 of a real build (t3-code.md).
 - Reviewer AG runs beside Reviewer G in Phase 3 round 1 of a real build when
   the project folder is on the agyseat allowlist (own repos), launched in the
   same message as that round's pairing-rule seat(s). A folder not on the
   allowlist skips it silently, logged `agyseat: skipped (not allowlisted)`.
-- An excluded-category build skips it exactly like Reviewer G. "no gemini"
+- An excluded-category build skips it (Reviewer G's excluded rule does not extend to it). "no gemini"
   turns it off too (it is a Gemini model).
 - The Antigravity builder runs only when JC names it in the brief
   ("antigravity builds", "agy build", "use antigravity for T<n>"). It is an

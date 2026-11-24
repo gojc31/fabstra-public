@@ -282,7 +282,11 @@ is set up. With a single login:
   Risk: `gemini_webapi` is an unofficial client of gemini.google.com, not a
   Google API. Automated use of the consumer app may breach Google's terms of
   service, and Google can limit or suspend the account. Use it at your own risk
-  and keep the volume low (the wrapper's default daily cap is 80 jobs).
+  and keep the volume low. The wrapper allows one job at a time and 12 per
+  run, and before each consult it reads your Gemini usage meter: it stops at
+  80% of the 5-hour credit window or 90% of the weekly window, leaving room
+  for your own chats (`GEMINIPRO_MAX_5H_PCT`, `GEMINIPRO_MAX_WEEKLY_PCT`).
+  `geminipro --status` shows the meter as `5h 23%, weekly 8%`.
 
 ## Moving to a second machine (a VM, a client box)
 

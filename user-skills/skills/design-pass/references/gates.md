@@ -1,6 +1,6 @@
 # Gates
 
-Sources: frontend-design is the Anthropic `frontend-design` plugin skill [FD]; the gate numbers are Hallmark's 58-gate slop test, MIT, Together AI, vendored at commit 13ac0ec7e148 [HM gate N]; the craft-floor checks are impeccable's [IMP]; the three default-style gates below are Anthropic, "Getting the most out of Opus 5.5" (2026-09-22) [AO55]; the motion-feel gates are Emil Kowalski's skills, MIT, commit 2d22863, as distilled in impeccable's `reference/motion-craft.md` [EMIL]. The dashboard-screen gates are taste-skill's `references/app-screens.md` (Leonxlnx/taste-skill, MIT, commit 6010f91a9935, read 2026-10-21; distilled from 23 real product screens) [TS]. The copy-and-detail gates marked [JC] are JC's house rules, adopted 2026-10-23. The gates marked [US] are adapted from unslop by Damir Sokolovsky (github.com/heydamir/unslop, CC BY 4.0, creativecommons.org/licenses/by/4.0, commit a6f121e, read 2026-11-05; reworded and changed for design-pass). The gates marked [CL] restate ideas from Charles Liu's reels "20 AI Design Slop Indicators" (Facebook, 2026-11-03) and "unslop" (Facebook reel 1013448018474077, read 2026-11-08) in our own words. The gates marked [EK] restate rules from Elia Kuratli's article "Unslop your UI: how I design with AI without it looking like AI" (X, 2026-11-23, x.com/eliakuratli/status/2124850779639181567) in our own words.
+Sources: frontend-design is the Anthropic `frontend-design` plugin skill [FD]; the gate numbers are Hallmark's 58-gate slop test, MIT, Together AI, vendored at commit 13ac0ec7e148 [HM gate N]; the craft-floor checks are impeccable's [IMP]; the three default-style gates below are Anthropic, "Getting the most out of Opus 5.5" (2026-09-22) [AO55]; the motion-feel gates are Emil Kowalski's skills, MIT, commit 2d22863, as distilled in impeccable's `reference/motion-craft.md` [EMIL]. The dashboard-screen gates are taste-skill's `references/app-screens.md` (Leonxlnx/taste-skill, MIT, commit 6010f91a9935, read 2026-10-21; distilled from 23 real product screens) [TS]. The copy-and-detail gates marked [JC] are JC's house rules, adopted 2026-10-23. The gates marked [US] are adapted from unslop by Damir Sokolovsky (github.com/heydamir/unslop, CC BY 4.0, creativecommons.org/licenses/by/4.0, commit a6f121e, read 2026-11-05; reworded and changed for design-pass). The gates marked [CL] restate ideas from Charles Liu's reels "20 AI Design Slop Indicators" (Facebook, 2026-11-03) and "unslop" (Facebook reel 1013448018474077, read 2026-11-08) in our own words. The gates marked [EK] restate rules from Elia Kuratli's article "Unslop your UI: how I design with AI without it looking like AI" (X, 2026-11-23, x.com/eliakuratli/status/2124850779639181567) in our own words. The gates marked [PS] restate rules from Google's experimental `gemini-frontend-design` skill (github.com/google-gemini/demolab, Apache-2.0, commit cd0c1f8540c0, read 2026-11-24; announced by Philipp Schmid on X, x.com/_philschmid/status/2125206633722601572) in our own words.
 
 Checks are pass/fail on the BUILT result. The reviewer runs them, not the planner. A check that does not apply is written `N/A` with its number, never skipped silently.
 
@@ -9,9 +9,12 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 ## Structure
 
 1. The page shape is the macrostructure named in Direction, not hero then three cards then CTA then footer. [HM gate 8]
+1a. A PAGE opens to fit its format: a news front, blog, docs, directory, tool or CV opens straight into its content with no hero banner; a page that earns a hero (brand, product, store, event, portfolio, long-form story) gives the headline and lead visual the full width, centre or depth of the viewport, not a 50/50 split of a text column beside a media box, with at most 25 words of supporting copy, one primary action, and no stat or spec strip along its bottom. A split hero is a Direction choice, named as such. N/A on other scopes. [PS]
 2. No card is nested inside another card, and identical cards are not the surface's only structural device. [HM gate 4] [IMP]
 3. No eyebrow, kicker, or category label sits above a heading; the heading carries its own weight. [FD] [IMP]
+3a. No decorative, non-interactive badge, chip or category tag of any shape (capsule or bordered box) sits above a heading, over an image or inside a card; that metadata is plain type. Capsule and bordered shapes are kept for controls and for real status cells in data tables. [PS]
 4. Numbered markers (01 / 02 / 03) appear only where the content is a real sequence. [FD]
+4a. No fake telemetry: no decorative "LIVE" dot, "SCROLL" cue or rotated edge text. A live indicator appears only on data that really updates. [PS]
 5. Nav and footer are not the AI defaults: a wordmark-left, inline-links, button-right nav over a hairline, or a four-link-column footer with a social row and a hairline. [HM gates 42, 43]
 5a. Buttons are not fully pill-shaped (rounded to a stadium curve) as a default shape; a rounded corner radius is a Direction choice, named as such. [AO55]
 6. Sections are separated by a decided device - a rule, a colour shift, real block space - not by identical gaps alone. [HM gate 9]
@@ -25,6 +28,8 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 6h. Shadows go only on things that float - menus, popovers, dialogs, toasts, drag ghosts; resting cards, panels and buttons use a 1px line or a tone step. No glow, halo or coloured shadow anywhere, and no gradient fill on a background, card or button unless Direction names it. [EK]
 6i. Icons do not sit beside every label, heading or list item by default; an icon appears where it speeds recognition (a status, a toolbar control, a file type). No icon sits in a tinted rounded or circular box unless gate 6d's job test passes. [EK]
 6j. AI default flourishes fail unless Direction names them: an avatar stack that fans out on hover, a coloured bar on the left edge of a selected row (selection is a neutral fill or a text-colour change), a green check in a circle on every status, a stand-in logo drawn as a letter in a rounded square. [EK]
+6k. A marketing or content section carries one primary button at most, with no automatic second ghost button or underlined link beside it unless the flow has two distinct actions. Choosing a mode, size, filter or setting uses a non-button control (a segmented toggle, tabs, radios, a switch, a select), not a row of separate bordered buttons. [PS]
+6l. No image is a guessed external URL or a machine-local path: imagery is generated into the project, drawn (inline SVG, CSS, canvas), or supplied by the brief, one distinct image per item, sized to its container's aspect ratio. [PS]
 
 ## Type
 
@@ -33,6 +38,7 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 9. No single word or phrase in a headline is accented by italic, bold, or a different colour. [FD]
 10. Three font families at most, each with a named role. [HM gate 37]
 10a. Monospace type is not used for labels, eyebrows, or UI chrome as a default, unless the content itself is code or data. [AO55]
+10b. A PAGE uses two font families at most, with `tabular-nums` on the body face instead of a third monospace face for prices, timers and counts (a code, docs or terminal product excepted); below the hero, body text uses three sizes at most (the hero `<h1>` and the nav wordmark excepted); no text below 13px sits in the first viewport. SCREEN and COMPONENT keep gates 10 and 11a. [PS]
 11. Display type steps clearly above body in scale and weight, and every headline wraps inside its container at 375. [HM gate 51] [IMP]
 11a. A surface uses four font sizes at most, three where the content allows, and none below 12px; further hierarchy comes from weight, colour and spacing. An overlay (drawer, dialog, popover) counts as its own surface. [JC]
 11aa. A surface uses two font weights, regular and medium, by default; a third (semibold or bold) appears only where Direction names it. Every size and weight comes from the block's one type scale, so no stray size (a 19px semibold heading) appears. [EK]
@@ -40,6 +46,7 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 11c. Labels, table headers and captions are sentence case; uppercase tracked labels appear only where Direction names them. [US]
 11d. Headlines and subheads set `text-wrap: balance` and body prose `text-wrap: pretty`; no headline ends on a single-word line at 375, 768 or 1280. [CL]
 11e. Numbers that change in place or line up in a column - counters, prices, timers, totals, stats - set `font-variant-numeric: tabular-nums`. Gate 44 still governs tables. [CL]
+11f. Body paragraphs and body lists share one size: no oversized lead paragraph above smaller ones, and no list shrunk to caption size. [PS]
 
 ## Colour
 
@@ -48,6 +55,7 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 14. No gradient text anywhere, including `background-clip: text`. [HM gate 2] [IMP]
 15. Black is black: a tinted near-black (#0B0B0B, #111) standing in for it is a default, not a choice. [FD]
 15a. Cream or off-white is not the page background as a default; the ground colour is a Direction choice, named as such. [AO55]
+15b. Neither reflex palette is a default: warm beige or cream with rust or terracotta (even when the brief says "artisanal", "craft", "food", "warm" or names a vintage decade), or dark slate with a neon purple glow; the palette is drawn from the subject's real materials, setting and audience and named in Direction. [PS]
 16. Every colour and every `font-family` references a named token; no inline hex, `oklch()`, or font stack. [HM gate 48]
 16a. Surfaces stay neutral; the accent appears only on what is active, selected, focused, or the one primary action, plus Direction's named Moments. [EK]
 16b. Tokens render the same in the production build as in dev: the Verify screenshots of at least one page come from the production build, and a tinted grey or `oklch()` token that shifts hue there (greys turning pink) fails. [EK]
@@ -66,6 +74,7 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 21d. A change names what it compares to: `+12% vs last month`, never a bare `+12%`. [US]
 21e. Numbers of one kind share one format across a screen: not `$48,210` beside `$124,860.40`. [US]
 21f. A page or section headline is specific to this product: it names what it does, for whom, or a concrete fact (a number, a named task); a line that would fit any product fails. [CL]
+21g. Generated copy has no filler words ("seamless", "elevate", "reimagined", "unlock"), no stack of adjectives before a noun, and no em dash or spaced en dash; the brief's own text stays verbatim. A heading leads with what the reader gets, not a raw spec ("Light enough to carry all day", not "2.6 kg cabin mass"). [PS]
 
 ## States
 

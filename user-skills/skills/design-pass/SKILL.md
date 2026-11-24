@@ -1,7 +1,7 @@
 ---
 name: design-pass
 description: "UI design planning for any task that adds or changes a user-facing surface - page, screen, component, dashboard, landing section, form, empty or error state. Run before a fabstra UI blueprint; it is the front door, loading frontend-design, Hallmark and impeccable as reference. Hands off read-only work: `impeccable critique|audit` on an existing surface, `hallmark audit` for a slop score, `hallmark study` for DNA from a URL or screenshot; polish and redesign run through this skill's blueprint. Not for backend, data, or copy-only work."
-version: 0.2.9
+version: 0.2.10
 user-invocable: true
 argument-hint: "[brief | component <name> | existing <path> | audit <path> | record]"
 ---

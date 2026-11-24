@@ -6,7 +6,7 @@ Source: the evidence ledger, authority order, verification manifest, correction 
 
 Load it when a build has an authoritative visual target: a screenshot, a Figma frame or export, or a live page that the result must match. Typical cases: an REA rebuild, a brief that says "match this" or "make it look like this", and repair of an existing surface against a screenshot of how it should look.
 
-It does not apply to an OPEN pass that only uses Inspo or gallery screenshots as inspiration; those are references for composition, not targets. `hallmark study` still owns pulling a design's DNA from a URL or screenshot; this file owns proving that a build matches one.
+It does not apply to an OPEN pass that only uses Inspo screenshots as inspiration; those are references for composition, not targets. `hallmark study` still owns pulling a design's DNA from a URL or screenshot; this file owns proving that a build matches one.
 
 What it adds to the blueprint block: a ledger (before the build) and a manifest plus a verdict (after it). The builder's spec cites this file; the reviewer checks the manifest and the verdict.
 

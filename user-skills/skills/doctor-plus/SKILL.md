@@ -21,13 +21,14 @@ The standard /doctor checkup, plus a workspace audit for the 6 then & now shifts
 
 ## Workflow
 
+Orchestrator only: run Part 1 and Part 2's mapping in-session, then hand the six checks to a Code Mode worker (`code-mode-worker` skill) with the mapped file list, the shifts table, Part 2, Part 3's table columns and the Rules; it writes the table to its scratch folder. Re-read the cited passage for every FLAG before reporting.
+
 ### Part 1 - the standard checkup
 1. Run `claude doctor` via Bash with a 60s timeout. If it completes, summarize its findings.
 2. If it hangs or needs an interactive screen, note "run /doctor in your session for the built-in half" and move on. Never block on it.
 
 ### Part 2 - the 6 shift checks
 Scope: whatever the workspace actually loads as context - guidance files (CLAUDE.md and kin), skills, rules, memory indexes. Map that set first; don't assume the workspace's layout. Always exclude version-control internals, sync backups, node_modules, caches, temp folders, and generated output.
-
 **Audit the principles, not surface patterns.** This audit itself follows shift 1: judge each file against the principle, don't pattern-match for keywords. Read the context the way Claude receives it - what loads always, what loads on demand - and ask per shift: is this workspace still living in the THEN column? The smells below are illustrations, not definitions; something can smell fine and still break the principle, and vice versa.
 
 1. **Judgement over rules** - is Claude constrained where judgement would serve better? Smell: absolute directives about matters of taste or style, or two directives that pull against each other. Safety and money rules are legitimately hard - never flag those.

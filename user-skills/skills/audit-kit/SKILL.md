@@ -36,11 +36,15 @@ No argument means `all`.
    folder: this is the baseline run.
 2. **Map, then check.** Each reference opens with what to inventory. Map the
    real layout of this machine first; never assume another machine's paths.
-3. **Run the audits.** For `all`, launch one read-only subagent per audit in a
-   single message (doctor, context, prompts, skills, memory), each given its
-   reference file path, the previous report's findings for its area, and the
-   output path `~/.claude/audits/<YYYY-MM-DD>/<audit>.md`. A single audit runs
-   in-session. Done when every check in the reference has a verdict: a finding,
+3. **Run the audits.** Each audit gets its reference file path, the previous
+   report's findings for its area, and an output path. Prompts and memory are
+   pure reads: each runs as its own Code Mode worker (`code-mode-worker`
+   skill), alone or as part of `all`, writing to its scratch folder; context
+   uses doctor-plus's own worker hand-off. Copy each result to
+   `~/.claude/audits/<YYYY-MM-DD>/<audit>.md`. Doctor and skills run commands
+   (`claude doctor`, `scripts/skill_usage.py`): for `all` they go to read-only
+   subagents launched alongside the workers, writing straight to that path; a
+   single doctor or skills audit runs in-session. Done when every check in the reference has a verdict: a finding,
    a line under "Checked and healthy", or a line under "Not checked" with the
    reason (where a check's script exits 3, INCOMPLETE, it always goes here).
 4. **Verify the top findings yourself.** Re-read the cited file and line, or

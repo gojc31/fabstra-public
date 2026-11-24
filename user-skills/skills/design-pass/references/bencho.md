@@ -4,12 +4,11 @@ Checked 2026-10-18 from bencho.dev/llms.txt, sitemap.xml, the site JS bundle (in
 
 ## 1. What it is, licence in brief
 
-- Bencho = 125 interactive React UI blocks (React 19, TypeScript, framer-motion, lucide-react, plain CSS, no Tailwind) plus 24 free synthesised UI sounds. By Lorenzo Cabra. Pages: Blocks, Finds (182 curated outside-designer interactions, credited, not Bencho code), Sounds, Bench, Docs, MCP, Pricing.
+- Bencho = 125 interactive React UI blocks on the site, 40 of them free and catalogued (React 19, TypeScript, framer-motion, lucide-react, plain CSS, no Tailwind) plus 24 free synthesised UI sounds. By Lorenzo Cabra. Pages: Blocks, Finds (182 curated outside-designer interactions, credited, not Bencho code), Sounds, Bench, Docs, MCP, Pricing.
 - **Free (40 blocks + 24 sounds) = MIT**, (c) 2026 Lorenzo Cabra. Client and commercial work allowed, no attribution on the UI. Condition: keep the copyright notice with substantial copies of the source (the header at the top of the file). Licence page: bencho.dev/licence.
-- **Pro (85 blocks, 130+ sounds, EUR 79/yr or EUR 99 once for the first 200)** = per-person licence. Allowed: any number of apps, sites, client work (build it, hand over the finished thing). Not allowed: pass blocks/sounds on as themselves, in a kit, library, template, theme, starter, snippet collection or sound pack; feed them to a service or MCP that hands blocks to others; put them in a training dataset. Client does not get a licence to reuse the blocks elsewhere. Everyone who takes Pro blocks needs their own Pro. After a yearly plan ends, what you already took stays licensed.
+- **Pro** (EUR 79/yr, or EUR 99 once for the first 200; licence page bencho.dev/licence) exists on the site but is not catalogued because it is not owned.
 - Blocks taken before 2026-10-12 (when every block was free) stay MIT for whoever took them then.
 - Other terms: the "Bencho" name and goat mark are trademarks; photos inside blocks are licensed to the site and do not travel (swap your own); Maison Neue font is not bundled; Google "G" has Google brand terms; some sounds are rebuilt from cuelume (Daniel Belyi, MIT, keep THIRD_PARTY.md notice - Beacon and Plop are in the free set).
-- Rule for this machine: never store Pro block code in a skill folder, reference or shared kit. Pro code lives only inside the project that uses it.
 
 ## 2. Getting a block's code without signing in
 
@@ -21,13 +20,13 @@ Checked 2026-10-18 from bencho.dev/llms.txt, sitemap.xml, the site JS bundle (in
 | MCP / downloads | Pro only, needs sign-in | JC decides; never added by an agent |
 
 Keep with every block (copy the pattern used in `D:\design-trial-2026-10-18\bencho\src\blocks\*`):
-1. Free blocks: MIT header at the top of the TSX and CSS ("Copyright (c) 2026 Lorenzo Cabra", licence URL) plus a LICENSE file in the block folder. Pro blocks are not MIT: no MIT header or LICENSE file; SOURCE.md names the Bencho Pro licence, and the code stays inside the project (section 1).
+1. Free blocks: MIT header at the top of the TSX and CSS ("Copyright (c) 2026 Lorenzo Cabra", licence URL) plus a LICENSE file in the block folder.
 2. `SOURCE.md` per block: source URL, copy date, licence, deps, files, list of local adaptations, tokens read. Mark each local edit `LOCAL ADAPTATION` in the code.
-3. Dependencies: `framer-motion`, `lucide-react` (most), `three` (folding-bill), `liquid-gooey` (drag-ball and some Pro). Install with `npm install framer-motion lucide-react`. Blocks that show photos ship grey placeholders; point them at the project's own images.
+3. Dependencies: `framer-motion`, `lucide-react` (most), `three` (folding-bill), `liquid-gooey` (drag-ball). Install with `npm install framer-motion lucide-react`. Blocks that show photos ship grey placeholders; point them at the project's own images.
 4. Client components: add `"use client"` in Next.js; import the CSS from the component or a layout.
 5. Props are the knobs on the block page; all optional; defaults equal the live demo.
 
-## 3. Catalogue (125 blocks: 40 free, 85 Pro, 0 unknown)
+## 3. Catalogue (40 free blocks)
 
 URL for each = `https://bencho.dev/blocks/<slug>`. Free/pro status comes from the site's own free-block list (40 ids), matching the repo's 40 folders. Names are the site names. Fit tags: dashboard, client-portal, landing, automation-ui, voice-ai, forms, data-viz, nav, feedback. Block categories on the site: Press 35, Hover 29, Drag 22, Loading 15, Select 9, Type 6, Slide 5, Swipe 4.
 
@@ -78,93 +77,7 @@ URL for each = `https://bencho.dev/blocks/<slug>`. Free/pro status comes from th
 
 ### 3b. PRO (Bencho Pro licence) - 85 blocks
 
-| Slug | Cat | What it is for | Fit |
-|---|---|---|---|
-| ai-chat-input | Type | Prompt bar pill to box, model + effort pickers, mic to send | voice-ai, forms |
-| thinking | Loading | Assistant reasoning trace, steps fold to one line | automation-ui, feedback |
-| blueprint-loader | Loading | Loading state that draws the card's plan on a dot grid | feedback |
-| skeleton-morph | Loading | Skeleton bars stretch into real content | feedback, dashboard |
-| connect-sources | Press | Integration onboarding grid, connect with sync sparkline and progress | automation-ui, client-portal |
-| blast-radius | Hover | Radial network graph, path highlight on hover | data-viz, automation-ui |
-| hub-diagram | Hover | Service and its integrations, packets run the spokes | automation-ui, data-viz |
-| billing-card | Press | Cycle spend as one coloured bar, key on press | dashboard, client-portal |
-| price-flow | Press | Animated number ticker, digits roll, green/red change | dashboard, data-viz |
-| budget-slider | Slide | Load time vs target, green/amber/red bars | data-viz, dashboard |
-| heart-rate | Hover | Day chart scrubber, heart beats at rate | data-viz |
-| segment-timer | Drag | Focus timer, drag a 60-tick dial | forms |
-| world-clock | Drag | Your time and three cities, drag ruler to shift | dashboard |
-| range | Slide | Price range over a histogram | data-viz, forms |
-| tape | Slide | Playback-speed slider with scrolling tape | forms |
-| humidity | Drag | Circular dial slider | forms |
-| sleep | Drag | Two-handle circular range dial | forms |
-| progress | Hover | Tick slider with change shown | forms |
-| stepper | Press | Number stepper, hold and drag to sweep | forms |
-| password-strength | Type | Strength bar and rule ticks while typing | forms |
-| form-error | Type | Field edge turns red, shakes, reason unfolds | forms, feedback |
-| command | Type | Command bar button fuses into field | nav |
-| confirm | Press | Inline delete confirm with undo | forms, feedback |
-| toasts | Press | Notify button, bell swings | feedback |
-| feedback-bar | Press | Was-this-helpful thumbs, thumbs down asks why | feedback |
-| access-request | Press | Pill of access requests opens to Approve/Reject list | client-portal, feedback |
-| pay-button | Press | Checkout button morphs to spinner, success, receipt | forms, client-portal |
-| copy-field | Press | Copy link/snippet, icon morphs to check | forms |
-| share-pill | Hover | Who is on a file, copy link, invite in place | client-portal |
-| voice-chat | Press | Voice room pill with talker indicators | voice-ai |
-| avatar-group | Hover | Overlapping faces with sliding name tooltip | dashboard |
-| profile-card | Hover | Profile hover card with follow and mutuals | dashboard |
-| country-wheel | Select | Country picker drum with flags | forms |
-| picker-wheel | Drag | Looping option drum | forms |
-| date-reel | Swipe | Date/time picker reels with momentum | forms |
-| fold-dropdown | Select | Dropdown that unfolds from its value | forms, nav |
-| tab-bar | Select | Icon tabs, selected opens its label | nav |
-| icon-bar | Select | Animated tab bar, pill stretches to next tab | nav |
-| collapsing-sidebar | Press | Sidebar folds to icons | nav, dashboard |
-| toolbar | Select | Floating canvas toolbar, remembers last shape | nav |
-| radial | Press | Radial menu, tools fan out | nav |
-| roster | Select | Multi-select people list, action grows out | forms, dashboard |
-| tree-view | Press | Animated file tree | dashboard |
-| faq-accordion | Press | FAQ with word-by-word answer reveal | landing |
-| pill-accordion | Press | Pills open into cards | landing, dashboard |
-| resizable-panels | Drag | Draggable, keyboard-ready dividers; panes fold past minimum | dashboard |
-| split-view | Drag | Two panes, each re-lays-out on resize | dashboard |
-| resize-frame | Drag | Frame with live sizes and ratio snapping | forms |
-| liq-arrange | Drag | Reorder list (Bencho "Reorder list") | dashboard, forms |
-| activity-stack | Swipe | Swipeable stacked notifications | feedback |
-| flight-island | Press | Dynamic-island flight tracker | landing |
-| music-island | Press | Dynamic-island music player | landing |
-| call-island | Press | Dynamic-island call | voice-ai, landing |
-| text-fade | Loading | Word/letter fade-in paragraph | landing |
-| text-rise | Loading | Word/letter rise-in paragraph | landing |
-| text-blur | Loading | Word/letter blur reveal | landing |
-| shimmer-text | Loading | "Thinking..." sweep text | feedback |
-| image-shimmer | Loading | Image placeholder with moving light | feedback |
-| dot-loader | Loading | 4x4 dot matrix loader | feedback |
-| wave-loader | Loading | Four-bar wave loader | feedback |
-| bounce-loader | Loading | Three bouncing dots | feedback |
-| trace-loader | Loading | Dash tracing a circle/square | feedback |
-| morph-loader | Loading | Square-to-circle morph loader | feedback |
-| pixel-loader | Loading | Pixel ripple loader | feedback |
-| blocks-loader | Loading | Grid dip loader | feedback |
-| confetti | Press | Confetti burst button | feedback |
-| sweep-button | Hover | Gradient border sweep button | landing |
-| orbit-cards | Drag | 3D orbit card carousel | landing |
-| card-fan | Press | Image card fan | landing |
-| swipe-deck | Swipe | Swipe card deck | landing |
-| folder | Hover | Folder with images fanning out | landing |
-| album-shelf | Hover | Cover-flow shelf | landing |
-| radial-pop-out | Hover | Images burst out in a ring | landing |
-| progressive-blur | Hover | Blur rising from image foot with caption | landing |
-| smudge | Hover | Liquify/ripple image hover | landing |
-| code-reveal | Hover | ASCII code reveal on image hover | landing |
-| foggy-word | Hover | Wipe steam to reveal word/photo | landing |
-| metaballs | Hover | Merging lava-lamp orbs | landing |
-| magnetic-dots | Hover | Dot field leans to cursor | landing |
-| light | Hover | Cursor light reveals printed line | landing |
-| dot-globe | Drag | Dotted globe with animated arcs | landing, data-viz |
-| coin | Drag | 3D metal coin (three.js) | landing |
-| page-peel | Drag | Page corner peel reveals note | landing |
-| ticket | Drag | Tear-off ticket with jelly stretch | landing |
-| piano | Press | Playable one-octave keyboard | landing |
+Retired on 2026-11-11: Bencho Pro is not catalogued because it is not owned.
 
 ## 4. Sounds
 
@@ -217,11 +130,11 @@ Adaptation checklist (run per block, record in SOURCE.md):
 4. **Reduced motion**: wrap springs and loops in `prefers-reduced-motion` (framer `useReducedMotion`, CSS media query); loaders fall back to a static or opacity-only cue.
 5. **Contrast**: check `--ink-3/4/5` on `--card` and `--surface` in light and dark (WCAG AA 4.5:1 text, 3:1 UI); the grey hint tones often fail on tinted client themes.
 6. **Token mapping**: point the block's token names at the project's tokens (do not ship a second token set); confirm dark mode through the project's own switch.
-7. **Strip dead CSS**: remove selectors for other blocks and unused props; keep the licence header (free blocks: the MIT header; Pro blocks carry no MIT header).
+7. **Strip dead CSS**: remove selectors for other blocks and unused props; keep the licence header (the MIT header).
 8. **Touch/size**: hit targets >= 44px on mobile; no hover-only information (hover blocks need a tap or focus path).
 9. **Sound**: off by default, user toggle, never required for meaning.
 10. **Performance**: pointer-tracking blocks (particles, magnetic dots, glass-bubble, heat-word) and `three` blocks need a perf check and an off-screen pause; do not use on data-heavy dashboards.
-11. **Licence trail**: SOURCE.md with URL, date, licence. Free blocks: LICENSE file; MIT header intact. Pro blocks: SOURCE.md says "Bencho Pro"; no LICENSE file; code only in this project, never in a skill folder or shared kit.
+11. **Licence trail**: SOURCE.md with URL, date, licence. Free blocks: LICENSE file; MIT header intact.
 
 ## 7. Best picks for JC's work
 
@@ -252,4 +165,3 @@ Top 5 free for landing pages:
 | 4 | heat-word | Distinctive hero accent; light, no dependencies |
 | 5 | glass-bubble | Premium product-feel moment; check performance and Safari behaviour (not stated) |
 
-Pro worth knowing (JC buys, or reference only for look): connect-sources, hub-diagram, blast-radius (automation visuals), ai-chat-input, thinking (voice/AI UI), billing-card, price-flow (dashboards), resizable-panels, collapsing-sidebar (app shell). Not stated: whether any Pro block works without framer-motion.

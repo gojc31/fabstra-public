@@ -1,10 +1,10 @@
 # Gates
 
-Sources: frontend-design is the Anthropic `frontend-design` plugin skill [FD]; the gate numbers are Hallmark's 58-gate slop test, MIT, Together AI, vendored at commit 13ac0ec7e148 [HM gate N]; the craft-floor checks are impeccable's [IMP]; the three default-style gates below are Anthropic, "Getting the most out of Opus 5.5" (2026-09-22) [AO55]; the motion-feel gates are Emil Kowalski's skills, MIT, commit 2d22863, as distilled in impeccable's `reference/motion-craft.md` [EMIL]. The dashboard-screen gates are taste-skill's `references/app-screens.md` (Leonxlnx/taste-skill, MIT, commit 6010f91a9935, read 2026-10-21; distilled from 23 real product screens) [TS]. The copy-and-detail gates marked [JC] are JC's house rules, adopted 2026-10-23. The gates marked [US] are adapted from unslop by Damir Sokolovsky (github.com/heydamir/unslop, CC BY 4.0, creativecommons.org/licenses/by/4.0, commit a6f121e, read 2026-11-05; reworded and changed for design-pass). The gates marked [CL] restate ideas from Charles Liu's reel "20 AI Design Slop Indicators" (Facebook, 2026-11-03) in our own words.
+Sources: frontend-design is the Anthropic `frontend-design` plugin skill [FD]; the gate numbers are Hallmark's 58-gate slop test, MIT, Together AI, vendored at commit 13ac0ec7e148 [HM gate N]; the craft-floor checks are impeccable's [IMP]; the three default-style gates below are Anthropic, "Getting the most out of Opus 5.5" (2026-09-22) [AO55]; the motion-feel gates are Emil Kowalski's skills, MIT, commit 2d22863, as distilled in impeccable's `reference/motion-craft.md` [EMIL]. The dashboard-screen gates are taste-skill's `references/app-screens.md` (Leonxlnx/taste-skill, MIT, commit 6010f91a9935, read 2026-10-21; distilled from 23 real product screens) [TS]. The copy-and-detail gates marked [JC] are JC's house rules, adopted 2026-10-23. The gates marked [US] are adapted from unslop by Damir Sokolovsky (github.com/heydamir/unslop, CC BY 4.0, creativecommons.org/licenses/by/4.0, commit a6f121e, read 2026-11-05; reworded and changed for design-pass). The gates marked [CL] restate ideas from Charles Liu's reels "20 AI Design Slop Indicators" (Facebook, 2026-11-03) and "unslop" (Facebook reel 1013448018474077, read 2026-11-08) in our own words. The gates marked [EK] restate rules from Elia Kuratli's article "Unslop your UI: how I design with AI without it looking like AI" (X, 2026-11-23, x.com/eliakuratli/status/2124850779639181567) in our own words.
 
 Checks are pass/fail on the BUILT result. The reviewer runs them, not the planner. A check that does not apply is written `N/A` with its number, never skipped silently.
 
-Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN drops nothing but reads Structure as the screen's layout rather than a landing rhythm; COMPONENT takes Type, Colour, Copy, States, Responsive, Motion, plus gates 6a-6d; EXISTING: Type, Colour, Copy, States, Responsive, Motion, Chrome; Structure only where the change adds a section; mark the rest N/A; Charts applies only when the surface carries data marks. Dashboard screens applies to a SCREEN or EXISTING pass on an app screen (dashboard, admin, analytics, settings, inbox, wallet) only where the project has no established look: a brand guide, DESIGN.md or INHERIT pass outranks every gate in it, and where they disagree the gate is `N/A (brand)`.
+Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN drops nothing but reads Structure as the screen's layout rather than a landing rhythm; COMPONENT takes Type, Colour, Copy, States, Responsive, Motion, plus gates 6a-6f and 6h-6j; EXISTING: Type, Colour, Copy, States, Responsive, Motion, Chrome, plus gates 6e, 6f and 6h-6j; the rest of Structure only where the change adds a section; mark the rest N/A; Charts applies only when the surface carries data marks. Dashboard screens applies to a SCREEN or EXISTING pass on an app screen (dashboard, admin, analytics, settings, inbox, wallet) only where the project has no established look: a brand guide, DESIGN.md or INHERIT pass outranks every gate in it, and where they disagree the gate is `N/A (brand)`.
 
 ## Structure
 
@@ -19,6 +19,12 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 6b. Dithered and ASCII-art imagery is not a default look; it is a Direction choice, named as such. [CL]
 6c. A diagram carries only what the reader needs to follow it; detail added for texture fails. [CL]
 6d. Metadata tag rows and coloured rounded icon tiles each do a job (filter, status, a real distinction); decorative ones fail. [CL]
+6e. Spacing does the grouping: items that belong together sit visibly closer to each other than to the next group, so each group reads as one without a box or a divider. [CL]
+6f. Icons come from one set, in one style (outline or filled, never mixed), at one stroke weight and one size per context. [CL]
+6g. A PAGE for a product shows the real product - a screenshot, a live embed or working UI - in or just below the first viewport; an abstract illustration or stock image standing in for it fails. N/A on other scopes. [CL]
+6h. Shadows go only on things that float - menus, popovers, dialogs, toasts, drag ghosts; resting cards, panels and buttons use a 1px line or a tone step. No glow, halo or coloured shadow anywhere, and no gradient fill on a background, card or button unless Direction names it. [EK]
+6i. Icons do not sit beside every label, heading or list item by default; an icon appears where it speeds recognition (a status, a toolbar control, a file type). No icon sits in a tinted rounded or circular box unless gate 6d's job test passes. [EK]
+6j. AI default flourishes fail unless Direction names them: an avatar stack that fans out on hover, a coloured bar on the left edge of a selected row (selection is a neutral fill or a text-colour change), a green check in a circle on every status, a stand-in logo drawn as a letter in a rounded square. [EK]
 
 ## Type
 
@@ -29,8 +35,11 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 10a. Monospace type is not used for labels, eyebrows, or UI chrome as a default, unless the content itself is code or data. [AO55]
 11. Display type steps clearly above body in scale and weight, and every headline wraps inside its container at 375. [HM gate 51] [IMP]
 11a. A surface uses four font sizes at most, three where the content allows, and none below 12px; further hierarchy comes from weight, colour and spacing. An overlay (drawer, dialog, popover) counts as its own surface. [JC]
+11aa. A surface uses two font weights, regular and medium, by default; a third (semibold or bold) appears only where Direction names it. Every size and weight comes from the block's one type scale, so no stray size (a 19px semibold heading) appears. [EK]
 11b. Instrument Serif is not a default face; using it is a Direction choice, named as such. [CL]
 11c. Labels, table headers and captions are sentence case; uppercase tracked labels appear only where Direction names them. [US]
+11d. Headlines and subheads set `text-wrap: balance` and body prose `text-wrap: pretty`; no headline ends on a single-word line at 375, 768 or 1280. [CL]
+11e. Numbers that change in place or line up in a column - counters, prices, timers, totals, stats - set `font-variant-numeric: tabular-nums`. Gate 44 still governs tables. [CL]
 
 ## Colour
 
@@ -40,6 +49,8 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 15. Black is black: a tinted near-black (#0B0B0B, #111) standing in for it is a default, not a choice. [FD]
 15a. Cream or off-white is not the page background as a default; the ground colour is a Direction choice, named as such. [AO55]
 16. Every colour and every `font-family` references a named token; no inline hex, `oklch()`, or font stack. [HM gate 48]
+16a. Surfaces stay neutral; the accent appears only on what is active, selected, focused, or the one primary action, plus Direction's named Moments. [EK]
+16b. Tokens render the same in the production build as in dev: the Verify screenshots of at least one page come from the production build, and a tinted grey or `oklch()` token that shifts hue there (greys turning pink) fails. [EK]
 
 ## Copy
 
@@ -54,6 +65,7 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 21c. Headlines, subheads, labels, buttons and captions end without a full stop; only copy of several sentences keeps them. A title's full stop passes only where Direction names it. [US]
 21d. A change names what it compares to: `+12% vs last month`, never a bare `+12%`. [US]
 21e. Numbers of one kind share one format across a screen: not `$48,210` beside `$124,860.40`. [US]
+21f. A page or section headline is specific to this product: it names what it does, for whom, or a concrete fact (a number, a named task); a line that would fit any product fails. [CL]
 
 ## States
 
@@ -78,14 +90,17 @@ Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN
 31b. No entrance starts from `scale(0)`; an entrance that scales starts at `scale(0.9)`-`scale(0.97)` with `opacity: 0`. Translation-only entrances (a drawer or toast from `translateY(100%)`) and `clip-path` reveals pass. [EMIL]
 31c. Popovers, dropdowns, menus and tooltips scale from their trigger (`transform-origin` at the trigger); modals stay centred. [EMIL]
 31d. An action started from the keyboard, or one a user repeats 100+ times a day (a shortcut, Escape, the command palette toggle, arrow-key list navigation), changes state with no animation; a form field's focus state, reached by click or Tab alike, is not such an action. [EMIL]
-31e. A component taken from a source moves exactly as it does on the source's own demo: `python -I D:\jc-ui-kit\scripts\motion-diff.py <upstream> <built>` exits 0 for each one (a port without the motion package may pass with `--allow-port`, its springs sampled into `linear()`), and only brand values differ. Gates 29 and 31-31d judge only motion built fresh. [JC]
+31e. A component taken from a source moves exactly as it does on the source's own demo: `python -I D:\jc-ui-kit\scripts\motion-diff.py <upstream> <built>` exits 0 for each one (a port without the motion package may pass with `--allow-port`, its springs sampled into `linear()`), and only brand values differ. An Astryx component imported from its package has no copied file to compare: its version is pinned exactly, nothing overrides its transition, animation or transform (className, theme or StyleX), and the Verify walk checks its hover, press, focus and open and close motion in the running app; a swizzled Astryx component runs motion-diff once per file its swizzle --json receipt lists as copied (owner modules included), each against its counterpart under node_modules/@astryxdesign/core/src/ of the installed version. A Lenso component imported from its package has no copied file to compare: @lenso/ui, @lenso/tokens and @lenso/glass are pinned exactly (no ^, package.json and lockfile), nothing overrides its transition, animation, transform or spring (xstyle, StyleX or theme variables), and the Verify walk in a production build checks it against the same component on ui.lenso.dev at the same version, light and dark, reduced motion on and off; a copied Lenso file (a fork) runs motion-diff against its counterpart under node_modules/@lenso/ui/dist/ of the same pinned version. Gates 29 and 31-31d judge only motion built fresh. [JC]
 31f. Every interactive element built fresh answers the pointer and the keyboard: a hover change, a press response, and an eased transition on every state change, within gates 31-31d. [JC]
+31g. An action whose result is not otherwise visible (copy, save, add, send) confirms where the user is looking: the control itself shows its done state (a check, "Copied") for a moment, animated within gates 31-31d, not only in a distant toast. [CL]
+31h. Fresh interface motion runs under 300 ms (motion-craft's duration table), every pressable element presses to `scale(0.97)` on `:active`, and list or card entrances are not staggered unless Direction names that one moment. [EK] [EMIL]
 
 ## Chrome
 
 32. No hand-drawn browser bar, phone frame, terminal, or IDE chrome: a real screenshot in a `<figure>`, or nothing. [HM gate 47]
 33. The browser surfaces the design did not draw - selection, caret, scrollbar, focus ring, underline offset, tabular numerals - are themed from the palette. [IMP]
 34. Every decorative element has a semantic anchor in the content; an ornament that means nothing is cut. [HM gate 45]
+34a. The build ends with a cutting pass, reported as a list of what was removed (or "nothing to cut" with a reason): a subtitle that repeats its heading, a badge nobody asked for, a second shadow, an icon beside every label, a second effect competing with the one authored motion moment. [EK]
 
 ## Charts
 

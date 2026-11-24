@@ -126,7 +126,7 @@ Known gaps (test build 2026-10-18, D:\design-trial-2026-10-18\bencho, plus a rea
 Adaptation checklist (run per block, record in SOURCE.md):
 1. **Long text and empty/odd data**: 1-line truncation, 60+ character names, 0 / 1 / 100 items, RTL not needed unless stated.
 2. **States**: default, hover, focus-visible, active, loading, error, empty, disabled, success. Most Bencho blocks ship only the happy path.
-3. **Keyboard**: every pointer action has a key path (Tab, Enter/Space, Esc, arrows); visible focus ring from `--focus`. Keyboard-started actions must not animate (design-pass gate 31d) - guard motion on `event.detail === 0` / key events or render the end state directly.
+3. **Keyboard**: every pointer action has a key path (Tab, Enter/Space, Esc, arrows); visible focus ring from `--focus`. Keyboard-started actions built fresh must not animate (design-pass gate 31d; a component taken from a source is judged by gate 31e instead - components.md, "Feel 1:1") - guard motion on `event.detail === 0` / key events or render the end state directly.
 4. **Reduced motion**: wrap springs and loops in `prefers-reduced-motion` (framer `useReducedMotion`, CSS media query); loaders fall back to a static or opacity-only cue.
 5. **Contrast**: check `--ink-3/4/5` on `--card` and `--surface` in light and dark (WCAG AA 4.5:1 text, 3:1 UI); the grey hint tones often fail on tinted client themes.
 6. **Token mapping**: point the block's token names at the project's tokens (do not ship a second token set); confirm dark mode through the project's own switch.

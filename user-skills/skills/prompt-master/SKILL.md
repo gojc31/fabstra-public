@@ -70,7 +70,7 @@ Identify the tool and route accordingly. Read full templates from [references/te
 
 **Claude (claude.ai, Claude API, Claude 5.x)**
 
-Current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1. Write for the current generation unless the user names a specific version. For a system prompt sent through the API to any of them, check Anthropic's current prompting documentation for effort and thinking settings.
+Current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.2. Write for the current generation unless the user names a specific version. For a system prompt sent through the API to any of them, check Anthropic's current prompting documentation for effort and thinking settings.
 
 *Durable across current Claude models:*
 - Be explicit and specific — Claude follows instructions literally. Missing context = narrow literal output, not a smart guess.
@@ -166,7 +166,7 @@ Current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1. Write for the curren
 - Agentic — runs tools, edits files, executes commands autonomously
 - Starting state + target state + allowed actions + forbidden actions + stop conditions + checkpoints
 - Stop conditions are MANDATORY — runaway loops are the biggest credit killer
-- The model is the user's setting (current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1). Effort and thinking depth are set in the Claude Code harness (`/effort`) — do not hardcode an effort level or thinking budget in prompts.
+- The model is the user's setting (current family: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.2). Effort and thinking depth are set in the Claude Code harness (`/effort`) — do not hardcode an effort level or thinking budget in prompts.
 - Current Claude models read prompts literally: a vague first turn gets a narrow result. Front-load intent, file scope, constraints, acceptance criteria and session strategy.
 - When the task needs particular tool use or a subagent, say so ('Read all files in /src/auth/ before starting', 'Use a subagent to investigate X so it stays out of main context').
 - When the task could invite extra files, abstractions or features, state the scope: 'Only make changes directly requested.'

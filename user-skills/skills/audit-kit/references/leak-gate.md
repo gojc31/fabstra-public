@@ -12,7 +12,7 @@ positive goes on a written allowlist with its reason.
    addresses, account logins, private repo names, internal hostnames.
 2. **Run the scanner** from this skill's folder:
    `python scripts/leak_scan.py <repo> --deny <denylist-file> [--allow <allowlist-file>] [--skip DIR]`.
-   It walks every file except `.git` (`node_modules` and caches included)
+   It walks every file except `.git` (`node_modules` and caches included; binary files (NUL bytes) and links to folders are listed, not scanned)
    and flags denylist terms (in file paths too), email addresses, absolute
    home paths (`C:\Users\<name>`, `/Users/<name>`, `/home/<name>`), and
    common secret formats. `--skip DIR` (repeatable) is for explicit

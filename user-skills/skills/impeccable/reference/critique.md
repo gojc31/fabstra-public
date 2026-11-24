@@ -64,14 +64,14 @@ node .claude/skills/impeccable/scripts/detect.mjs --json [target]
 ```
 
 - Pass markup files/directories as `[target]`; do not pass CSS-only files.
-- For URLs, skip CLI scan and use browser visualization.
+- For URLs, skip CLI scan and use browser visualization. Never run `detect.mjs` on a URL: it launches its own Chrome through Puppeteer (`scripts/detector/engines/browser/detect-url.mjs`).
 - For very large trees (500+ scannable files), narrow scope or ask.
 - Exit code 0 = clean; 2 = findings.
 - If the detector entrypoint is missing or fails to load, report deterministic scan unavailable and continue with browser/manual review.
 
 Browser visualization is required for a viewable target when browser automation is available. Use a localhost dev/static URL for local files; avoid `file://` unless the available browser explicitly supports this workflow. Overlay flow:
 
-1. Create a fresh tab and navigate. Prefer the harness's native/browser-canvas screenshot path before hand-rolling a Playwright/Puppeteer script; only fall back to a custom script when no native browser tool is exposed.
+1. Open a fresh background tab with browser-harness `own_tab(url)` (read `C:\Users\<you>\Desktop\browser-harness\SKILL.md` first; never `goto_url`, never launch a browser of your own). Never hand-roll a Playwright/Puppeteer script; when browser-harness is unavailable, report browser visualization skipped with the reason and continue with the manual review.
 2. Preflight mutable injection by setting `document.title` and appending a `<script>` tag. Read-only evaluate APIs do not count.
 3. If mutation is unavailable, skip live server, browser presentation, and injection; report fallback signal.
 4. If mutation is available, start `node .claude/skills/impeccable/scripts/live-server.mjs --background`, present the browser if supported, label `[Human]`, scroll top, inject `http://localhost:PORT/detect.js`, wait 2-3 seconds, read `impeccable` console messages, then stop the live server.

@@ -6,7 +6,7 @@ stay short, current and true.
 ## Inventory first
 
 Each project's memory folder under `~/.claude/projects/<project>/memory/`
-(start with the home folder's): `MEMORY.md` and the memory files it indexes.
+(start with the home folder's): `MEMORY.md`, `ARCHIVE.md` when present (closed notes moved out of the startup index), and the memory files they index.
 Record bytes, line count, and the longest lines of each `MEMORY.md`.
 
 ## Checks
@@ -24,9 +24,9 @@ Record bytes, line count, and the longest lines of each `MEMORY.md`.
    git log, installed versions, the file itself). The same open item repeated
    on several lines. Mods or tools described as live that are uninstalled.
 4. **Index integrity.** Every index line points at a file that exists; every
-   memory file has an index line (an unindexed file is in the same position as
+   memory file has exactly one index line, in `MEMORY.md` or `ARCHIVE.md`, never both (a file in neither is in the same position as
    lines past the cap: not loaded at session start, and nothing tells Claude
-   to open it).
+   to open it). An archived note that still holds an OWED or open item or a standing rule belongs back in `MEMORY.md`.
 5. **Index vs file.** An index line that says something its file
    contradicts. The file is usually newer; the fix rewrites the index line.
 6. **Wrong home.** Facts about the user or the work sitting as prose in
@@ -37,6 +37,6 @@ Record bytes, line count, and the longest lines of each `MEMORY.md`.
 
 Trimming the index is meaning-preserving: history moves into the linked file
 before it leaves the index, and the loss audit (`loss-audit.md`) runs after.
-A memory that turns out wrong is corrected or deleted, never left beside its
+A memory that turns out wrong is corrected in place and the old claim marked superseded (a "Superseded:" line or "(stale as of <date>: <reason>)"), never deleted and never left unmarked beside its
 correction. Dated items the user must confirm (done, dropped, re-dated) go to
 "Needs you".

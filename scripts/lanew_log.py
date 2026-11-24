@@ -3,7 +3,7 @@
 HONEST SCOPE, read before trusting this module for anything: this is a
 DIAGNOSTIC LOGGER with a fail-closed admission check, NOT a hard usage
 budget. Nothing observable on this machine measures ChatGPT chat-message
-consumption - see skills/fabstra/references/lane-w.md, "What lanew
+consumption - see lane-w.md in the shared fabstra clone (skills/fabstra/references/ there; not in model-router since Lane W retired 2026-09-27), "What lanew
 measures and what it cannot", for the full statement. Concretely:
 
   - `assistant_message_markers` counts transcript lines that are exactly

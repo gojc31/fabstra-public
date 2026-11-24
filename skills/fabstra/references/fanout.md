@@ -22,7 +22,7 @@ One seat over a whole site or dashboard is the slow path: on 2026-10-03 a single
 
 ### When to fan out
 
-Every audit, review, browser QA, or research job is sized here before its first seat launches, including a Phase 3/4 review whose diff is large. The pairing rule (phases.md) still decides which seat reviews; this file decides how many copies of it run and over which slice each.
+Every audit, review, browser QA, or research job is sized here before its first seat launches, including a Phase 3/4 review whose diff is large. The pairing rule (phases.md) still decides which seat reviews; this file decides how many copies of it run and over which slice each. Exception: an excluded build's review rounds 4-5, and its JC-go rounds past the cap, never fan out - one seat reviews the whole round diff, whatever its size, with no slices, extra copies or cross-cutting seat (phases.md "Phase 4", review cap).
 
 ### 1 - Count units
 
@@ -58,7 +58,7 @@ Add one **cross-cutting seat** when the surface has shared parts - app shell, na
 ### 4 - Launch
 
 - Every seat gets the same rubric (Design block, review spec, or audit checklist), the same report format, its own slice list, and the cross-cutting seat's ownership line. Shared material goes in one file every spec points at; a slice spec carries only its slice.
-- Each seat writes `<scratch>/findings-<slice>.md` and overwrites it as it goes.
+- Each seat writes `<scratch>/findings-<slice>.md` and overwrites it as it goes. A read-only seat (the Codex transport read-only, `fable-review.py`) cannot write: the lead saves its output to that file (transport.md, `result <job-id>`, or the script's `--out`).
 - Browser seats each run their own daemon: `BU_NAME=<slice>` on every browser-harness call, open new tabs only, close only their own tabs. On 2026-10-03 builders sharing the default daemon moved each other's tabs.
 - A Claude seat that is none of the named agents (a research or audit seat) takes its `subagent_type`, model and effort from phases.md, "Claude seat efforts" ("Any other Claude seat"), and its Agent call names the model and the effort.
 - All seats launch in one message (multiple Agent calls; proxy seats as background Bash launches per transport.md).

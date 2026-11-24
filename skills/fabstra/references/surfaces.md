@@ -85,8 +85,9 @@ they read only the URL/path, in-view section ids, the page's `h1`, and a
 missing-article flag, so they can pass on a page whose body text never
 mentions what the goal was looking for. Use them to confirm routing landed in
 the right place, and do the body-text read above whenever the goal needs real
-content verified. On exit 1-4, or a failed content check, fall back to
-browser-harness for the same goal.
+content verified. On exit 1 or 2, or a failed content check, fall back to
+browser-harness for the same goal. Exit 3 (login wall) and exit 4 (blocked
+host or private address) are a stop, never a browser fallback: tell JC.
 
 Never: JC's personal accounts, banking, social/DMs or Slack, forms that
 submit, typing credentials, a blocked host or a private address - JC owns the
@@ -110,7 +111,7 @@ reported unavailable (no Fable or Claude seat stands in for a surface).
 
 - **Web page work** (dashboard QA, latency, bug hunting, forms) -> Codex
   side on the Pro home. Before launch, confirm Astra's Chrome is running
-  (`tasklist` shows a chrome.exe with `ChromeAstra` in its command line);
+  (PowerShell `Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" | Where-Object CommandLine -like '*ChromeAstra*'` returns a row - the Win32_Process query `scripts/start-api-proxy.ps1` uses; `tasklist` shows no command lines);
   if not, start it with the desktop shortcut's command:
   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="%USERPROFILE%\ChromeAstra" --no-first-run --no-default-browser-check`.
   Spec lines, verbatim: `Surface: Browser plugin, Chrome extension backend.

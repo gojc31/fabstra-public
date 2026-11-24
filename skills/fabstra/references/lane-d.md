@@ -80,9 +80,9 @@ therefore loads CLAUDE.md, which is fine for a Claude seat. The build effort
 follows the task's tier as in phases.md, "Claude seat efforts". The designer route
 uses this same command with `--model claude-opus-5-5 --effort xhigh`.
 
-Reviewer the same way, read-only: `--model claude-fable-5-2 --effort high --permission-mode
+Reviewer the same way, read-only: `--model claude-opus-5-5 --effort high --permission-mode
 default --allowedTools "Read,Grep,Glob,Bash"` with the Phase 3 spec verbatim, and `--effort xhigh` for a build in an excluded category
-(the Lane D review seat - reviewer rule below).
+(the last rung of the reviewer rule below, after `fable-review.py` and the credits pool; Fable never runs on the Claude login).
 Spend it knowingly - it draws on the Claude window the routed session was
 chosen to protect - and log every such call as `login: claude`. Do not plan a
 seat you cannot fill otherwise: if a run needs Claude seats and the Claude
@@ -97,7 +97,7 @@ window is the problem, say so instead of burning it.
 | SUPPORT - contained, contract written | `model-router:support-routed` | `gpt-6.1-terra` |
 | MECHANIC - trivial, fully specified | `model-router:mechanic-routed` | `gpt-6-luna` |
 | ASTRA as a fresh-context seat (design gate / review fallback / hardest slice) | `model-router:astra-routed` | `gpt-6.2-astra` |
-| CLAUDE seats (Opus 5.5 build, Fable 5.2 review) | credits first (Credits first, above), else stripped-env headless `claude -p` | the credits pool, else the user's Claude login |
+| CLAUDE seats (Opus 5.5 build; review: Fable 5.2 on credits, else Opus 5.5) | credits first (Credits first, above; review: Reviewer rule below), else stripped-env headless `claude -p` | the credits pool, else the user's Claude login (Opus 5.5 only) |
 
 **Routed build briefs (specs.md rules a and g).** Every build brief this
 lane sends to a routed seat (`worker`, `support-routed`, `mechanic-routed`,
@@ -126,20 +126,20 @@ those are the credits routes, then the stripped-env launches above.
 **Reviewer rule (2026-11-15).** Every proxy seat is GPT, so no cross-family
 proxy reviewer exists. The reviewer runs first on `scripts/fable-review.py`
 (credits; transport.md, "Reviewer C on credits (fable-review.py)", attempt
-order); its fallback is the stripped-env headless Fable command above (`--model claude-fable-5-2 --effort high`, `--effort xhigh` for
-a build in an excluded category), logged `login: claude`. Fable unavailable:
+order); its fallback is the credits pool (effort high, xhigh for
+a build in an excluded category; Fable never runs on the Claude subscription login, credits-only since 2026-11-21), then the stripped-env headless command above on `--model claude-opus-5-5`, logged `login: claude`. Pool form:
 `pool/claude-fable-5-2` (a client's work: `client-<slug>/claude-fable-5-2`
 with its own `client-<slug>: usable` line, haiku mapping on the same prefix)
 headless on the credits pool at the same effort, with the read-only flags above
 and the pool-route `env -u CLAUDE_CODE_MAX_CONTEXT_TOKENS` form (8318 is Anthropic's own API on JC's key, not the banned subscription proxy
 route; plain terminal or scheduled launch and a usable pool only;
-transport.md, "Claude on credits seat (pool)"). Otherwise, on a Fable limit:
+transport.md, "Claude on credits seat (pool)"). Otherwise (pool dry or refused):
 the stripped-env headless `claude -p --model claude-opus-5-5` on the Claude
 login (never 8317), same flags, logged `login: claude`; when the Claude window
 is the problem: a fresh-context `model-router:astra-routed` review (same
 family - say so in the report) plus the Hydrogen quick check on the diff
 (pro-consult.md, "Gemini consult - the build-sheet seat"). Excluded work with
-no Claude seat (pool dry and, on a Fable limit, no Opus; or the Claude window
+no Claude seat (pool dry and no Opus; or the Claude window
 is the problem) -> stop and tell the user rather than ship unreviewed;
 `astra-routed` never reviews excluded work alone.
 

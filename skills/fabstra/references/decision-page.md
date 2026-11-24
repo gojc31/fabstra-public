@@ -1,6 +1,6 @@
 # Asking JC in chat - what JC sees when a run needs JC
 
-Reached from: fabstra SKILL.md "Report"; lead-mode.md plan gate and Gate 5; phases.md Phase 1 and Phase 4 - whenever a run hands JC something to decide or approve.
+Reached from: fabstra SKILL.md; lead-mode.md plan gate and Gate 5; phases.md Phase 1 and Phase 4 - whenever a run hands JC something to decide or approve.
 
 JC's attention is the scarce resource and tokens are cheap, so a run spends
 tokens to make each decision fast. Every run uses the short report; every
@@ -8,13 +8,13 @@ decision or approval is asked in chat with AskUserQuestion (below). No
 Artifact is published for a decision or a report unless JC explicitly asks
 for a page.
 
-In T3 Code the same short report may also render its status lines as one `html_render` card (theme variables, no outer background) - t3-code.md, "Replies in T3"; questions stay AskUserQuestion buttons.
+In T3 Code the same short report renders its status lines as one `html_render` card (theme variables, no outer background) - t3-code.md, "Replies in T3"; questions stay AskUserQuestion buttons.
 
 ## Report file
 
 The run's report file pairs with its logbook: `RUN.md` -> `.fabstra/REPORT.md`,
 `RUN-<slug>.md` -> `.fabstra/REPORT-<slug>.md`. Write it once, when the run
-completes: `scripts/logbooks.py` reads a report newer than its logbook as a
+completes: `skills/fabstra/scripts/logbooks.py` reads a report newer than its logbook as a
 finished run, so a mid-run hand-off keeps its detail in the logbook and an
 evidence file, never in the report file.
 

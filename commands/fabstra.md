@@ -1,5 +1,5 @@
 ---
-description: Run the FabStra flow - Fable 5.2 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ independent tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 5.5 lead and build or delegate by tier. The gate seat (GPT-6.2 Sol by default, GPT-6.2 Astra on the skill's Astra rows) gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, D as the skill says
+description: Run the FabStra flow - Fable 5.2 always orchestrates and never codes; Opus 5.5 orchestrates at 2+ independent tasks or an excluded category, else leads (Lead mode); Sonnet 5.5 / Haiku 5.5 lead and build or delegate by tier. The gate seat (GPT-6.2 Sol by default, GPT-6.2 Astra on the skill's Astra rows) gates the plan and reviews; a fresh Fable reviews Codex-built work; lanes B, D as the skill says. Use for hard tasks (multi-step builds, debugging, research or audits with claims, unseen data), a 2+ file feature or fix, or Astra/Sol named; not one-line edits or simple lookups.
 argument-hint: "<brief> [xhigh|high|medium] [fast]"
 ---
 
@@ -25,19 +25,22 @@ parent also spawns Sol) for routed tasks, and adversarially reviews
 Claude-built work; a fresh Fable context reviews Codex-built work; when the
 seat's model is cooling on every login, the other model reviews at the same
 effort (hop rules: transport.md, Model pins). The lead (the session model, in either mode) decides every disagreement and logs why.
-Claude build seats are Opus 5.5, effort passed by tier on every call, on the credits pool first from a plain terminal or scheduled task, else `model-router:builder` (the skill's transport.md, "Claude on credits seat (pool)"); Reviewer C is a fresh Fable 5.2 on `model-router:reviewer` (effort high, xhigh on an excluded-category build) (the skill's Claude seat efforts); every fresh-Fable seat, the design gate included, runs first on `scripts/fable-review.py` on plan credits, with that Agent seat as the fallback (the skill's transport.md, "Reviewer C on credits").
+Claude build seats are Opus 5.5, effort passed by tier on every call, on the credits pool first from a plain terminal or scheduled task, else `model-router:builder` (the skill's transport.md, "Claude on credits seat (pool)"); Reviewer C is a fresh Fable 5.2 on `scripts/fable-review.py` on plan credits (effort high, xhigh on an excluded-category build) (the skill's Claude seat efforts), with `model-router:reviewer` (Opus 5.5) as the fallback; every fresh-Fable seat, the design gate included, runs that way (the skill's transport.md, "Reviewer C on credits").
 Effort for Astra and Sol follows the skill's effort rubric unless the brief
 names one (an `xhigh`, `high`, or `medium` word in the brief pins every
-Astra and Sol call the orchestrator issues in this run, except that an
+Astra and Sol call the orchestrator issues in this run, except that the
+user-run floor (high for anything a user or client runs, JC 2026-11-25; the
+skill's phases.md) outranks a lower word, and an
 excluded-category build runs every Astra and Sol call at xhigh whatever word
-was named, the plan saying so in one line, and a fallback hop carries that
+was named (the Codex write probe excepted: it stays low, transport.md), the plan saying so in one line, and a fallback hop carries that
 post-floor effort (hop rules: transport.md, Model pins); Codex children the
 parent spawns keep their agent-file efforts). A "sonnet max" phrase is not an
 effort word: it pins only the Claude Sonnet seat (`model-router:sonnet-max`,
 the skill's routing rubric); Astra and Sol effort still follows the rubric
 unless an effort word pins it. A `fast` word beside Sol or Astra ("sol fast",
 "astra fast") is the skill's fast pin: Codex Fast mode on the `.codex-pro` native launches only
-(`codex-fast on` / `off`), 2.5x usage, no effect on reviews or Lane B.
+2.5x usage, no effect on reviews or Lane B.
+The standing fast window (the skill's quota.md, "The fast pin") is JC's setting and stays on until JC says stop: while it is open no `fast` word is needed and a run never switches it off; `codex-fast on` / `off` around a run's native jobs applies only while JC has the window closed (transport.md, Codex transport).
 Every Claude session model runs: Fable 5.2 takes Orchestrate mode; Opus 5.5 takes Orchestrate mode at 2+ independent tasks (defined above) or an excluded category, else Lead mode; Sonnet 5.5 and Haiku 5.5 take Lead mode (references/lead-mode.md); a newer or other Claude model takes its family's row in the skill's session switch. Never stop a Claude session or ask it to switch model.
 A routed proxy session is accepted as the skill's Session check allows
 (references/phases.md): Lane D for a proxy model the user wants to LEAD the

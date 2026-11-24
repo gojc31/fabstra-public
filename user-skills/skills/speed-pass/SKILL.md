@@ -12,7 +12,7 @@ The method is stack-agnostic. Step 1 identifies the stack; every later step uses
 
 ## 1. Baseline
 
-Identify the stack: framework and rendering model (server-rendered, single-page, static, API-only), database and how it is reached, auth provider, host. Record the commit, confirm the working tree is clean, fetch the remote, and rebase onto the default branch. Run the project's own gates (type check, lint, tests, build) and write down every failure that exists before you touch anything.
+Identify the stack: framework and rendering model (server-rendered, single-page, static, API-only), database and how it is reached, auth provider, host. Record the commit, confirm the working tree is clean, fetch the remote, and rebase onto the default branch (only on JC's go if that rewrites this branch's own commits). Run the project's own gates (type check, lint, tests, build) and write down every failure that exists before you touch anything.
 
 Done when: you can name the stack in one line and the base commit, and every pre-existing failure is listed with proof it fails on the untouched base.
 
@@ -60,7 +60,7 @@ Done when: every call site has a ruling, every route's status is identical on bo
 
 ## 7. Ship
 
-One commit per slice, with the verification summary and every known behaviour change in the message. Later slices stack: branch slice N+1 from slice N, open its pull request against slice N's branch, and retarget it to the default branch after slice N merges. Fold review fixes into their owning commit with `git commit --fixup` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`, then re-point the earlier slice's branch.
+Commits, pull requests and any history rewrite (the fixup rebase and branch re-point below) happen only on JC's go. One commit per slice, with the verification summary and every known behaviour change in the message. Later slices stack: branch slice N+1 from slice N, open its pull request against slice N's branch, and retarget it to the default branch after slice N merges. Fold review fixes into their owning commit with `git commit --fixup` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base>`, then re-point the earlier slice's branch.
 
 Done when: each pull request shows exactly one commit, its description lists every behaviour change the proofs found, and the owner of each `needs a decision` item has the written ask.
 

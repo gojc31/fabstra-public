@@ -45,7 +45,8 @@ trimmed to 2k/8k, thinking dropped). Exit 0 advice; 2 bad arguments or config, n
 account, transcript not found, or a pre-flight bound over `--max-usd`
 (nothing sent); 3 refusal, max_tokens or empty; 4 API, network, or every
 account out of credit. Ledger rows are `"kind": "consult"` in fable-review's
-ledger. A client's work bills `--pool client-<slug>`.
+ledger. A client's work bills `--pool client-<slug>` when that client has an
+account in accounts.json; a client with none uses the default pool (JC 2026-11-25).
 
 **Precedence** (JC 2026-11-20; the single statement of it):
 
@@ -68,7 +69,8 @@ carry on without it, and never switch the tool on as a substitute.
 - **The lead's plan call.** An Opus 5.5 orchestrator or lead on a default run
   makes its one plan call (Lifecycle: after the plan and task split, before
   the gate) as `fable-consult.py --brief "<the plan question>" --files
-  <scratch>/fabstra-plan-<name>.md` with the session transcript, and logs
+  <scratch>/fabstra-plan-<name>.md` (a client's work adds `--pool client-<slug>` if that client has an account)
+  with the session transcript, and logs
   `consult-plan=yes` (a failed call: `consult-plan=failed (exit <n>)`). A
   Fable 5.2 lead skips it.
 - **Builders.** A builder may call `fable-consult.py --no-transcript --files

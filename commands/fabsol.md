@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 description: "Retired (2026-09-24): run /model-router:fabstra; Sol (gpt-6.2-sol) is its default gate seat since 2026-11-18."
 ---
 

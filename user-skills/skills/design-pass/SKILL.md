@@ -1,7 +1,7 @@
 ---
 name: design-pass
 description: "UI design planning for any task that adds or changes a user-facing surface - page, screen, component, dashboard, landing section, form, empty or error state. Run before a fabstra UI blueprint; it is the front door, loading frontend-design, Hallmark and impeccable as reference. Hands off read-only work: `impeccable critique|audit` on an existing surface, `hallmark audit` for a slop score, `hallmark study` for DNA from a URL or screenshot; polish and redesign run through this skill's blueprint. Not for backend, data, or copy-only work."
-version: 0.2.10
+version: 0.2.11
 user-invocable: true
 argument-hint: "[brief | component <name> | existing <path> | audit <path> | record]"
 ---
@@ -12,7 +12,7 @@ Plans one user-facing surface and emits a blueprint block a builder subagent can
 
 **Precedence.** When frontend-design, impeccable, or hallmark would also fire on a new-UI request, this skill runs first and loads them as reference; they are invoked directly only through step 1's table.
 
-**Who runs it.** Claude Opus 5.5 is the senior seat for design and UI/UX, by the user's standing decision. On an Opus 5.5 session run this skill in-session. On a Fable, Sonnet or Haiku session the orchestrator delegates it to `model-router:designer` (Opus 5.5 at xhigh, read-only), which returns the `## Design (from design-pass)` block, and pastes that block into the builder spec. The block's direction stands at every later gate; reviewers report only what will not work.
+**Who runs it.** Claude Opus 5.5 is the senior seat for design and UI/UX, by the user's standing decision. On an Opus 5.5 session in Lead mode run this skill in-session; in Orchestrate mode (fabstra phases.md, "Design and UI/UX") and on a Fable, Sonnet or Haiku session the orchestrator delegates it to `model-router:designer` (Opus 5.5 at xhigh, read-only), which returns the `## Design (from design-pass)` block, and pastes that block into the builder spec. The block's direction stands at every later gate; reviewers report only what will not work.
 
 What each source is, which sections this skill reads, and its exact path: [references/sources.md](references/sources.md).
 
@@ -103,7 +103,7 @@ frontend-design's two passes, condensed. Load that file as reference only; do no
 **(a) The plan.** Write, compactly:
 
 - SCREEN scope: the audience register, named from the brief. Technical or ops users get the dense **tool** register: a ruled status ledger instead of KPI cards, run detail drawn like the automation canvas, hue reserved for status. Business-owner or client users get the **friendly** register: one ruled KPI band of large figures with plain labels, one accent colour, a step-by-step replay of what happened. If the brief does not say who uses the screen, ask that one question. Worked design blocks from the 2026-10-18 A/B trial, which JC could not split on quality: [references/examples/register-tool.md](references/examples/register-tool.md) (built at D:\design-trial-2026-10-18\arm-a) and [references/examples/register-friendly.md](references/examples/register-friendly.md) (built at D:\design-trial-2026-10-18\arm-b).
-- 4-6 named hex colours, each with its role. Before the plan leaves, compute the WCAG contrast ratio of every text-on-fill pair the tokens imply (action fill with its label, error text on its surface, quiet text on the ground) with a short script - python or node, in the session scratch directory - never by inspection: a hex judged by eye lands just under 4.5:1 often enough that the builder inherits the failure. Write the ratio beside the token; any pair under 4.5:1 is changed here, never handed to the builder.
+- 4-6 named hex colours, each with its role. Before the plan leaves, compute the WCAG contrast ratio of every text-on-fill pair the tokens imply (action fill with its label, error text on its surface, quiet text on the ground) with a short script - python or node, in the session scratch directory - never by inspection: a hex judged by eye lands just under 4.5:1 often enough that the builder inherits the failure. Write the ratio beside the token; any pair under 4.5:1 is changed here, never handed to the builder - every planned text pair, large text included, meets the 4.5:1 body-text floor, so the review's 3:1 allowances for large text, icons, focus rings and disabled states (gates 12, 13 and 24) never decide a planned pair.
 - Timed dismissals (undo bars, toasts) are stated as a minimum of 10 seconds with a persistent inline alternative, or as no timer at all: a shorter undo window fails anyone who reads or moves slowly.
 - The brief's data is fixed: its records, field values, status names, and the people and actions it names reach the plan word for word. A status filter offers the brief's own statuses, and a field the brief gives one meaning keeps it. An action the brief names (send the reminder to the client) is the primary control where it appears; any alternative the plan adds (another person, another route) sits quieter beside it. A renamed status or a demoted named action fails the brief's task even when the surface looks right.
 - 1-2 typefaces with their roles; if two, make them clearly distinct.

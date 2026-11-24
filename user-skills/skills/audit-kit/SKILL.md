@@ -40,7 +40,7 @@ No argument means `all`.
    report's findings for its area, and an output path. Prompts and memory are
    pure reads: each runs as its own Code Mode worker (`code-mode-worker`
    skill), alone or as part of `all`, writing to its scratch folder; context
-   uses doctor-plus's own worker hand-off. Copy each result to
+   uses doctor-plus's own worker hand-off; its Part 3 table maps into this report (each FLAG row becomes a finding with an E ID, each PASS row a line under "Checked and healthy"). Copy each result to
    `~/.claude/audits/<YYYY-MM-DD>/<audit>.md`. Doctor and skills run commands
    (`claude doctor`, `scripts/skill_usage.py`): for `all` they go to read-only
    subagents launched alongside the workers, writing straight to that path; a

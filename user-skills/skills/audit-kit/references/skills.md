@@ -59,5 +59,5 @@ invocation history; run it first if this Claude Code has it.
 
 Read each skill the way the model receives it: description always, body on
 invocation, references on demand. For judgement findings across many skills,
-split the inventory among read-only subagents with this file as the rubric,
+the audit (run in-session when alone, SKILL.md step 3) may split the inventory among read-only subagents with this file as the rubric,
 then re-read the cited lines yourself for the top findings before reporting.

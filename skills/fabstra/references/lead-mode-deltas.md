@@ -15,9 +15,9 @@ lane-b.md is the text; on a Lead-mode session only this differs.
   on its behalf.
 - Part 5(d): you take a fix yourself only when it needs something the solo
   session cannot reach (a plugin skill with `disable-model-invocation`, a
-  Claude-only MCP tool); log it, and the active set re-reviews it while
-  rounds remain under the 3-round review cap or the build is excluded
-  (no cap) (after the cap you verify it yourself: lane-b.md part 5(e), phases.md "Phase 4").
+  Claude-only MCP tool); log it, and it is re-reviewed or verified under
+  lane-b.md part 5(e), the one trigger and confirmation rule (review cap 3,
+  excluded 5: phases.md "Phase 4").
 
 ## Lead mode delta - transports
 

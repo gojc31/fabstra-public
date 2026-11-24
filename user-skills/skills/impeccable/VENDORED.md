@@ -31,3 +31,8 @@ Upstream text left as shipped; recorded here instead of patched.
 - reference/motion-craft.md Never ship: the layout-property row exempts the measured-height accordion (matches emil-skills animate/SKILL.md:85).
 - reference/motion-craft.md + design-pass gates.md 31d: keyboard-started = commands fired from the keyboard; field focus states are not (Emil animate/SKILL.md:43,48).
 - Pre-edit copies: `C:\Users\<you>\.claude\backups\emil-gov-2026-10-18\skills\impeccable\`.
+
+## Local edits 2026-11-25 (audit 2026-11-24, C7)
+
+- reference/critique.md Assessment B: never run `detect.mjs` on a URL (its URL path, `scripts/detector/engines/browser/detect-url.mjs:27,35`, launches its own Chrome through Puppeteer, against JC's browser-harness rule).
+- reference/critique.md overlay step 1: browser-harness `own_tab(url)` replaces the "fall back to a custom Playwright/Puppeteer script" line; no harness means the browser step is reported skipped. Scripts unchanged.

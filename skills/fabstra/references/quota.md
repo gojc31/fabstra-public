@@ -137,7 +137,7 @@ invocation). Both models' quota errors cover every login; a cooling model
 hops by the hop rules (transport.md, Model pins), then the "Reviewer
 fallback" table.
 
-Lane W stays retired (2026-09-27). The non-gating Pro consult seat (pro-consult.md) exists since 2026-10-17; it never replaces a gate or review seat.
+Lane W stays retired (2026-09-27); `scripts/lanew_log.py` stays live as the usage logger that `geminipro.py` and `astrapro.py` import, and lane-w.md is a historical page in the shared fabstra clone only. The non-gating Pro consult seat (pro-consult.md) exists since 2026-10-17; it never replaces a gate or review seat.
 Codex-only breakages: "Codex CLI is not installed" means the PATH shims are
 missing; an auth error on the router path is the proxy key or a proxy
 credential (`MODEL_ROUTER_KEY` vs config.yaml, then `expired`/`disabled` in

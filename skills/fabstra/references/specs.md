@@ -415,7 +415,7 @@ A re-review keeps its round facts even as a plain spec: beside
 `<prior_findings>` it still carries the `Build-start base:` line, that
 round's diff, and from round 3 the round-3 `<review_scope>` text.
 
-**Reviewer C (the fresh Fable 5.2 Agent seat, `model-router:reviewer`, effort high; effort xhigh on a build in an excluded category):**
+**Reviewer C (the fresh-Fable seat: `fable-review.py`, else the credits pool, else the Agent seat `model-router:reviewer` on Opus 5.5 - transport.md, "Reviewer C on credits (fable-review.py)"; effort high; effort xhigh on a build in an excluded category):**
 drop the `<turn_budget>` block from the spec it receives. The 30-call
 ceiling is the proxy `claude -p` seats' `--max-turns 30` (transport.md); the
 Agent seat has no cap and carries about 2.5x the scope (fanout.md, seat
@@ -446,9 +446,10 @@ and on every seat, plain single-file specs included; drop it on round 1.)
 Review round: <N>
 Ledger rows for this build, from the logbook, one per finding:
 <id | file:line | one-line defect | status: FIXED (verified), WITHDRAWN
-(rejected by the lead or withdrawn by a reviewer), or OPEN - an OPEN row
-whose fix landed since the last review reads "OPEN - fix claimed" | for
-WITHDRAWN, the logged reason>
+(rejected by the lead or withdrawn by a reviewer), ESCALATED (sent to the
+user; "ESCALATED - review only" when the user approved this round but no
+fix for it), or OPEN - an OPEN row whose fix landed since the last review
+reads "OPEN - fix claimed" | for WITHDRAWN, the logged reason>
 </prior_findings>
 <context>
 Files changed: <paths, one per line, each with a one-line note of what the
@@ -518,11 +519,12 @@ probe files only under <scratch dir>.
 </action_safety>
 <structured_output_contract>
 Return exactly: (1) per acceptance criterion: PASS or FAIL with evidence;
-(2) re-reviews only - prior-finding verification, one line per OPEN row of
-<prior_findings>: `VERIFIED FIXED: <id>` or `STILL OPEN: <id>`, plus
-`REOPENED: <id>` for a FIXED row the current changes reintroduce, each with
-file:line evidence; an incomplete fix is STILL OPEN and a reintroduced one
-REOPENED here, never a new finding;
+(2) re-reviews only - prior-finding verification, one line per OPEN or
+ESCALATED row of <prior_findings>: `VERIFIED FIXED: <id>` or `STILL OPEN: <id>`, plus
+`REOPENED: <id>` for a FIXED row whose closure current evidence disproves -
+the defect persisted or returned - each with file:line evidence; an
+incomplete fix on an OPEN row is STILL OPEN and a FIXED row's defect found
+again is REOPENED here, never a new finding;
 (3) new findings ranked by severity (JC 2026-11-23), every level needing
 `breaks:` and `proof:` - P1 breaks the brief, an acceptance criterion, a
 project hard rule or a safety invariant on the main path, or is a named P1 of this template (a

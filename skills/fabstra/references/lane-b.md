@@ -131,7 +131,8 @@ the project directory).** Run `proxy-pin status` and note it in the logbook;
 the standing pin is `both` and this lane never changes it.
 Before the launch, a non-git project copies its judging checks (the tests and
 fixtures, lint, type and CI configuration, hooks) and REVIEW.md to
-`<scratch>/fabstra-prebuild/`: the base for part 3's judging-checks diff and
+`<scratch>/fabstra-prebuild/`, with each verify skill's
+`checklist.md`: the base for part 3's judging-checks diff and
 part 4's reviewer diff.
 If it reads `team`, log that and continue - every login except the Pro one
 still serves Astra. Then:
@@ -204,7 +205,7 @@ review spec: Reviewer S, Sol at xhigh through the proxy (the Phase 3 proxy
 command with `--model gpt-6.2-sol --effort xhigh` and its 500000 context
 variable; ledger ids `S<n>`; named S, not B, because Reviewer B is the
 cooldown seat after a Claude build, transport.md), and Reviewer C, a fresh
-Fable 5.2 at high (credits first: transport.md, "Reviewer C on credits (fable-review.py)"; its fallback is one Agent tool call, `subagent_type: "model-router:reviewer"` at `effort: "high"`, or `effort: "xhigh"` on a build in an excluded category,
+Fable 5.2 at high, or xhigh on a build in an excluded category, on both transports (credits first: transport.md, "Reviewer C on credits (fable-review.py)", at that effort; its fallback is one Agent tool call, `subagent_type: "model-router:reviewer"` at `effort: "high"`, or `effort: "xhigh"` on a build in an excluded category,
 the spec verbatim). Launch both in the same message. Give each seat its own
 findings file: substitute `fabstra-review-findings-sol.md` and
 `fabstra-review-findings-fable.md` for the spec's `fabstra-review-findings.md`
@@ -243,16 +244,16 @@ logbook's findings ledger - not any model's report - is the record of
 agreement. (a) Merge: collapse duplicates (same file and defect), tag every
 finding by source - S, C, `G` (a Reviewer G `G<n>` row you confirmed;
 pro-consult.md, "Reviewer G"), or a combination such as S+C or
-S+G - and enter each in the ledger as OPEN. Then, before any brief: apply the fix threshold of phases.md "Phase 4" (JC 2026-11-23): a finding whose `breaks` target and proof you have not confirmed is WITHDRAWN there as a follow-up and never reaches the builder, except a credible safety-invariant breach you cannot safely verify, which goes to JC (same section); next the build-wide ceiling at the end of this part: a finding that passes the threshold but is first raised after its two fix rounds are spent is ESCALATED at intake and goes into no fix brief unless JC orders the fix; beyond that, the lead may WITHDRAW a finding at any stage with one logged line of reason; unanimity is not required. (b) Send
+S+G - and enter each in the ledger as OPEN. Then, before any brief: apply the fix threshold of phases.md "Phase 4" (JC 2026-11-23): a finding whose `breaks` target and proof you have not confirmed is WITHDRAWN there as a follow-up and never reaches the builder, except a credible safety-invariant breach you cannot safely verify, which goes to JC (same section); next the build-wide ceiling at the end of this part: a finding that passes the threshold but is first raised after its two fix rounds are spent is ESCALATED at intake with the reason `blocked by build-wide ceiling` (no claim of two failed attempts on it) and goes into no fix brief unless JC orders the fix; beyond that, the lead may WITHDRAW a finding at any stage with one logged line of reason; unanimity is not required. (b) Send
 every open finding that passed the threshold and is not ESCALATED to the solo builder, verbatim, tagged, with its bug class and the check its fix must satisfy (the fix-packet rule of phases.md "Phase 4"), in a new brief:
 "these findings are against your design at `.fabstra/DESIGN-<name>.md`;
 answer each one FIXED (with the verification you ran) or REBUTTED (with
 evidence); for each finding's bug class, grep the build's files and fix
-every instance, listing each one; keep the design file current; report the same way", launched
+every instance, listing each one, except the findings and instances listed under "blocked, no action"; keep the design file current; report the same way" - the brief lists there every ESCALATED finding and its instances unless JC authorised that named attempt, launched
 with the part-2 command (a new session - the findings live in the brief).
 The builder may not drop a finding silently: an unanswered finding is
 REBUTTED without evidence and stays OPEN. (c) Close the ledger: FIXED stays
-OPEN until the re-review in (e) confirms it (after the review cap: the lead's verification, (e)), then FIXED. REBUTTED on an S+C
+OPEN until confirmed under (e), then FIXED. REBUTTED on an S+C
 finding is real unless the rebuttal shows a fact both reviewers got wrong -
 you rule and log why: WITHDRAWN ("ruled by orchestrator") or OPEN for the
 next brief. REBUTTED on a single-source S or C finding earns one re-check: send the finding, the rebuttal, and its evidence to the reviewer that raised it - or, if that seat has since left the active set (Sol, once Sol built or continued the build or a delegation landed, or while Sol is unavailable, part 4), to the fresh Fable in its place - on that seat's own transport, read-only, asking for WITHDRAWN or HELD with a reason; WITHDRAWN closes it; HELD means you rule and log why: WITHDRAWN or
@@ -260,20 +261,19 @@ OPEN. A combined S+G or C+G finding is re-checked by its S or C seat the
 same way; an S+C+G finding is ruled like S+C. REBUTTED on a `G`-only finding
 has no reviewer to re-check it: you rule on your own re-check of the
 evidence, with one logged line - WITHDRAWN or OPEN. Its FIXED is confirmed
-as for every finding: by the active set's re-review in (e), or after the review cap by the lead's verification, (e). Each finding gets at most one re-check and at most two fix briefs;
+as for every finding, under (e). Each finding gets at most one re-check and at most two fix briefs;
 after that it is ESCALATED - it goes to the user with each party's
-position. You never edit a builder's report: withdrawals live in the
+position; a finding whose two fix briefs both failed also carries its history, your re-diagnosis and the Pro consult's advice or why Pro was skipped (phases.md "Phase 4", finding ceiling). You never edit a builder's report: withdrawals live in the
 ledger, and the next fix brief lists them under "withdrawn, no action" so
 the builder's next report can carry them. (d) A Claude builder takes a fix
 only when it needs something the solo session cannot reach (a plugin skill
 with `disable-model-invocation`, a Claude-only MCP tool); log it. It is
-re-reviewed like any other change, by the active set (after the review cap: the lead's verification, (e)) - Sol reviewing
+re-reviewed or verified like any other change, under (e) - Sol reviewing
 Claude-written code is a cross-family check, so the set does not shrink for
-it. (e) Re-run the smoke gate after every code-changing round, then re-run
-the ACTIVE REVIEWER SET (part 4, recomputed) on the changed files; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation (c) and (f) wait for. Reviewer G runs in no re-review; its rows never confirm a fix. A code-changing round with no re-review gets the Hydrogen fix check instead, once its smoke gate passes (pro-consult.md; snapshot before the fix brief launches). The review cap of phases.md "Phase 4" (3 rounds, JC 2026-11-23; an excluded-category build is exempt and re-reviews as before) holds here for any other build: once round 3 has run, a code-changing round gets no re-review unless JC approves a fourth round (one per go), and on that no-re-review path, in (c) and (f), the lead's own verification - the failing check now passes, confirmed with a targeted slice - stands in for the active set's confirmation; the cap gives no finding an extra attempt, and the two-fix-brief ceiling per finding still holds. The ceiling below comes first (checked at intake, (a)): a finding first raised in round 3 is still open after two fix rounds, so it is ESCALATED under that ceiling, not fixed, and the lead's verification stands in only for a fix JC then orders without a fourth round; a fourth round on JC's go confirms it by the active set's re-review (phases.md "Phase 4"). (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed by the re-review, or after the cap by the lead's verification), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; every seat of the active set still runs (both, unless part 4 reduced it to Reviewer C), and every code-changing round under the cap is still re-reviewed by the active set. A taste-only finding against the Design block is WITHDRAWN by the
+it. (e) Re-run the smoke gate after every code-changing round. This is the one trigger and confirmation rule that (c), (d) and (f) point to. Rounds 2-3: re-run the ACTIVE REVIEWER SET (part 4, recomputed) - round 2 on the full build (`scope=full`), round 3 on the changes since the last reviewed state (`scope=diff`), by the scope rules of phases.md "Phase 4"; each seat's spec carries `<prior_findings>` from this ledger under the round rules, ledger transitions and PRE-EXISTING routing of phases.md "Phase 4", and its `VERIFIED FIXED: <id>` lines are the confirmation. Reviewer G runs in no re-review; its rows never confirm a fix. The review cap of phases.md "Phase 4" holds here: 3 rounds (JC 2026-11-23), 5 on an excluded-category build (JC 2026-11-24). An excluded build's round 4 or 5 runs only when a claimed P1 fix passes its failing check (you check it), and then by one seat on the round's changes: Reviewer S when Sol is eligible in the recomputed set, else Reviewer C (part 4's C-only fallback, xhigh on both transports); no second seat, no Neon; that seat's `VERIFIED FIXED` lines confirm. A code-changing round with no re-review - past the cap, or an excluded build's fix round after round 3 with no qualifying P1 (the build stays under its cap; a later qualifying P1 fix brings round 4 or 5: phases.md "Phase 4") - is closed by the lead's own verification (the failing check now passes, confirmed with a targeted slice), which stands in for the confirmation in (c) and (f), and gets the Hydrogen fix check once its smoke gate passes (pro-consult.md, with its own eligibility and skip rules; snapshot before the fix brief launches). A round past the cap runs only on JC's go (one per go), by the active set (excluded: the one-seat rule above). The cap gives no finding an extra attempt. The build-wide ceiling below comes first (checked at intake, (a)): once the two fix briefs are spent, a still-open or newly raised finding is ESCALATED, not fixed, and the lead's verification stands in only for a fix JC then orders that no round re-reviews. (f) SHIP GATE = the lead's verdict: the ledger shows every finding FIXED (confirmed under (e)), WITHDRAWN (by the lead, one logged line), or ESCALATED to the user; in rounds 1-3 every seat of the active set still runs (both, unless part 4 reduced it to Reviewer C) and re-reviews every code-changing round; an excluded build's rounds 4-5 follow the one-seat rule of (e). A taste-only finding against the Design block is WITHDRAWN by the
 orchestrator with one line (the arbitration rule in phases.md) and never goes
 back to the solo builder; a feasibility finding against it is handled like
-any other. An ESCALATED finding blocks shipping until the user rules; a fix JC orders, or a fourth round on JC's go, returns it to OPEN under its own id with its history (phases.md "Phase 4", review cap).
+any other. An ESCALATED finding blocks shipping until the user rules; only a fix JC orders returns it to OPEN under its own id with its history, its brief count never reset, and a failed ordered fix is ESCALATED again; JC's go for a further round alone lets the reviewers check it (its `<prior_findings>` row reads `ESCALATED - review only`) and puts it in no fix brief (phases.md "Phase 4", review cap).
 Nothing ships without this gate. Ceilings: findings count not dropping
 means the design is wrong - stop and escalate with the full history; two
 fix rounds after the initial review is the hard ceiling, after which every
@@ -283,6 +283,6 @@ still-open item is ESCALATED.
 and effort, the smoke-gate result, both reviewer seats and their durations
 (or why one was skipped), agreement reached yes/no, findings by source (S,
 C, `G`, or a combination such as S+C or S+G) with each marked FIXED, WITHDRAWN, or ESCALATED, whether the proxy pin
-was restored, and anything open. The commit stamp and the REVIEW.md rule
-proposals of phases.md "Phase 4" apply to Lane B as written there.
+was restored, and anything open. The commit stamp and the REVIEW.md rule and
+checklist row proposals of phases.md "Phase 4" apply to Lane B as written there.
 

@@ -11,5 +11,6 @@ Follow the review spec in your prompt exactly: ground every finding in
 file:line evidence or command output you ran; report only findings you are
 80+ confident in and would personally act on; finding nothing wrong is a
 legitimate result. Never modify the reviewed files; run builds and tests
-freely; write probe files only under the scratch directory the spec names.
+only where the spec states they are local and isolated, otherwise stay
+read-only; write probe files only under the scratch directory the spec names.
 Return only the structured report the spec asks for.

@@ -8,7 +8,7 @@ What the Orchestrate threshold counts: Independent tasks edit disjoint files and
 
 You are the lead: you draft the plan, send it through the plan gate, build what the authoritative plan says (yourself or by tier), run the smoke gate, arbitrate every finding, talk to the user, and write the report. The gate seat and every reviewer advise; the user is the only party above you. The logbook is `.fabstra/RUN.md` with the fields and rename rule in phases.md, "The run logbook"; usage-log rows use `flow` = `fabstra`.
 
-Paths: plugin-root variables are not substituted on an Opus / Sonnet / Haiku session; every file named here lives in `$MODEL_ROUTER_HOME/skills/fabstra/references\`. Read one when you reach the gate or lane it covers, not before.
+Paths: plugin-root variables are not substituted on an Opus / Sonnet / Haiku session; every file named here lives in `$MODEL_ROUTER_HOME/skills/fabstra/references\`. Read one when you reach the gate or lane it covers.
 
 ## Who does what
 
@@ -21,45 +21,45 @@ Paths: plugin-root variables are not substituted on an Opus / Sonnet / Haiku ses
 | INDEPENDENT REVIEWER | fresh Fable 5.2, high (excluded: xhigh): credits first, `model-router:reviewer` fallback (transport.md "Reviewer C on credits") | reviews what the gate seat's own thread built or fixed; fallbacks per transport.md |
 
 Codex builders, homes and depth limits: transport.md, "The crew in full".
-Astra held the gates by the user's choice (2026-09-05, Sol row added 2026-09-27; evidence in
+Astra held the gates from 2026-09-05 (Sol row from 2026-09-27; evidence:
 `$MODEL_ROUTER_HOME/bench/results/results.csv`). JC 2026-11-18: Sol default; Astra hard-reasoning seat, Sol's backup.
 
 ## Seat rubric - who holds the gates on this build
 
 | Build looks like | Gate seat | Plan gate? | Review? |
 |---|---|---|---|
-| The user named Astra as the builder ("astra solo", "astra build it") or gave a count ("astra x3" = fan-out) | **Lane B** (lane-b.md plus its delta in lead-mode-deltas.md; Sol xhigh solo when Astra is spent) | no - Astra's design file is the plan | Sol xhigh and a fresh Fable, in parallel |
+| The user named Astra as the builder ("astra solo", "astra build it") or gave a count ("astra x3" = fan-out) | **Lane B** (lane-b.md; delta: lead-mode-deltas.md) | no - Astra's design file is the plan | lane-b.md part 4 |
 | Design and UI/UX: a new or changed user-facing surface, visual direction | **Opus 5.5** owns the design (see Build); the code plan takes its row below | yes, for the code plan: the gate takes the Design block as given and objects only to what will not work | the seat that gated the code plan |
-| An architecture or data-model decision; a plan whose check you cannot state; "break it"; a re-review after a Sol miss on a P1 (phases.md, Phase 4) | **Astra** | yes | Astra; on an xhigh row plus a fresh Fable in parallel |
+| An architecture or data-model decision (a schema change - a new or altered column or table - counts); a plan whose check you cannot state; "break it"; a re-review after a Sol miss on a P1 (phases.md, Phase 4) | **Astra** | yes | Astra; on an xhigh row plus a fresh Fable in parallel |
 | An excluded category (SKILL.md), no Astra trigger | **Sol xhigh** | yes | Sol xhigh plus a fresh Fable in parallel |
 | Standard feature with tests (multi-file included), integration surface, refactor with a clear before/after, contained bug fix in known code that fails any contained-change criterion, 3+ steps of a known shape | **Sol** (`--model gpt-6.2-sol`, rubric effort: high; xhigh re-review after a P1) | yes | Sol; on an xhigh row plus a fresh Fable in parallel |
 | Contained change: all of - at most 3 files; an existing repo pattern cited file:line; an existing test or named check proves it; no excluded category; no architecture or data-model decision; no user-facing surface. Doubt -> real build. You build it, smoke gate, one review (phases.md, Phase 1) | **Sol high** | no | Sol high (Codex-built: fresh Fable) |
 | Small change: trivial single-file, low-stakes - the user called it so, or nothing a user or client runs depends on it | none - you make the change | no | no - say so in the report |
-| A budget-crew ask (budget, cheap crew) | the row the work fits; the report says the budget crew is retired (Lane C retired 2026-11-15; archive/2026-11-15-lane-c/) | per that row | per that row |
+| A budget-crew ask (budget, cheap crew) | the row the work fits; the report says the budget crew is retired (retired 2026-11-15; archive/2026-11-15-lane-c/) | per that row | per that row |
 
-Taste findings against Design block: reject with one line. The lead picks the row from the brief; an Astra trigger beats every Sol row (the excluded one still floors the seat at xhigh); mixed or unsure, no trigger: Sol at the higher effort; naming a seat pins it ("astra", "sol"); hop rules: transport.md, Model pins. A P1 Sol found is no Sol miss. Never move down mid-task; after an empty review on doubt move up in effort (Astra only on a trigger). Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row or a re-review after a P1, unless pinned ("sol high"/"quick review" = high; excluded: xhigh over any pin). Astra and Sol share pools (quota.md); fast pin: quota.md. Gemini seats (Hydrogen quick check, Reviewer G, Gemini report check, Hydrogen fix check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
+Taste findings against Design block: reject with one line. The lead picks the row from the brief; an Astra trigger beats every Sol row (the excluded one still floors the seat at xhigh); mixed or unsure, no trigger: Sol at the higher effort; naming a seat pins it ("astra", "sol"); hop rules: transport.md, Model pins. A P1 Sol found is no Sol miss. Never move down mid-task; after an empty review on doubt move up in effort (Astra only on a trigger). Astra's effort follows rubric (SKILL.md, phases.md); Sol: high, xhigh on an xhigh row, unless pinned ("sol high"/"quick review" = high; excluded: xhigh over any pin). Shared Astra/Sol pools, fast pin: quota.md. Gemini seats (Hydrogen checks, Reviewer G, report check): lead-mode-deltas.md, "Lead mode delta - Gemini seats".
 
 ## The five gates
 
 Every hard task passes Gates 1-5; on a real build the plan gate sits after
 Gate 2 and the review gate after Gate 4; a contained change gets the review gate only. Gates run in order by default; when you skip one, name it and say why in the report.
-When a task stalls or a result surprises you, name the gate you are at and re-run it. Each gate ends with the smells that mean it got skipped: any one of them, stop and go back to that gate.
+When a task stalls or a result surprises you, name the gate you are at and re-run it. Each gate ends with the smells that mean it got skipped: any one, stop and go back to it.
 
 ### Gate 1 - Scope before work
 
-- Define done in one or two sentences: what artifact exists at the end, what must be true of it, and how you will check that it is true. If you cannot write the check, you do not understand the task yet.
+- Define done in one or two sentences: what artifact exists at the end, what must be true of it, and how you will check it. If you cannot write the check, you do not understand the task yet.
 - Written report, analysis, audit, strategy or decision brief, a fix of a recurring problem, scoping a new feature or a goal-only brief (the four lines shape your one question), or "go deeper": run the depth pass (phases.md, Phase 1, "Depth pass"); its outside check is your done check, and its options ride in the OPEN FOR THE USER bundle. Small, quick, or "keep it simple" work skips it (same section).
 - A new or materially changed client automation (n8n, Make, GHL, VAPI), however small or well-specified: get the governance verdict (phases.md, Phase 1, "Governance verdict") before the plan is final. It holds even when the depth pass is skipped.
 - Check standing rules first (CLAUDE.md, skills, memory). Do not invent an approach the project already has a rule for.
 - Separate known from assumed. Name the one to three load-bearing unknowns.
-- Ambiguous in a way that changes what you would build: ask one question, aimed at the biggest gap. Otherwise pick the sensible default, say so in one line, and proceed.
-- Right-size the process and the effort; pick the seat-rubric row and say it in one line.
+- Ambiguous in a way that changes what you would build: ask one question, aimed at the biggest gap. Otherwise pick the sensible default, say so in one line and proceed.
+- Right-size process and effort; pick the seat-rubric row and say it in one line.
 - Smell: you cannot say in one sentence what done looks like.
 
 ### Gate 2 - Evidence before reasoning
 
 - On Opus 5.5 the mode is settled when the draft plan exists: 2+ independent tasks (defined at the top of this file) or an excluded category -> switch to Orchestrate mode now (phases.md, from Phase 1, with this draft as the plan); fewer -> stay here. Log `mode=` in RUN.md; never switch after a builder has launched.
-- Real build: write the draft plan to `<scratch>/fabstra-plan-<name>.md` before the plan gate - numbered tasks per specs.md "Builder spec contract", each with a proposed owner (BUILDER = you and your subagents; CODEX = the gate seat's thread) and a DEPENDS ON line naming any task whose output it consumes at run time, or "none". Group the tasks into waves of 3-4 parallel builders (fanout.md, "Build waves"). No `codex-write=` line in `.fabstra/RUN*.md` -> run the Codex write probe (transport.md) before tagging owners; its line goes into RUN.md. Owner default: CODEX for a self-contained, well-specified task (a written contract, no Claude-only MCP tool or skill, no CLAUDE.md-context dependence) in a folder that has passed the probe; BUILDER for the rest. Lane B replaces the draft plan with the brief.
+- Real build: write the draft plan to `<scratch>/fabstra-plan-<name>.md` before the plan gate - numbered tasks per specs.md "Builder spec contract", each with a proposed owner (BUILDER = you and your subagents; CODEX = the gate seat's thread) and a DEPENDS ON line naming any task whose output it consumes at run time, or "none". Group the tasks into waves of 3-4 parallel builders (fanout.md, "Build waves"). No `codex-write=` line in `.fabstra/RUN*.md` for this folder and the home its builds launch on (transport.md hop rule 7) -> run the Codex write probe (transport.md) before tagging owners; its line goes into RUN.md. Owner default: CODEX for a self-contained, well-specified task (a written contract, no Claude-only MCP tool or skill, no CLAUDE.md-context dependence) in a folder that has passed the probe; BUILDER for the rest. Lane B replaces the draft plan with the brief.
 - Smell: you are building and have not opened the real data, file, or API response it depends on.
 
 ### The plan gate - the gate seat tries to break the plan
@@ -76,39 +76,38 @@ Send the draft plan and the repository to the gate seat, read-only. While it run
 
 ### Build - executing the authoritative plan
 
-- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on the seat phases.md, "Claude seat efforts", picks (credits first, floor, miss ladder, pins) - `model-router:builder` at effort low (mechanical), medium (contract) or high (hard) (a "sonnet max" pin: `model-router:sonnet-max`); log `seat=model-router:builder effort=<x>`. Every delegation carries a spec per specs.md "Builder spec contract".
-- **Design block:** a UI surface gets its `## Design (from design-pass)` block first - on an Opus 5.5 session you run the `design-pass` skill; a Sonnet or Haiku session makes one `model-router:designer` call stating `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E included (JC 2026-10-31; no marker = BLOCKED). It goes into the builder spec; its Gates and Verify sub-blocks go into the review spec.
-- **CODEX tasks** go out as one job for the gate seat's thread: `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, per specs.md "Codex-side tasks" (swaps, additions, "What I will check:" line), the stack rules, and the clause of the model that runs as parent (specs.md "Codex parent clauses"; hop rules: transport.md, Model pins); launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
-- **Schedule by READINESS, not by owner:** a task is ready when its whole DEPENDS ON chain has landed and none of it is blocked on the user. The first message launches every ready CODEX task as one job beside your first ready BUILDER work; the rest go out as their chains complete (later CODEX tasks as their own jobs). Disjoint files are not the same as no run-time dependency.
-- **Reports:** handle the status per phases.md "Phase 2 - status handling"; verify with targeted slices - DONE is a claim until you have seen the output; NEEDS_CONTEXT gets a REVISED spec as a fresh job.
-- **Smoke gate:** when every task has landed, run phases.md "Phase 2" smoke gate in full (build and tests, the `verify` skill with what you observed, the judging-checks diff). A broken smoke gate means fixes now, before any review.
+- **BUILDER tasks** are yours. Build them yourself, or delegate by tier on the seat phases.md, "Claude seat efforts", picks (credits first, floor, miss ladder, pins; efforts by tier: the BUILDERS row above; a "sonnet max" pin: `model-router:sonnet-max`); log `seat=model-router:builder effort=<x>`. Every delegation carries a spec per specs.md "Builder spec contract".
+- **Design block:** a UI surface gets its `## Design (from design-pass)` block first - on an Opus 5.5 session you run the `design-pass` skill; a Sonnet or Haiku session makes one `model-router:designer` call stating `Pass: INTERNAL`, or `Pass: CLIENT` with the brief as given, client-E included (JC 2026-10-31; no marker: designer.md infers it). It goes into the builder spec; its Gates and Verify sub-blocks go into the review spec.
+- **CODEX tasks** go out as one job for the gate seat's thread: `<scratch>/fabstra-codex-<name>.md` holds those tasks verbatim, per specs.md "Codex-side tasks", the stack rules, and the clause of the model that runs as parent (specs.md "Codex parent clauses"; hop rules: transport.md, Model pins); launch with `--write` (transport.md, plus its delta in lead-mode-deltas.md).
+- **Schedule by READINESS, not by owner:** a task is ready when its whole DEPENDS ON chain has landed and none of it is blocked on the user. The first message launches every ready CODEX task as one job beside your first ready BUILDER work; the rest go out as their chains complete (later CODEX tasks as their own jobs).
+- **Reports:** handle the status per phases.md "Phase 2 - status handling"; verify with targeted slices - DONE is a claim until you have seen the output; NEEDS_CONTEXT: a REVISED spec as a fresh job.
+- **Smoke gate:** when every task has landed, run phases.md "Phase 2" smoke gate in full (build, tests, the `verify` skill with what you observed, judging-checks diff). A broken smoke gate means fixes now, before any review.
 
 ### Gate 4 - Verify before declaring done
 
 ### The review gate - the build gets broken on purpose
 
-- **Seat by what was built:** BUILDER-side work -> the gate seat (Sol, or Astra on an Astra row, at the rubric effort; contained change: Sol high); CODEX-side work -> the fresh Fable (high; excluded: xhigh, phases.md "Claude seat efforts"; credits first: transport.md "Reviewer C on credits"), because the gate seat's own thread built it. On an xhigh row (an excluded category, multi-file architecture, re-review after a P1) the BUILDER-side review runs twice in parallel: the gate seat and a fresh Fable, each with the full BUILDER scope; you rule on both ledgers, and a finding raised by one seat only is still a finding. A build with both sides gets both reviews in the same message, partitioned: the gate seat's `<review_scope>` opens "Review only the BUILDER tasks <numbers, files>; the CODEX tasks were built by your own thread - do not grade them", the fresh Fable's "Review the CODEX tasks <numbers, files> and every seam with the BUILDER tasks"; each acceptance criterion goes to exactly one reviewer, and the partition stays even when the discovery blocks are dropped. Findings files are per seat: `<scratch>/fabstra-review-findings-<seat>.md` (`astra`, `sol`, `fable`).
+- **Seat by what was built:** BUILDER-side work -> the gate seat (Sol, or Astra on an Astra row, at the rubric effort; contained change: Sol high); CODEX-side work -> the fresh Fable (per the INDEPENDENT REVIEWER row), because the gate seat's own thread built it. On an xhigh row (SKILL.md, Effort) the BUILDER-side review runs twice in parallel: the gate seat and a fresh Fable, each with the full BUILDER scope; you rule on both ledgers, and a finding raised by one seat only is still a finding. A build with both sides gets both reviews in the same message, partitioned: the gate seat's `<review_scope>` opens "Review only the BUILDER tasks <numbers, files>; the CODEX tasks were built by your own thread - do not grade them", the fresh Fable's "Review the CODEX tasks <numbers, files> and every seam with the BUILDER tasks"; each acceptance criterion goes to exactly one reviewer (xhigh row: the fresh Fable also covers the BUILDER tasks), and the partition stays even when the discovery blocks are dropped. On an excluded build, rounds 4-5 and JC-go rounds: no parallel seat, no partition (below). Findings files per seat: `<scratch>/fabstra-review-findings-<seat>.md` (`astra`, `sol`, `fable`).
 - **Spec:** specs.md "Review spec (Phase 3)" (diff first, when to include the blocks, the template), plus the same two global CLAUDE.md paragraphs as the plan gate - a reviewer that runs builds and tests is bound by them too. The packet carries the authoritative plan and its acceptance criteria verbatim (`<scratch>/fabstra-plan-<name>-authoritative.md`; contained change: its RUN.md plan), not only the brief.
 - **Command and fallbacks:** transport.md "Phase 3 launch" and its fallback order, in a background Bash call. Never skip the gate silently; never be your own only reviewer.
 - Smell: you are about to report a real build and no one but you has looked at it.
 
 ### After the review - you arbitrate, fixes go out by tier
 
-- **Every finding gets a verdict in RUN.md:** accepted (its `breaks` target and proof confirmed) -> a fix delegation (finding verbatim with its bug class, the check it must pass (phases.md), paths and what not to touch); rejected -> one logged line naming the evidence you checked, a reason you would defend to the user. To hear the seat first, send one rebuttal call - the review spec plus a `<builder_rebuttal>` block (the finding, the command you ran, its output, your reading); its answer is advice, and you rule. Fix threshold (in-session fixes too; unsafe-to-verify breach: JC), fix-every-instance sweep, PRE-EXISTING routing, review rounds (`<prior_findings>`, diff-only from round 3, the `round=N scope=` log line, the 3-round cap), the commit stamp and the REVIEW.md rule proposals: phases.md "Phase 4".
-- **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by default, the Claude column when Codex is blocked or the fix needs the Claude harness; the Claude column takes its seat from that table and the rules in "Claude seat efforts" (credits first included). A multi-file fix goes to a fresh subagent even on an Opus session. A Codex-column fix is its own launch (lead-mode-deltas.md, "Lead mode delta - transports"). The `claude -p` transport never carries fixes outside Lane B. Independent fixes launch in parallel. In-session only: a one-line P3 you can see whole; a P1 or P2 never.
-- **Re-review seat: never the model that parented the fixes.** Claude-column fixes -> the reviewer logged for that scope (Astra and Sol both out, or a G stand-in logged: pro-consult.md first; else a Sol miss on a P1: Astra); Codex-column fixes -> the fresh Fable. Re-review after any P1 or multi-file round while under the 3-round cap (excluded: no cap); verify a point fix, or any fix after the cap, yourself. Partition each round by PROVENANCE (who last changed each task and criterion), not the plan's owners; fixes on both sides get both re-reviews.
-- **Smoke gate after every code-changing fix round**, whether or not a re-review follows. Two rounds on the same finding is the ceiling; a pre-cap open count that did not drop means the diagnosis is wrong - back to Gate 3, re-spec, do not re-send. A third failed round goes to the user; round 4 only on the user's go; excluded: no cap (phases.md "Phase 4").
+- **Every finding gets a verdict in RUN.md:** accepted (its `breaks` target and proof confirmed) -> a fix delegation (finding verbatim with its bug class, the check it must pass (phases.md), paths and what not to touch); rejected -> one logged line naming the evidence you checked, a reason you would defend to the user. To hear the seat first, send one rebuttal call - the review spec plus a `<builder_rebuttal>` block (the finding, the command you ran, its output, your reading); its answer is advice, and you rule. Fix threshold (in-session fixes too; unsafe-to-verify breach: JC), fix-every-instance sweep, PRE-EXISTING routing, review rounds and their cap (`<prior_findings>`, diff-only from round 3, the `round=N scope=` line), the commit stamp and the REVIEW.md/checklist proposals: phases.md "Phase 4".
+- **Fix tiers:** the table in phases.md "Phase 4" - the Codex column by default, the Claude column when Codex is blocked or the fix needs the Claude harness; the Claude column's seat: that table plus "Claude seat efforts" (credits first included). A multi-file fix goes to a fresh subagent even on an Opus session. A Codex-column fix is its own launch (lead-mode-deltas.md, "Lead mode delta - transports"). The `claude -p` transport never carries fixes outside Lane B. Independent fixes launch in parallel. In-session only: a one-line P3 you can see whole; a P1 or P2 never.
+- **Re-review seat: never the model that parented the fixes.** Claude-column fixes -> the reviewer logged for that scope (Astra and Sol both out, or a G stand-in logged: pro-consult.md first; else, under the cap, a Sol miss on a P1: Astra); Codex-column fixes -> the fresh Fable. Re-review after any P1 or multi-file round while under the review cap (3; excluded 5); verify a point fix, or any fix after the cap, yourself. Partition each round by PROVENANCE (who last changed each task and criterion), not the plan's owners; fixes on both sides get both re-reviews - except, on an excluded build, rounds 4-5 (only after a P1 fix) and JC-go rounds: one seat on the whole diff - the fresh Fable if any fix since the last review is Codex, else the gate seat (phases.md "Phase 4").
+- **Smoke gate after every code-changing fix round**, whether or not a re-review follows. A finding with 2+ failed fix attempts goes to the user before any more (check before every fix dispatch); a pre-cap open count that did not drop means the diagnosis is wrong - back to Gate 3, re-spec, do not re-send. A smoke gate red after three fix rounds goes to the user; a round past the cap only on the user's go (phases.md "Phase 4").
 - Smells: you dropped a finding without a logged line, or applied one unread.
 
 ### Gate 5 - Report calibrated
 
-- The chat report is the short report in decision-page.md (at most 6 lines, needs-you first: open decisions, approvals, commands only the user can run such as commits, pushes, uploads), with the questions asked via AskUserQuestion (decision-page.md). Everything below goes into the run's report file (decision-page.md, "Report file").
+- The chat report is the short report in decision-page.md (at most 6 lines, needs-you first: open decisions, approvals, commands only the user can run such as commits, pushes, uploads), with the questions asked via AskUserQuestion. Everything below goes into the run's report file (decision-page.md, "Report file").
 - Separate verified from assumed, out loud; after the Gemini report check, mark any research or audit claim
   you could not confirm and say where you looked. Cite file paths, line numbers,
   commands, the numbers you saw. Report what you observed, not what you
   intended. Never soften a real problem.
-- For a real build, three lines on the crew: the plan gate (seat, effort,
-  seconds, findings accepted and rejected, objections and your ruling); the
+- For a real build, three lines on the crew: the plan gate (its Log line above); the
   review (which seats ran and why; each finding FIXED, WITHDRAWN, or
   ESCALATED, naming who decided); fixes (who fixed what by tier). Say if a
   row was skipped and why.
@@ -129,10 +128,10 @@ Send the draft plan and the repository to the gate seat, read-only. While it run
   present the gate seat's call as yours or yours as its; the report says who
   decided what.
 - A task that keeps failing: follow the miss ladder (phases.md,
-  "Claude seat efforts") or move up the seat rubric (effort; Astra on a trigger).
+  "Claude seat efforts") or move up the seat rubric (effort; Astra on a trigger), up to a finding's two failed fixes.
 - Stacks with task skills: `/code-review`, and `grilling` for settling a
   design with the user before the plan gate.
 
-Lane B and transport deltas for Lead mode: lead-mode-deltas.md (read the section when you reach that lane or launch).
+Lane B and transport deltas for Lead mode: lead-mode-deltas.md (read the section on reaching that lane or launch).
 
-Model notes (Fable / Opus 5.5 / Sonnet 5.5 / Haiku 5.5 behaviors): lead-mode-deltas.md, "Model notes" - read yours before Gate 1.
+Model notes (Fable / Opus 5.5 / Sonnet 5.5 / Haiku 5.5): lead-mode-deltas.md, "Model notes" - read yours before Gate 1.

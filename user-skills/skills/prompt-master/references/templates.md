@@ -397,7 +397,7 @@ Run these in order. Each output feeds the next.
 
 ## Template M — Claude Task Brief
 
-*Use for any complex, multi-step, or agentic task on a current Claude model (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1, or the version the user names) — claude.ai, API, or Claude Code. They read prompts literally and produce narrow output when context is missing. This template front-loads everything so the first turn is the only turn.*
+*Use for any complex, multi-step, or agentic task on a current Claude model (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.2, or the version the user names) — claude.ai, API, or Claude Code. They read prompts literally and produce narrow output when context is missing. This template front-loads everything so the first turn is the only turn.*
 
 ```
 ## Objective

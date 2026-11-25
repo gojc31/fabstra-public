@@ -47,7 +47,20 @@ rewrite can leave it empty; restart the proxy instead. Spend Astra on the Astra 
   and their write probes (`--write`) launch on the router - prefix line
   `unset CODEX_HOME CODEX_DIRECT`, no picker, standard tier - so the proxy
   spreads them over every ChatGPT login (`proxy-pin both`) instead of
-  draining gojc31 Pro; log `router (builds rotate)`. Read-only
+  draining gojc31 Pro; log `router (builds rotate)`. **Business fast pin
+  (JC 2026-11-25; OpenAI gives ChatGPT Business fast mode at no extra charge
+  through 2026-12-31):** while `~/.codex-fast-pin` is live (its `until=` line,
+  2026-12-30; it lapses by itself), a `--write` launch first runs
+  `H=$(codex-fast-home build) || H=`: a non-empty `H` is a pinned Business
+  home (round-robin over the pin's `homes=` line: `.codex-biz`, `.codex-dave`, `.codex-softwave` as of 2026-11-25), so the build runs native and fast on it (hop rule 7:
+  write probe on that home first); an empty `H` (no pin, or every pinned home
+  skipped) is the router launch above. `build` never returns `.codex-pro`.
+  Reviews also take the pinned homes first and fall back to `.codex-pro` only
+  when every pinned home is skipped. Log `fast (Business pin, <home>)`. A
+  usage limit on a pinned home: skip it until its reset day
+  (`echo "biz <YYYY-MM-DD>" >> ~/.codex-fast-skip`; a dated line lapses after
+  that PHT day) and tell JC once, because the seat may hold a banked reset
+  only JC uses. Read-only
   Codex-transport launches (the Codex review fallback) go native, round-robin
   over the two homes: `H=$(codex-fast-home) || H=`,
   then `CODEX_HOME="$H" CODEX_DIRECT=1 node "$C" task ...` only when `H` is

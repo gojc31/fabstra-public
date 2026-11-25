@@ -153,7 +153,7 @@ pins); both native homes passed the 6.2 re-probe on 2026-11-22.
    CODEX_DIRECT=1` in front of the launch below because the tier reaches only
    a native home, and JC put fast on that login:
    ```bash
-   H=$(codex-fast-home) || H=; echo "home=${H:-router}"
+   H=$(codex-fast-home) || H=; echo "home=${H:-router}"   # a --write launch: H=$(codex-fast-home build) || H=  (Business fast pin, quota.md)
    if [ -n "$H" ]; then export CODEX_HOME="$H" CODEX_DIRECT=1; else unset CODEX_HOME CODEX_DIRECT; fi
    node "$C" task --background --fresh [--write] --model gpt-6.2-sol --effort <per the effort rubric> --prompt-file <scratch>/fabstra-<name>.md | tee <scratch>/codex-job-<name>.txt
    J=$(grep -oE "task-[a-z0-9]+-[a-z0-9]+" <scratch>/codex-job-<name>.txt | head -1); echo "job=$J"
@@ -210,7 +210,7 @@ launch that follows uses the same prefix lines, so it lands on the probed
 home (hop rule 7):
 
 ```bash
-H=; echo "home=${H:-router}"   # builds rotate; a hop to a native home (hop rule 7): H=<that home>, e.g. H="${CODEX_PRO_HOME:-$HOME/.codex-pro}"
+H=$(codex-fast-home peek build) || H=; echo "home=${H:-router}"   # Business fast pin (quota.md): the pinned home the build will get, else the router (builds rotate); a hop to a native home (hop rule 7): H=<that home>, e.g. H="${CODEX_PRO_HOME:-$HOME/.codex-pro}"
 if [ -n "$H" ]; then export CODEX_HOME="$H" CODEX_DIRECT=1; else unset CODEX_HOME CODEX_DIRECT; fi
 P=$(basename "$(printf %s "${H:-router}" | tr '\134' /)"); M=".fabstra/codex-write-probe-<slug>-$P.txt"   # one marker per run slug (RUN-<slug>.md; RUN.md: main) and home
 rm -f "$M"   # no stale marker can pass

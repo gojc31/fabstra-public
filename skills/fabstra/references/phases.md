@@ -867,9 +867,14 @@ red type check.
   candidate REVIEW.md rule: trigger (what in a diff), check (what to
   verify), source (run slug and finding id). Grep the folder's
   `.fabstra/REPORT*.md` for the class first: a class an earlier report
-  already proposed is marked as the strong case. JC's go writes the rule
-  (Orchestrator rule 8); a project with no REVIEW.md gets the file
-  proposed.
+  already proposed is marked as the strong case. A rule catches only
+  future diffs, so each candidate also gets a sweep: search the project's
+  tracked files (outside generated and vendored folders) for code the
+  rule's check would fail, and list each hit (path:line) under the rule
+  as a one-time fix list, or `sweep: no hits` with the search used. The
+  sweep is read-only; fixing its hits is a separate task on JC's go. JC's
+  go writes the rule (Orchestrator rule 8); a project with no REVIEW.md
+  gets the file proposed.
 - **Escaped bugs become checklist rows.** A bug found after the smoke gate
   passed - by JC, a user, or a reviewer who ran the app - whose class shows
   only in the running app gets one proposed row for the nearest verify

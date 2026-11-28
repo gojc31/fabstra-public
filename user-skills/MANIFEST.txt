@@ -1,5 +1,5 @@
 user-skills export
-Exported: 2026-11-25
+Exported: 2026-11-28
 Source: ~/.claude/skills and ~/.claude/agents on the author's machine. Those folders are not under version control, so there is no source commit; the commit in this repo that carries this export is its version.
 
 Skills (17):
@@ -7,7 +7,7 @@ Skills (17):
   brief  (1 files)
   bro  (1 files)
   careful  (3 files)
-  design-pass  (13 files)
+  design-pass  (14 files)
   doctor-plus  (1 files)
   grilling  (2 files)
   hallmark  (109 files)

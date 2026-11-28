@@ -4,6 +4,8 @@ Sources: frontend-design is the Anthropic `frontend-design` plugin skill [FD]; t
 
 Checks are pass/fail on the BUILT result. The reviewer runs them, not the planner. A check that does not apply is written `N/A` with its number, never skipped silently.
 
+On a build that uses affectUI, the affectUI audit (`/affectui-audit` and `/affectui-break`, run in the project after the build) runs beside these gates, not instead of them: every gate below still passes or fails on its own.
+
 Take the scope's subset into the blueprint block: PAGE takes every group; SCREEN drops nothing but reads Structure as the screen's layout rather than a landing rhythm; COMPONENT takes Type, Colour, Copy, States, Responsive, Motion, plus gates 6a-6f and 6h-6j; EXISTING: Type, Colour, Copy, States, Responsive, Motion, Chrome, plus gates 6e, 6f and 6h-6j; the rest of Structure only where the change adds a section; mark the rest N/A; Charts applies only when the surface carries data marks. Dashboard screens applies to a SCREEN or EXISTING pass on an app screen (dashboard, admin, analytics, settings, inbox, wallet) only where the project has no established look: a brand guide, DESIGN.md or INHERIT pass outranks every gate in it, and where they disagree the gate is `N/A (brand)`.
 
 ## Structure
